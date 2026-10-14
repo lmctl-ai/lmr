@@ -2,19 +2,22 @@
 library(stats)
 library(utils)
 parse_json <- function(s) {
- i<-1L; n<-nchar(s); peek<-function() if(i<=n) substr(s,i,i) else ''
+ ch<-strsplit(enc2utf8(s), '', fixed=TRUE)[[1]]; i<-1L; n<-length(ch); peek<-function() if(i<=n) ch[[i]] else ''
  ws<-function(){while(i<=n&&peek()%in%c(' ','\n','\r','\t'))i<<-i+1L}
- string<-function(){i<<-i+1L; z<-'';while(i<=n){c<-peek();i<<-i+1L;if(c=='"')return(z);if(c=='\\'){e<-peek();i<<-i+1L;z<-paste0(z,switch(e,'"'='"','\\'='\\','/'='/',b='\b',f='\f',n='\n',r='\r',t='\t',e))}else z<-paste0(z,c)};stop('unterminated JSON string')}
- value<-function(){ws();c<-peek();if(c=='"')return(string());if(c=='{'){i<<-i+1L;obj<-list();ws();if(peek()=='}'){i<<-i+1L;return(obj)};repeat{ws();k<-string();ws();i<<-i+1L;obj[k]<-list(value());ws();c<-peek();i<<-i+1L;if(c=='}')break};return(obj)};if(c=='['){i<<-i+1L;arr<-list();ws();if(peek()==']'){i<<-i+1L;return(arr)};repeat{arr[length(arr)+1L]<-list(value());ws();c<-peek();i<<-i+1L;if(c==']')break};return(arr)};tail<-substr(s,i,n);if(startsWith(tail,'true')){i<<-i+4L;return(TRUE)};if(startsWith(tail,'false')){i<<-i+5L;return(FALSE)};if(startsWith(tail,'null')){i<<-i+4L;return(NULL)};m<-regexpr('^-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?',tail,perl=TRUE);if(m[1]<0)stop('invalid JSON value');v<-regmatches(tail,m);i<<-i+nchar(v);as.numeric(v)}
+ hex4<-function(){if(i+3L>n)stop('bad unicode escape');v<-paste(ch[i:(i+3L)],collapse='');if(!grepl('^[0-9A-Fa-f]{4}$',v))stop('bad unicode escape');i<<-i+4L;strtoi(v,16L)}
+ string<-function(){i<<-i+1L; z<-character(n-i+1L);k<-0L;push<-function(v){k<<-k+1L;z[[k]]<<-v};while(i<=n){c<-peek();i<<-i+1L;if(c=='"')return(if(k)paste(z[seq_len(k)],collapse='')else '');if(c=='\\'){e<-peek();i<<-i+1L;if(e=='u'){cp<-hex4();if(cp>=0xD800&&cp<=0xDBFF){if(i+1L>n||ch[[i]]!='\\'||ch[[i+1L]]!='u')stop('bad surrogate pair');i<<-i+2L;lo<-hex4();if(lo<0xDC00||lo>0xDFFF)stop('bad surrogate pair');cp<-0x10000+(cp-0xD800)*1024+(lo-0xDC00)};push(intToUtf8(cp))}else{v<-switch(e,'"'='"','\\'='\\','/'='/',b='\b',f='\f',n='\n',r='\r',t='\t',NULL);if(is.null(v))stop('bad string escape');push(v)}}else push(c)};stop('unterminated JSON string')}
+ value<-function(){ws();c<-peek();if(c=='"')return(string());if(c=='{'){i<<-i+1L;obj<-list();ws();if(peek()=='}'){i<<-i+1L;return(obj)};repeat{ws();k<-string();ws();if(peek()!=':')stop('expected colon');i<<-i+1L;obj[k]<-list(value());ws();c<-peek();i<<-i+1L;if(c=='}')break;if(c!=',')stop('expected comma')};return(obj)};if(c=='['){i<<-i+1L;arr<-list();ws();if(peek()==']'){i<<-i+1L;return(arr)};repeat{arr[length(arr)+1L]<-list(value());ws();c<-peek();i<<-i+1L;if(c==']')break;if(c!=',')stop('expected comma')};return(arr)};for(k in c('true','false','null'))if(i+nchar(k)-1L<=n&&paste(ch[i:(i+nchar(k)-1L)],collapse='')==k){i<<-i+nchar(k);return(switch(k,true=TRUE,false=FALSE,null=NULL))};start<-i;if(peek()=='-')i<<-i+1L;while(i<=n&&grepl('^[0-9]$',peek()))i<<-i+1L;if(peek()=='.'){i<<-i+1L;while(i<=n&&grepl('^[0-9]$',peek()))i<<-i+1L};if(peek()%in%c('e','E')){i<<-i+1L;if(peek()%in%c('+','-'))i<<-i+1L;while(i<=n&&grepl('^[0-9]$',peek()))i<<-i+1L};if(i==start)stop('invalid JSON value');as.numeric(paste(ch[start:(i-1L)],collapse=''))}
  value()
 }
+numeric_input <- function(x) { if(is.null(x)) return(NA_real_); if(is.character(x)&&length(x)==1L) { if(x=='NA') return(NA_real_); return(as.numeric(x)) }; as.numeric(x) }
 args <- commandArgs(TRUE); if(length(args)&&args[[1]]=='--') args<-args[-1]; op <- args[[1]]; req <- parse_json(paste(readLines(args[[2]],warn=FALSE),collapse='')); outpath <- args[[3]]
 warnings <- character()
 encode <- function(x) {
- if (is.double(x)) { x[is.na(x) & !is.nan(x)] <- NA_real_; return(lapply(seq_along(x), function(i) {v<-x[[i]]; if(is.nan(v)) 'NaN' else if(is.na(v)) 'NA' else if(is.infinite(v)) if(v>0) 'Inf' else '-Inf' else v})) }
+ if (is.double(x)) { if(length(x)!=1L) return(array_encode(x));v<-x[[1L]];if(is.nan(v))return('NaN');if(is.na(v))return('NA');if(is.infinite(v))return(if(v>0)'Inf' else '-Inf');return(v) }
  if (is.list(x)) return(lapply(x, encode))
  x
 }
+array_encode <- function(x) lapply(seq_along(x),function(i) encode(as.double(x[[i]])))
 json <- function(x) {
  if(is.null(x)) return('null')
  if(is.list(x)) {
@@ -34,25 +37,24 @@ result <- withCallingHandlers(tryCatch({
  else if(op=='dist_quantile') {
   fn <- switch(req$dist,norm=qnorm,t=qt,chisq=qchisq,gamma=qgamma,beta=qbeta,binom=qbinom,pois=qpois)
   if(is.null(fn)) stop('unknown distribution')
-  p <- unlist(req$p); args2 <- list(p=p,lower.tail=if(is.null(req$lower_tail)) TRUE else req$lower_tail,log.p=FALSE)
-  if(req$dist=='norm') {args2$mean<-req$mean;args2$sd<-req$sd}
-  if(req$dist%in%c('t','chisq')) args2$df<-req$df
-  if(req$dist=='gamma') {args2$shape<-req$shape;if(!is.null(req$rate))args2$rate<-req$rate}
-  if(req$dist=='beta') {args2$shape1<-req$a;args2$shape2<-req$b}
-  if(req$dist=='binom') {args2$size<-req$size;args2$prob<-req$prob}
-  if(req$dist=='pois') args2$lambda<-req$lambda
-  list(value=encode(do.call(fn,args2)),meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind()))
+  p <- vapply(req$p,numeric_input,numeric(1)); args2 <- list(p=p,lower.tail=if(is.null(req$lower_tail)) TRUE else req$lower_tail,log.p=if(is.null(req$log_p)) FALSE else req$log_p)
+  if(req$dist=='norm') {args2$mean<-if('mean'%in%names(req)) numeric_input(req$mean) else 0;args2$sd<-if('sd'%in%names(req)) numeric_input(req$sd) else 1}
+  if(req$dist%in%c('t','chisq')) args2$df<-numeric_input(req$df)
+  if(req$dist=='gamma') {args2$shape<-numeric_input(req$shape);if('rate'%in%names(req))args2$rate<-numeric_input(req$rate)}
+  if(req$dist=='beta') {args2$shape1<-numeric_input(req$a);args2$shape2<-numeric_input(req$b)}
+  if(req$dist=='binom') {args2$size<-numeric_input(req$size);args2$prob<-numeric_input(req$prob)}
+  if(req$dist=='pois') args2$lambda<-numeric_input(req$lambda)
+  list(value=array_encode(do.call(fn,args2)),meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind()))
  } else if(op=='rng_draw') {
   RNGkind('Mersenne-Twister','Inversion','Rejection'); set.seed(req$seed)
-  n<-req$n; value<-switch(req$dist,norm=rnorm(n,req$mean%||%0,req$sd%||%1),unif=runif(n,req$min%||%0,req$max%||%1))
-  list(value=encode(value),meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind(),seed=req$seed))
+  n<-req$n; value<-switch(req$dist,norm=rnorm(n,if('mean'%in%names(req))numeric_input(req$mean) else 0,if('sd'%in%names(req))numeric_input(req$sd) else 1),unif=runif(n,if('min'%in%names(req))numeric_input(req$min) else 0,if('max'%in%names(req))numeric_input(req$max) else 1))
+  list(value=array_encode(value),meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind(),seed=req$seed))
  } else if(op=='fit_lm') {
-  if(!is.null(req$file)) d<-read.csv(req$file,check.names=FALSE) else d<-as.data.frame(lapply(req$data,function(col) vapply(col,function(v) if(is.null(v)) NA_real_ else as.numeric(v),numeric(1))),check.names=FALSE)
-  if(!grepl('^[A-Za-z.][A-Za-z0-9._]* *~ *[A-Za-z.][A-Za-z0-9._]*( *\\+ *[A-Za-z.][A-Za-z0-9._]*)*$',req$formula)) stop('formula must contain column names and + only')
-  f<-as.formula(req$formula); nafun<-if(identical(req$na_action,'exclude')) na.exclude else na.omit; fit<-lm(f,data=d,na.action=nafun); sm<-summary(fit); co<-sm$coefficients
-  list(coefficients=rownames(co),estimate=encode(co[,1]),std_error=encode(co[,2]),statistic=encode(co[,3]),p_value=encode(co[,4]),sigma=encode(sm$sigma),r_squared=encode(sm$r.squared),df=sm$df[2],residuals=if(isTRUE(req$residuals)) encode(residuals(fit)) else NULL,meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind()))
+  if(!is.null(req$file)) d<-read.csv(req$file,check.names=FALSE) else d<-as.data.frame(lapply(req$data,function(col) vapply(col,numeric_input,numeric(1))),check.names=FALSE)
+  pieces<-strsplit(req$formula,'~',fixed=TRUE)[[1L]];if(length(pieces)!=2L) stop('bad formula');lhs<-trimws(pieces[1L]);rhs<-trimws(pieces[2L]);if(!lhs%in%names(d))stop('response must be a data column');tokens<-unlist(strsplit(gsub('[+-]',' ',rhs), '[[:space:]]+'));tokens<-tokens[nzchar(tokens)&!tokens%in%c('0','1')];if(any(!tokens%in%names(d))||'.'%in%tokens)stop('formula terms must be data columns');f<-as.formula(req$formula,env=baseenv());environment(f)<-baseenv();nafun<-if(identical(req$na_action,'exclude')) na.exclude else na.omit;fit<-lm(f,data=d,na.action=nafun);sm<-summary(fit);cf<-coef(fit);tab<-sm$coefficients;nm<-names(cf);col<-function(j){out<-rep(NA_real_,length(cf));names(out)<-nm;common<-intersect(nm,rownames(tab));out[common]<-tab[common,j];out};
+  list(coefficients=as.list(nm),estimate=array_encode(cf),std_error=array_encode(col(2)),statistic=array_encode(col(3)),p_value=array_encode(col(4)),aliased=as.list(unname(nm[is.na(cf)])),rank=fit$rank,sigma=encode(sm$sigma),r_squared=encode(sm$r.squared),df=encode(sm$df[2]),residuals=if(isTRUE(req$residuals)) array_encode(residuals(fit)) else NULL,meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind()))
  } else stop('unknown operation')
 },error=function(e) structure(list(message=conditionMessage(e)),class='rcli_error')),warning=function(w){warnings<<-c(warnings,conditionMessage(w));invokeRestart('muffleWarning')})
-if(inherits(result,'rcli_error')) {writeLines(json(list(error=result$message)),outpath);quit(status=0)}
+if(inherits(result,'rcli_error')) {writeLines(json(list(error=result$message,warnings=as.list(warnings))),outpath);quit(status=0)}
 result$warnings<-as.list(warnings)
 writeLines(json(result),outpath)

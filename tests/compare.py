@@ -8,7 +8,5 @@ assert rng['value'] == vals[i:i+2]; i+=2
 for key in ('estimate','std_error','statistic','p_value'):
     assert fit[key] == vals[i:i+2], (key,fit[key],vals[i:i+2]); i+=2
 for key in ('sigma','r_squared','df'):
-    got=fit[key]
-    if isinstance(got,list): got=got[0]
-    assert got == vals[i], (key,got,vals[i]); i+=1
+    assert fit[key] == vals[i], (key,fit[key],vals[i]); i+=1
 assert i == len(vals)
