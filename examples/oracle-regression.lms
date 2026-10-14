@@ -1,0 +1,20 @@
+// access: read
+// What it does: Compares lmstats OLS coefficients to base R on the same fixed data.
+// Tolerance: 1e-9 absolute per coefficient.
+// Setup: Put statsrust on an absolute PATH entry; build instructions are in README.md.
+import "../cli.schema.dev.json" as rcli;
+import "schemas/statsrust.cli.schema.v1.json" as lmstats;
+if (which("statsrust") == null) { println("statsrust is required; see the cross-tool setup in README.md"); exit(1); }
+x = [1, 2, 3, 4, 5, 6, 7, 8];
+y = [2.1, 4.2, 5.8, 8.3, 9.9, 12.2, 13.8, 16.1];
+r = rcli.fit_lm({formula: "y ~ x", data: {x: x, y: y}});
+s = lmstats.regression({endog: y, exog: [[1], [2], [3], [4], [5], [6], [7], [8]], add_const: true, method: "ols"});
+if (r.status != "ok" || s.status != "ok") { println("OLS call failed", json_stringify(r), json_stringify(s)); exit(1); }
+println("quantity | lmstats | R | abs diff");
+labels = ["intercept", "slope"];
+for (i = 0; i < 2; i = i + 1) {
+  a = s.result.params.values[i]; b = r.result.estimate[i]; d = abs(a - b);
+  println(sprintf("%s | %.12f | %.12f | %.12f", labels[i], a, b, d));
+  if (d > 0.000000001) { println("OLS mismatch above absolute tolerance 1e-9"); exit(1); }
+}
+println("OLS agrees within 1e-9.");

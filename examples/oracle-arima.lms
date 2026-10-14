@@ -1,0 +1,23 @@
+// access: read
+// What it does: Compares lmstats state-space AR(1) fit to base R ML on a series generated once by R.
+// Tolerance: 1e-3 absolute for phi and sigma2 (iterative maximum-likelihood estimates).
+// Setup: Put statsrust on an absolute PATH entry; build instructions are in README.md.
+import "../cli.schema.dev.json" as rcli;
+import "schemas/statsrust.cli.schema.v1.json" as lmstats;
+if (which("statsrust") == null) { println("statsrust is required; see the cross-tool setup in README.md"); exit(1); }
+sim = rcli.rng_arima_sim({n: 120, seed: 20261014, order: [1, 0, 0], ar: [0.6]});
+if (sim.status != "ok") { println("R simulation failed", json_stringify(sim)); exit(1); }
+x = sim.result.value;
+r = rcli.ts_arima({x: x, order: [1, 0, 0], method: "ML", include_mean: false});
+s = lmstats.arima({series: x, order: [1, 0, 0], trend: "n", method: "statespace"});
+if (r.status != "ok" || s.status != "ok") { println("AR(1) call failed", json_stringify(r), json_stringify(s)); exit(1); }
+println("quantity | lmstats | R | abs diff");
+for (i = 0; i < 2; i = i + 1) {
+  label = i == 0 ? "phi" : "sigma2";
+  a = i == 0 ? s.result.params.values[0] : s.result.sigma2;
+  b = i == 0 ? r.result.estimate[0] : r.result.sigma2;
+  d = abs(a - b);
+  println(sprintf("%s | %.12f | %.12f | %.12f", label, a, b, d));
+  if (d > 0.001) { println("AR(1) mismatch above absolute tolerance 1e-3"); exit(1); }
+}
+println("AR(1) agrees within 1e-3.");

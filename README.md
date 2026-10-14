@@ -66,7 +66,35 @@ bin/rcli fit_lm --formula 'y ~ x' --file examples/data/oracle-lm.csv
 
 The test target runs CTest, including R-computed oracles, expression conformance, no-libR checks, and host-shim contract tests. To check schema compatibility with lmts, generate `cli.schema.dev.json` from the binary and run the pinned lmts `parsePublishedSchema` check (also run in CI). See [docs/parity.md](docs/parity.md) for the operation contribution checklist and container behavior.
 
-Recipes: `examples/oracle-lm.lms`, `examples/oracle-tests.lms`, `examples/fit-and-forecast.lms`, `examples/fit-curve.lms`, and `examples/minimize-rosenbrock.lms`. Each imports the schema, checks tool status, and asserts numeric answers.
+Recipes: `examples/oracle-lm.lms`, `examples/oracle-tests.lms`, `examples/fit-and-forecast.lms`, `examples/fit-curve.lms`, and `examples/minimize-rosenbrock.lms`. Each imports the schema, checks tool status, and asserts numeric answers. The optional lmstats cross-tool recipes are listed below.
+
+### Cross-tool oracle recipes
+
+`examples/oracle-regression.lms`, `examples/oracle-acf.lms`, and `examples/oracle-arima.lms`
+run the same inputs through rcli and lmstats `statsrust`, print both values and absolute differences,
+and exit nonzero when a stated tolerance is exceeded. They import rcli's generated schema and the
+pinned lmstats schema snapshot in `examples/schemas/`; that snapshot records its source commit.
+The OLS and ACF comparisons use `1e-9` absolute tolerance; iterative AR(1) coefficient and variance
+comparisons use `1e-3`.
+
+To build `statsrust` without filling the lmstats checkout with build output, use a scratch target
+directory and put the resulting executable on an absolute `PATH` entry:
+
+```sh
+cd ~/repos/lmctlhq/lmstats
+CARGO_TARGET_DIR=/tmp/oracle-target cargo build --locked --bin statsrust
+mkdir -p /tmp/oracle-bin
+cp /tmp/oracle-target/debug/statsrust /tmp/oracle-bin/statsrust
+export PATH="$(realpath ~/repos/lmctlhq/rcli/bin):/tmp/oracle-bin:$PATH"
+cd ~/repos/lmctlhq/rcli
+lmscript examples/oracle-regression.lms
+lmscript examples/oracle-acf.lms
+lmscript examples/oracle-arima.lms
+```
+
+Remove `/tmp/oracle-target` after building if disk space matters. These cross-tool recipes require
+`statsrust` and fail with a setup hint when it is missing; the existing R-only recipes remain
+independent of lmstats.
 
 ### Expression operations
 

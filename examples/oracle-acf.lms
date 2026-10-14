@@ -1,0 +1,18 @@
+// access: read
+// What it does: Compares lmstats and R biased ACF values, including lag zero, on the same fixed series.
+// Tolerance: 1e-9 absolute per lag.
+// Setup: Put statsrust on an absolute PATH entry; build instructions are in README.md.
+import "../cli.schema.dev.json" as rcli;
+import "schemas/statsrust.cli.schema.v1.json" as lmstats;
+if (which("statsrust") == null) { println("statsrust is required; see the cross-tool setup in README.md"); exit(1); }
+x = [3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 8, 9, 7, 9, 3, 2, 3, 8, 4];
+r = rcli.ts_acf({x: x, lag_max: 8});
+s = lmstats.acf_pacf({series: x, diag_nlags: 8});
+if (r.status != "ok" || s.status != "ok") { println("ACF call failed", json_stringify(r), json_stringify(s)); exit(1); }
+println("quantity | lmstats | R | abs diff");
+for (i = 0; i < 9; i = i + 1) {
+  a = s.result.acf[i]; b = r.result.value[i]; d = abs(a - b);
+  println(sprintf("lag %d | %.12f | %.12f | %.12f", i, a, b, d));
+  if (d > 0.000000001) { println("ACF mismatch above absolute tolerance 1e-9"); exit(1); }
+}
+println("ACF agrees within 1e-9.");
