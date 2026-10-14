@@ -1,0 +1,19 @@
+// access: read
+// What it does: Minimizes Rosenbrock's function and checks the known minimum.
+// Tolerance: parameters within 0.005 and objective below 1e-6.
+// How to run: Put the absolute rcli build/bin directory on PATH, then run lmscript examples/minimize-rosenbrock.lms.
+import "../cli.schema.dev.json" as rcli;
+
+fit = rcli.opt_minimize({
+  objective: "100*(b-a^2)^2+(1-a)^2",
+  start: {a: -1.2, b: 1},
+  method: "BFGS",
+  maxit: 1000,
+  reltol: 0.00000001
+});
+if (fit.status != "ok") { println("Rosenbrock minimization failed:", json_stringify(fit)); exit(1); }
+println(sprintf("Rosenbrock minimum: a=%.6f b=%.6f value=%.8f", fit.result.par.a, fit.result.par.b, fit.result.value));
+if (abs(fit.result.par.a - 1) > 0.005 || abs(fit.result.par.b - 1) > 0.005 || fit.result.value > 0.000001) {
+  println("Rosenbrock oracle mismatch"); exit(1);
+}
+println("Rosenbrock oracle passed.");

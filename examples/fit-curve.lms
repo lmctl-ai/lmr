@@ -1,0 +1,19 @@
+// access: read
+// What it does: Generates noisy Michaelis-Menten data from a known curve and fits it with nls.
+// Tolerance: recovered parameters within 0.2 of the generating values.
+// How to run: Put the absolute rcli build/bin directory on PATH, then run lmscript examples/fit-curve.lms.
+import "../cli.schema.dev.json" as rcli;
+
+x = [];
+for (i = 0; i < 17; i = i + 1) { x = concat(x, [i / 4]); }
+noise = rcli.rng_draw({dist: "norm", n: 17, mean: 0, sd: 0.01, seed: 42});
+if (noise.status != "ok") { println("Noise generation failed:", json_stringify(noise)); exit(1); }
+y = [];
+for (i = 0; i < 17; i = i + 1) { y = concat(y, [4 * x[i] / (2 + x[i]) + noise.result.value[i]]); }
+fit = rcli.fit_nls({response: "y", rhs: "a*x/(b+x)", data: {x: x, y: y}, start: {a: 3, b: 1}});
+if (fit.status != "ok") { println("NLS fit failed:", json_stringify(fit)); exit(1); }
+println(sprintf("Fitted curve: a=%.6f b=%.6f", fit.result.estimate[0], fit.result.estimate[1]));
+if (abs(fit.result.estimate[0] - 4) > 0.2 || abs(fit.result.estimate[1] - 2) > 0.2) {
+  println("Fitted parameters differ from generating values"); exit(1);
+}
+println("Noisy curve recovery passed.");

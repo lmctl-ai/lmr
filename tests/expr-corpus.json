@@ -1,0 +1,384 @@
+{
+  "accept": [
+    {
+      "expression": "a*exp(-b*t)",
+      "names": [
+        "a",
+        "b",
+        "t"
+      ]
+    },
+    {
+      "expression": "x^2",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "ifelse(x>0,x,-x)",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "sum(x)",
+      "names": [
+        "x"
+      ],
+      "allow_reducers": true
+    },
+    {
+      "expression": "ifelse(x>0 & x<1,1,0)",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "pi+e"
+    },
+    {
+      "expression": "pmin(x,2)",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "1e-12 + log1p(abs(x))",
+      "names": [
+        "x"
+      ]
+    }
+  ],
+  "reject": [
+    {
+      "expression": "system(\"id\")",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "eval(parse(text=\"1\"))",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "base::exp(1)",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "`exp`(1)",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "x <- 1",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "x = 1",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "function(x) x",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "\\(x) x",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": ".Internal(1)",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "get(\"system\")",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "match.fun(\"exp\")",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "do.call(\"exp\",list(1))",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "Sys.setenv(x=1)",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "quote(x)",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "substitute(x)",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "environment()",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "x$y",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "x@y",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "x[[1]]",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "x[1]",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "c(1,2)",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "\"a\"",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "'a'",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "# comment",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "1;2",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "1\nsystem(\"id\")",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "ехр(1)",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "\u0000",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "1e999",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "0x10",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "1L",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "TRUE",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "FALSE",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "NA",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "Inf",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "NULL",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "exp()",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "exp(1,2)",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "log(x,2)",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "pi(1)",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "2**3",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "7%%2",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "x %in% y",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "a && b",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "!x",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "--x",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "x ? y",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "(((((((((((((((((((((((((((((((((x)))))))))))))))))))))))))))))))))",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "y",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "ifelse(x,1,2)",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "sum(x)",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "   ",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "1e+",
+      "names": [
+        "x"
+      ]
+    },
+    {
+      "expression": "-Inf",
+      "names": [
+        "x"
+      ]
+    }
+  ]
+}

@@ -12,7 +12,7 @@ trap cleanup EXIT
 python3 - "$tmp/schema" <<'PY'
 import json,sys
 s=json.load(open(sys.argv[1])); ops={o['name']:o for o in s['operations']}
-assert set(ops)=={'r_info','dist_quantile','dist_density','dist_probability','rng_draw','rng_sample','math_special','summary_quantile','num_fft','test_htest','fit_glm','smooth_spline','smooth_loess','interp_spline','interp_approx','ts_arima','rng_arima_sim','ts_acf','ts_pacf','ts_stl','cluster_kmeans','cluster_hclust','fit_lm'}
+assert set(ops)=={'r_info','dist_quantile','dist_density','dist_probability','rng_draw','rng_sample','math_special','summary_quantile','num_fft','test_htest','fit_glm','smooth_spline','smooth_loess','interp_spline','interp_approx','ts_arima','rng_arima_sim','ts_acf','ts_pacf','ts_stl','cluster_kmeans','cluster_hclust','fit_lm','opt_minimize','opt_optimize','num_root','num_integrate','fit_nls'}
 assert all(o['access']=='read' for o in ops.values())
 assert all(p.get('description') for o in ops.values() for p in o.get('params',[]))
 p={x['name']:x for x in ops['dist_quantile']['params']}

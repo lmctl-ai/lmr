@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Add the shared expression grammar, C++ parser, R-side AST validation, and the optimization, root-finding, integration, and nonlinear least-squares operations.
+- Add expression conformance/oracle tests and the noisy curve-fit and Rosenbrock lmscript recipes.
 - Added base R ARIMA fitting and forecasting, seeded ARMA simulation, ACF/PACF, STL decomposition, Hartigan-Wong k-means, and hierarchical clustering.
 - Added the `fit-and-forecast.lms` seeded simulation-to-forecast recipe.
 
