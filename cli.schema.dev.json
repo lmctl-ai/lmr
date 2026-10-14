@@ -1,0 +1,195 @@
+{
+  "schema": "cli.schema.v1",
+  "tool": "rcli",
+  "version": "0.1.0",
+  "inputs": [
+    "flags",
+    "json"
+  ],
+  "globals": [],
+  "operations": [
+    {
+      "name": "r_info",
+      "access": "read",
+      "returns": "object",
+      "description": "R runtime and RNG provenance",
+      "params": []
+    },
+    {
+      "name": "dist_quantile",
+      "access": "read",
+      "returns": "object",
+      "description": "Vectorized R distribution quantiles",
+      "params": [
+        {
+          "name": "dist",
+          "type": "string",
+          "occurs": "1",
+          "enum": [
+            "norm",
+            "t",
+            "chisq",
+            "gamma",
+            "beta",
+            "binom",
+            "pois"
+          ]
+        },
+        {
+          "name": "p",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "lower_tail",
+          "type": "boolean",
+          "occurs": "?",
+          "default": true
+        },
+        {
+          "name": "mean",
+          "type": "number",
+          "occurs": "?",
+          "default": 0.0
+        },
+        {
+          "name": "sd",
+          "type": "number",
+          "occurs": "?",
+          "default": 1.0
+        },
+        {
+          "name": "df",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "shape",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "rate",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "a",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "b",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "size",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "prob",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "lambda",
+          "type": "number",
+          "occurs": "?"
+        }
+      ]
+    },
+    {
+      "name": "rng_draw",
+      "access": "read",
+      "returns": "object",
+      "description": "Seeded R normal or uniform draws",
+      "params": [
+        {
+          "name": "dist",
+          "type": "string",
+          "occurs": "1",
+          "enum": [
+            "norm",
+            "unif"
+          ]
+        },
+        {
+          "name": "n",
+          "type": "number",
+          "occurs": "1"
+        },
+        {
+          "name": "seed",
+          "type": "number",
+          "occurs": "1"
+        },
+        {
+          "name": "mean",
+          "type": "number",
+          "occurs": "?",
+          "default": 0.0
+        },
+        {
+          "name": "sd",
+          "type": "number",
+          "occurs": "?",
+          "default": 1.0
+        },
+        {
+          "name": "min",
+          "type": "number",
+          "occurs": "?",
+          "default": 0.0
+        },
+        {
+          "name": "max",
+          "type": "number",
+          "occurs": "?",
+          "default": 1.0
+        }
+      ]
+    },
+    {
+      "name": "fit_lm",
+      "access": "read",
+      "returns": "object",
+      "description": "Fit an R linear model from inline data or CSV",
+      "params": [
+        {
+          "name": "formula",
+          "type": "string",
+          "occurs": "1"
+        },
+        {
+          "name": "data",
+          "type": "object",
+          "occurs": "?"
+        },
+        {
+          "name": "file",
+          "type": "string",
+          "occurs": "?"
+        },
+        {
+          "name": "residuals",
+          "type": "boolean",
+          "occurs": "?",
+          "default": false
+        },
+        {
+          "name": "na_action",
+          "type": "string",
+          "occurs": "?",
+          "default": "omit",
+          "enum": [
+            "omit",
+            "exclude"
+          ]
+        }
+      ]
+    }
+  ]
+}

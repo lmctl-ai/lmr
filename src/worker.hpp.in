@@ -1,0 +1,2 @@
+#pragma once
+static constexpr const char* RCLI_WORKER_SOURCE = R"LMRCLI(@RCLI_WORKER_SOURCE@)LMRCLI";

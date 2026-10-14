@@ -1,0 +1,19 @@
+// access: read
+// What it does: Fits a fixed regression in rcli and checks its coefficients against the R oracle values.
+// How to run: Put the absolute rcli build/bin directory on PATH, then run lmscript examples/oracle-lm.lms.
+import "../cli.schema.dev.json" as rcli;
+
+fit = rcli.fit_lm({formula: "y ~ x", data: {y: [1, 2, 4, 5], x: [1, 2, 3, 4]}});
+if (fit.status == "error") {
+  println("rcli fit failed:", fit.error.message);
+  exit(1);
+}
+if (fit.status == "ok") {
+  b0 = fit.result.estimate[0];
+  b1 = fit.result.estimate[1];
+  delta = max(abs(b0 - (-0.4999999999999992)), abs(b1 - 1.3999999999999997));
+  println(sprintf("R %s coefficients: intercept %.8f, slope %.8f; max |delta| %.6f", fit.result.meta.r_version, b0, b1, delta));
+  if (delta > 0.000000000001) {
+    exit(1);
+  }
+}

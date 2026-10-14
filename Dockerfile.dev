@@ -1,0 +1,3 @@
+FROM lmcpp-dev
+RUN apt-get update && apt-get install -y --no-install-recommends r-base-core r-cran-jsonlite && rm -rf /var/lib/apt/lists/*
+WORKDIR /work
