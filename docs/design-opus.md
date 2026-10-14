@@ -172,10 +172,10 @@ by image/tool/env-prefix. (6) Optional: `Type::Integer` items in arrays (`seed`,
 **Stage 0 — thin vertical slice (3 ops + recipe):** `r_info`, `dist_quantile`, `dist_random`, the shim, the
 worker protocol, the nonfinite encoding and lmcpp subprocess helper (1).
 ```sh
-cd ~/repos/lmctlhq/rcli
-docker build --platform linux/arm64 -f docker/Dockerfile --target test -t rcli:test ~/repos
+cd <workspace>/rcli
+docker build --platform linux/arm64 -f docker/Dockerfile --target test -t rcli:test <workspace>
 docker run --rm --network=none rcli:test ctest --test-dir /build --output-on-failure
-docker build --platform linux/arm64 -f docker/Dockerfile --target runtime -t rcli:dev ~/repos
+docker build --platform linux/arm64 -f docker/Dockerfile --target runtime -t rcli:dev <workspace>
 export PATH="$PWD/bin:$PATH" TMPDIR="$PWD/.tmp"; mkdir -p .tmp
 rcli --schema > cli.schema.dev.json
 rcli dist_quantile --family norm --p 0.975 --p 2      # → [1.9599639845400534,"NaN"] + warning "NaNs produced"

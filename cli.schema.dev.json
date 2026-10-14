@@ -48,6 +48,12 @@
           "default": true
         },
         {
+          "name": "log_p",
+          "type": "boolean",
+          "occurs": "?",
+          "default": false
+        },
+        {
           "name": "mean",
           "type": "number",
           "occurs": "?",

@@ -67,7 +67,7 @@ Stage 2 candidates: `cluster_kmeans` (Hartigan-Wong, seeded `nstart`), `cluster_
 
 **Binary.** `rcli` links only `lmcpp::core` and nlohmann-json; it is a plain host binary (native build on this host in under a minute). R scripts are embedded at compile time (CMake `file(READ)` → generated `ops_embedded.cpp`), so one executable carries its catalogue and `--schema` needs no R.
 
-**Docker (canonical, pinned).** Base `ubuntu:24.04` arm64, digest-pinned, so the container carries exactly the host's `r-base-core 4.3.3-2build2` and reference `libblas3/liblapack3`; add `r-cran-jsonlite`, `r-cran-mgcv`, `r-cran-nlme`, `r-cran-survival` (all GPL, unchanged Debian binaries). Builder stage adds `g++ cmake ninja-build nlohmann-json3-dev`, builds lmcpp from the sibling checkout (same `~/repos` context + `.dockerignore` allowlist as torchcli), then rcli. Test stage runs ctest; runtime stage is ubuntu + R + `/usr/local/bin/rcli` as entrypoint. Budget: runtime image 400–500 MB unpacked (R + ICU + Tcl/Tk pulled by r-base-core), build 4–6 min cold on this host, dominated by apt; no compiler heavier than lmcpp. Record real numbers at stage 1.
+**Docker (canonical, pinned).** Base `ubuntu:24.04` arm64, digest-pinned, so the container carries exactly the host's `r-base-core 4.3.3-2build2` and reference `libblas3/liblapack3`; add `r-cran-jsonlite`, `r-cran-mgcv`, `r-cran-nlme`, `r-cran-survival` (all GPL, unchanged Debian binaries). Builder stage adds `g++ cmake ninja-build nlohmann-json3-dev`, builds lmcpp from the sibling checkout (same `<workspace>` context + `.dockerignore` allowlist as torchcli), then rcli. Test stage runs ctest; runtime stage is ubuntu + R + `/usr/local/bin/rcli` as entrypoint. Budget: runtime image 400–500 MB unpacked (R + ICU + Tcl/Tk pulled by r-base-core), build 4–6 min cold on this host, dominated by apt; no compiler heavier than lmcpp. Record real numbers at stage 1.
 
 **Shim.** Copy `bin/torchcli` verbatim as `bin/rcli` (`--network=none --cpus=2 --memory=2g`, cwd mount below `$HOME`, uid/gid, `RCLI_READONLY/RCLI_DRYRUN` passthrough, Docker-failure → `SERVICE_UNAVAILABLE`, crash → `TOOL_CRASH`). Because the host has the same R build, developers may also put `build/bin/rcli` on PATH directly; CI and recipes use the shim. Docker adds about 0.3–0.5 s per call; the recipe budget (60 s per call) is unaffected.
 
@@ -77,24 +77,24 @@ Stage 2 candidates: `cluster_kmeans` (Hartigan-Wong, seeded `nstart`), `cluster_
 
 ## 4. Stages, recipes, risks, cuts
 
-**Stage 0 — vertical slice (3 ops + recipe, native host, no Docker).** Ops: `dist_q`, `rng_draw`, `fit_lm`. Deliver `run_child` in lmcpp, prelude + emitter, embedded scripts, NA mapping, warnings, `R_ERROR`. Recipe `examples/oracle-lm.lms`: load `examples/data/cars.csv`, call `lmda.model_regress` and `rcli.fit_lm` on the same formula, print max |Δcoef| and exit 1 if above 1e-8; handle `status:"simulated"` like torchcli recipes.
+**Stage 0 — vertical slice (native host, no runtime Docker image).** The implemented operations are `r_info`, `dist_quantile`, `rng_draw`, and `fit_lm`; the recipe uses the checked-in `examples/data/oracle-lm.csv` and remains self-contained when lmda is unavailable.
 ```sh
-cd ~/repos/lmctl-ai/lmcpp && cmake -S . -B build -G Ninja -DLMAPI_DIR=../lmapi -DLMCPP_BUILD_TESTS=ON && cmake --build build --parallel 2 && ctest --test-dir build --output-on-failure
-cd ~/repos/cppwrapper/rcli && cmake -S . -B build -G Ninja -Dlmcpp_DIR=../../lmctl-ai/lmcpp/stage/lib/cmake/lmcpp && cmake --build build --parallel 2
+cd <workspace>/lmcpp && cmake -S . -B build -G Ninja -DLMAPI_DIR=../lmapi -DLMCPP_BUILD_TESTS=ON && cmake --build build --parallel 2 && ctest --test-dir build --output-on-failure
+cd <workspace>/rcli && cmake -S . -B build -G Ninja -Dlmcpp_DIR=../../lmctl-ai/lmcpp/stage/lib/cmake/lmcpp && cmake --build build --parallel 2
 build/bin/rcli --schema > cli.schema.dev.json
 build/bin/rcli dist_q --dist t --p 0.975 --df 7            # {"value":[2.364624251592784],...}
 build/bin/rcli rng_draw --dist norm --n 3 --seed 42         # [1.3709584471466685,-0.5646981713960888,0.36312841133733914]
-build/bin/rcli fit_lm --file examples/data/cars.csv --formula 'dist ~ speed'
+build/bin/rcli fit_lm --file examples/data/oracle-lm.csv --formula 'y ~ x'
 ctest --test-dir build --output-on-failure
-PATH="$PWD/build/bin:$HOME/repos/lmctlhq/lmda/target/release:$PATH" lmscript --check examples/oracle-lm.lms && lmscript examples/oracle-lm.lms
+PATH="$PWD/build/bin:<workspace>/lmda/target/release:$PATH" lmscript --check examples/oracle-lm.lms && lmscript examples/oracle-lm.lms
 ```
 Gate: the three outputs match the literal values above (host R 4.3.3); recipe prints a Δ below 1e-8; `--schema` works with `Rscript` removed from PATH; `RCLI_READONLY=1` changes nothing (all read).
 
 **Stage 1 — all 21 ops, Docker, shim, oracle tests, 3 recipes.**
 ```sh
-docker build --platform linux/arm64 -f docker/Dockerfile --target test -t rcli:test ~/repos
+docker build --platform linux/arm64 -f docker/Dockerfile --target test -t rcli:test <workspace>
 docker run --rm --network=none rcli:test ctest --test-dir /build --output-on-failure
-docker build --platform linux/arm64 -f docker/Dockerfile --target runtime -t rcli:dev ~/repos
+docker build --platform linux/arm64 -f docker/Dockerfile --target runtime -t rcli:dev <workspace>
 export PATH="$PWD/bin:$PATH" TMPDIR="$PWD/.tmp"; mkdir -p "$TMPDIR"
 rcli --schema | diff - cli.schema.dev.json
 for r in oracle-lm decay-nls spline-physics; do lmscript --check examples/$r.lms && lmscript examples/$r.lms artifacts/$r; done
