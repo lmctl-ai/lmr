@@ -22,4 +22,4 @@ math<-list(gamma=gamma(x),lgamma=lgamma(x),beta=beta(x,c(2,3,4,5)),lbeta=lbeta(x
 for(n in names(math))save(paste0("math-",n),math[[n]])
 qx<-c(1,2,4,8,16);pr<-c(0,.1,.25,.5,.75,.9,1)
 for(t in 1:9)save(paste0("quantile-",t),quantile(qx,pr,type=t,names=FALSE))
-z<-fft(c(1,2,3,4));save("fft-re",Re(z));save("fft-im",Im(z));z<-fft(c(1,2,3,4),inverse=TRUE)/4;save("ifft-re",Re(z));save("ifft-im",Im(z))
+z<-fft(c(1,2,3,4));save("fft-re",Re(z));save("fft-im",Im(z));z<-fft(c(1,2,3,4),inverse=TRUE);save("ifft-re",Re(z));save("ifft-im",Im(z))

@@ -31,8 +31,9 @@ cases={
 }
 for name,params in cases.items():
     actual=call(name,params)
+    assert "statistic_name" in actual and "estimate_names" in actual and "null_value" in actual
     expected=(expected_dir/(name+".txt")).read_text().splitlines()
-    stat,parameter,pvalue,conf,estimate,method,alternative=expected
+    stat,parameter,pvalue,conf,estimate,method,alternative,null_value=expected
     assert (None if stat=="" else float(actual["statistic"]))==(None if stat=="" else float(stat)),(name,"statistic",actual,expected)
     want_param=None if parameter=="" else [float(x) for x in parameter.split(",")]
     got_param=actual["parameter"]
@@ -46,7 +47,16 @@ for name,params in cases.items():
         assert got==want,(name,key,got,want)
     assert actual["method"]==method,(name,"method",actual["method"],method)
     assert actual["alternative"]==(alternative or None),(name,"alternative",actual["alternative"],alternative)
+    want_null=None if not null_value else [float(x) for x in null_value.split(",")]
+    got_null=actual["null_value"]
+    got_null=None if got_null is None else [float(got_null)] if not isinstance(got_null,list) else [float(x) for x in got_null]
+    assert got_null==want_null,(name,"null_value",got_null,want_null)
 
+# Added R-supported variants: one-sample signed-rank, explicit exact=false, byrow, and seeded simulated chi-square.
+wilcox_one=call("wilcox-one",{"test":"wilcox","x":[1,2,3,4,6,7,8,9,10,11],"mu":5,"conf_int":True,"exact":False})
+assert wilcox_one["conf_int"] is not None and wilcox_one["null_value"]==5
+sim_chisq=call("chisq-sim",{"test":"chisq","x":[10,20,30,40],"rows":2,"cols":2,"byrow":True,"simulate_p_value":True,"seed":42})
+assert sim_chisq["p_value"] is not None
 for params,code in [
     ({"test":"shapiro","x":[1,2]},"BAD_SIZE"),
     ({"test":"binom","x":[11],"n":10},"BAD_COUNTS"),

@@ -36,7 +36,8 @@ data={"x":list(range(1,9)),"yg":[1,2,3,5,7,8,9,11],"yb":[0,1,0,1,1,0,1,0],"yp":[
 families={"gaussian":("yg","identity"),"binomial":("yb","logit"),"poisson":("yp","log"),"Gamma":("yG","inverse")}
 for family,(response,link) in families.items():
     prefix="glm-"+family+"-"
-    call("fit_glm",{"response":response,"predictors":["x"],"data":data,"family":family,"link":link},{k:prefix+suffix for k,suffix in (("coefficients","names"),("estimate","estimate"),("std_error","se"),("statistic","stat"),("p_value","p"),("deviance","deviance"),("null_deviance","null"),("aic","aic"),("iterations","iter"),("converged","converged"))})
+    fitted=call("fit_glm",{"response":response,"predictors":["x"],"data":data,"family":family,"link":link},{k:prefix+suffix for k,suffix in (("coefficients","names"),("estimate","estimate"),("std_error","se"),("statistic","stat"),("p_value","p"),("deviance","deviance"),("null_deviance","null"),("aic","aic"),("iterations","iter"),("converged","converged"))})
+    assert fitted["statistic_type"] == ("t" if family in ("gaussian","Gamma") else "z") and "dispersion" in fitted and isinstance(fitted["aliased"],list)
 
 x=list(range(1,13));y=[0,1,0,2,1,3,2,4,3,5,4,6]
 call("smooth_spline",{"x":x,"y":y,"df":4,"new_x":[2.5,6.5,10.5]},{"fitted":"spline-fitted","predicted":"spline-new","lambda":"spline-lambda","df":"spline-df"})

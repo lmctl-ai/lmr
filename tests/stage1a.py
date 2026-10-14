@@ -75,6 +75,8 @@ for inverse, prefix in [(False, "fft"), (True, "ifft")]:
     assert [float(x) for x in got["im"]] == want, (prefix, got["im"], want)
     assert len(out) == 4
 
+normalized = run("num_fft", {"x": [1, 2, 3, 4], "inverse": True, "normalize": True}, key="re")
+assert normalized == [2.5, -0.5, -0.5, -0.5]
 rejects("rng_draw", {"dist": "gamma", "n": 2, "seed": 42}, "MISSING_PARAMETER")
 rejects("rng_sample", {"x": [1, 2, 3], "size": 2, "seed": 42, "prob": [1, 2]}, "BAD_PROBABILITY")
 rejects("math_special", {"fn": "gamma", "x": [1, 2], "y": [1, 2]}, "BAD_ARGUMENTS")

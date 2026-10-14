@@ -14,6 +14,7 @@ import json,sys
 s=json.load(open(sys.argv[1])); ops={o['name']:o for o in s['operations']}
 assert set(ops)=={'r_info','dist_quantile','dist_density','dist_probability','rng_draw','rng_sample','math_special','summary_quantile','num_fft','test_htest','fit_glm','smooth_spline','smooth_loess','interp_spline','interp_approx','ts_arima','rng_arima_sim','ts_acf','ts_pacf','ts_stl','cluster_kmeans','cluster_hclust','fit_lm'}
 assert all(o['access']=='read' for o in ops.values())
+assert all(p.get('description') for o in ops.values() for p in o.get('params',[]))
 p={x['name']:x for x in ops['dist_quantile']['params']}
 assert p['p']['type']=='array' and p['p']['items']=='number' and 'log_p' in p
 PY
@@ -57,7 +58,7 @@ if "$bin" dist_quantile --dist unknown --p 0.5 > /dev/null; then exit 1; fi
 cat > "$tmp/fake-env" <<'SH'
 #!/bin/sh
 for last do :; done
-if [ "${R_PROFILE_USER:-}" = /dev/null ] && [ "${R_ENVIRON_USER:-}" = /dev/null ] && [ "${R_LIBS_USER+x}" = x ] && [ -z "$R_LIBS_USER" ] && [ "${HOME:-}" = /tmp ]; then printf '{"ok":true}' > "$last"; else printf '{"ok":false}' > "$last"; fi
+if [ "${R_PROFILE_USER:-}" = /dev/null ] && [ "${R_ENVIRON_USER:-}" = /dev/null ] && [ "${R_LIBS_USER+x}" = x ] && [ -z "$R_LIBS_USER" ] && [ "${HOME:-}" = /tmp ]; then printf '{"ok":true,"tmpdir":"%s"}' "$TMPDIR" > "$last"; else printf '{"ok":false,"tmpdir":"%s"}' "$TMPDIR" > "$last"; fi
 SH
 cat > "$tmp/fake-timeout" <<'SH'
 #!/bin/sh
@@ -77,7 +78,10 @@ printf '{"error":"synthetic failure","warnings":["synthetic warning"]}' > "$last
 SH
 chmod +x "$tmp/fake-env" "$tmp/fake-timeout" "$tmp/fake-crash" "$tmp/fake-r-error"
 RCLI_RSCRIPT="$tmp/fake-env" "$bin" r_info > "$tmp/env"
-grep -q '"ok":true' "$tmp/env"
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["ok"] and d["tmpdir"] == "/tmp"' "$tmp/env"
+mkdir "$tmp/private-tmp"
+TMPDIR="$tmp/private-tmp" RCLI_RSCRIPT="$tmp/fake-env" "$bin" r_info > "$tmp/env-tmpdir"
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d["ok"] and d["tmpdir"] == sys.argv[2]' "$tmp/env-tmpdir" "$tmp/private-tmp"
 if RCLI_RSCRIPT="$tmp/fake-timeout" RCLI_TIMEOUT_S=1 "$bin" r_info > "$tmp/timeout"; then exit 1; fi
 grep -q 'TIMEOUT' "$tmp/timeout"
 if RCLI_RSCRIPT="$tmp/no-such-rscript" "$bin" r_info > "$tmp/no-rscript"; then exit 1; fi
@@ -92,9 +96,20 @@ python3 - "$tmp/r-error-warning" <<'PY'
 import json,sys
 d=json.load(open(sys.argv[1]))['error']; assert d['data']['warnings']==['synthetic warning']
 PY
-mkdir "$tmp/private-tmp"
 TMPDIR="$tmp/private-tmp" "$bin" r_info > "$tmp/tmpdir-info"
 test -z "$(find "$tmp/private-tmp" -type f -print -quit)"
+cat > "$tmp/fake-block" <<'SH'
+#!/bin/sh
+sleep 10
+SH
+chmod +x "$tmp/fake-block"
+mkdir "$tmp/signal-tmp"
+TMPDIR="$tmp/signal-tmp" RCLI_RSCRIPT="$tmp/fake-block" "$bin" r_info > "$tmp/signal-output" &
+parent=$!
+sleep 0.2
+kill -TERM "$parent"
+if wait "$parent"; then exit 1; fi
+test -z "$(find "$tmp/signal-tmp" -type f -print -quit)"
 "$bin" dist_quantile --dist norm --p 0 --p 1 > "$tmp/infinities"
 python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["value"] == ["-Inf","Inf"]' "$tmp/infinities"
 "$bin" dist_quantile --dist norm --p NA --p NaN --p Inf --p=-Inf > "$tmp/special-p"
@@ -146,6 +161,7 @@ python3 "$root/tests/stage1a.py" "$bin" "$tmp/stage1a-oracle"
 python3 "$root/tests/compare-htest.py" "$bin" "$tmp/stage1a-oracle"
 python3 "$root/tests/compare-group3.py" "$bin" "$tmp/stage1a-oracle"
 python3 "$root/tests/compare-group4.py" "$bin" "$tmp/stage1a-oracle"
+python3 "$root/tests/review2-regressions.py" "$bin"
 "$bin" dist_quantile --dist norm --log-p --p -0.025317807984289897 > "$tmp/log-p"
 python3 -c 'import json,sys,math; assert abs(json.load(open(sys.argv[1]))["value"][0]-1.9599639845400536)<1e-14' "$tmp/log-p"
 python3 - "$bin" "$tmp" <<'PYTIME'

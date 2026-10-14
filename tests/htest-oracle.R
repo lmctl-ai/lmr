@@ -4,7 +4,7 @@ out <- args[[1]]
 save_test <- function(name, h) {
   scalar <- function(x) if(length(x)) sprintf("%.17g", as.numeric(x)[[1L]]) else ""
   vector <- function(x) if(length(x)) paste(sprintf("%.17g", as.numeric(x)), collapse=",") else ""
-  fields <- c(scalar(h$statistic), vector(h$parameter), scalar(h$p.value), vector(h$conf.int), vector(h$estimate), h$method, if(is.null(h$alternative)) "" else h$alternative)
+  fields <- c(scalar(h$statistic), vector(h$parameter), scalar(h$p.value), vector(h$conf.int), vector(h$estimate), h$method, if(is.null(h$alternative)) "" else h$alternative, vector(h$null.value))
   writeLines(fields, file.path(out,paste0(name,".txt")))
 }
 save_test("t",t.test(c(1,2,3,4)))
