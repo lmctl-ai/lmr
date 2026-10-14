@@ -6,58 +6,67 @@ R is licensed under GPL. This project invokes the unmodified R program as a sepa
 
 ## Operations
 
-- `r_info`: R version and RNG kinds.
-- `dist_quantile`: vectorized quantiles for `norm`, `t`, `chisq`, `gamma`, `beta`, `binom`, and `pois`, with `lower_tail` and `log_p` controls.
-- `dist_density`: vectorized `dnorm`/`dt`/`dchisq`/`dgamma`/`dbeta`/`dbinom`/`dpois`, with `log`.
-- `dist_probability`: vectorized matching CDFs, with `lower_tail` and `log_p`.
-- `rng_draw`: seeded `norm`, `unif`, `exp`, `gamma`, `beta`, `binom`, `pois`, `t`, and `chisq` draws. Each stochastic call sets R's RNG kind to Mersenne-Twister / Inversion / Rejection before `set.seed`.
-- `rng_sample`: seeded sample from an explicit numeric population via sampled indices (`sample.int`), optionally with replacement and probability weights.
-- `math_special`: vectorized `gamma`, `lgamma`, `beta`, `lbeta`, `digamma`, `trigamma`, `choose`, `lchoose`, and Bessel J/I/K/Y functions.
-- `summary_quantile`: R's nine sample-quantile definitions for supplied probabilities.
-- `num_fft`: real-valued FFT input with separate real and imaginary arrays; inverse mode matches R’s unnormalized `fft(inverse=TRUE)`; `normalize=true` divides by input length.
-- `test_htest`: `t`, `wilcox`, `chisq`, `shapiro`, `ks`, `fisher`, `binom`, `prop`, `cor`, and `var` tests. It uses one enum operation because R htests share the statistic/parameter/p-value/interval/estimate/method shape; named statistics and estimates include companion name fields. Tables default to R column-major filling (`byrow=false`); Fisher supports explicit r×c dimensions. Simulated chi-square requires a seed.
-- `fit_glm`: base R Gaussian, binomial, Poisson, and Gamma GLMs with supported links, weights/offsets, coefficients, standard errors, t or z inference, dispersion, aliases, deviance, AIC, iterations, and convergence status.
-- `smooth_spline` and `smooth_loess`: base R smoothers with fitted values and optional predictions at `new_x`.
-- `interp_spline` and `interp_approx`: R spline and piecewise approximation methods evaluated at `xout`.
-- `ts_arima`: base R ARIMA estimation (default method CSS-ML, matching `stats::arima()`), optional seasonal order and mean term, coefficient inference, optional residuals, convergence flag, forecasts and forecast standard errors.
-- `rng_arima_sim`: seeded `arima.sim` for ARMA models (d must be zero; AR/MA coefficient counts match p/q).
-- `ts_acf` and `ts_pacf`: autocorrelation and partial autocorrelation summaries, with vector output under `value`.
-- `ts_stl`: STL seasonal/trend/remainder decomposition.
-- `cluster_kmeans`: seeded Hartigan-Wong k-means with centers, memberships, within-cluster sums, and sizes.
-- `cluster_hclust`: distance plus hierarchical clustering with merge, height, order, and optional `cutree` assignments. Hclust is capped at 5,000 rows due to quadratic memory use.
-- `fit_lm`: formulas using named data columns, plus intercept-only `y ~ 1` and intercept removal with `-1` or `+0`, with inline JSON columns or a cwd-confined CSV path. Dot formulas and expressions are rejected. CSV inputs are capped at 16 MiB and 200,000 rows.
+| Operation | Description |
+|---|---|
+| `r_info` | R version and RNG kinds. |
+| `dist_quantile` | Vectorized quantiles for norm, t, chisq, gamma, beta, binom, and pois. |
+| `dist_density` | Vectorized density functions for the supported distribution families. |
+| `dist_probability` | Vectorized CDFs for the supported distribution families. |
+| `rng_draw` | Seeded draws for norm, unif, exp, gamma, beta, binom, pois, t, and chisq. |
+| `rng_sample` | Seeded sample from an explicit population using sampled indices. |
+| `math_special` | Vectorized gamma/log-gamma, beta/log-beta, digamma, trigamma, choose, and Bessel functions. |
+| `summary_quantile` | R sample quantiles, types 1 through 9. |
+| `num_fft` | Real and imaginary parts of forward or inverse FFT. |
+| `test_htest` | t, Wilcoxon, chi-square, Shapiro, KS, Fisher, binomial, proportion, correlation, and variance tests. |
+| `fit_glm` | Gaussian, binomial, Poisson, and Gamma generalized linear models. |
+| `smooth_spline` | Smoothing spline fits and optional predictions. |
+| `smooth_loess` | LOESS fits and optional predictions. |
+| `interp_spline` | Spline interpolation with selected R methods. |
+| `interp_approx` | Piecewise linear or constant interpolation. |
+| `ts_arima` | ARIMA estimates, optional residuals, and forecasts. |
+| `rng_arima_sim` | Seeded ARMA simulation. |
+| `ts_acf` | Autocorrelation summary. |
+| `ts_pacf` | Partial autocorrelation summary. |
+| `ts_stl` | STL seasonal, trend, and remainder decomposition. |
+| `cluster_kmeans` | Seeded Hartigan-Wong k-means. |
+| `cluster_hclust` | Hierarchical clustering and optional cutree assignments. |
+| `fit_lm` | Linear regression on inline columns or a confined CSV file. |
+| `opt_minimize` | Fixed-grammar objective optimization with supported optim methods. |
+| `opt_optimize` | One-dimensional bounded optimization. |
+| `num_root` | One-dimensional root finding with optional interval extension. |
+| `num_integrate` | Numerical integration for validated expressions. |
+| `fit_nls` | Nonlinear least squares using validated expressions and named starts. |
 
 Smooth-spline and interpolation inputs sort unsorted x values and combine ties by their mean; smooth-spline fitted values follow sorted unique x order. Loess preserves the input row order, including ties, as R does. Vector inputs are capped at 200,000 items unless an operation documents a lower complexity or output cap. `smooth_loess` and Kendall correlation cap at 20,000 and 5,000 observations, respectively; STL caps at 80,000, FFT caps the largest prime factor at 1,000, ACF/PACF lags cap at 1,000, and seasonal ARIMA effective AR/MA orders cap at 350. Density, probability, quantile, special-function, summary, and FFT results preserve R's double values; scalars remain scalars and vector results remain arrays. `rng_sample` samples from explicit `x` values by drawing indices, so a one-element population remains that element. All these operations accept numeric vectors and never evaluate caller-supplied expressions.
 
 All operations are read-only. Output numbers preserve round-trip doubles, and non-finite values use the strings `NA`, `NaN`, `Inf`, and `-Inf`. Fit statistic scalars remain scalars; estimates and other vector fields remain arrays, including one-element coefficient vectors. Results include R version/RNG metadata and a `warnings` array, including on R errors. Numeric inputs accept null or the strings `NA`, `NaN`, `Inf`, and `-Inf`; R determines each operation-specific result. R errors return `COMMAND_FAILED` with `tool_code: R_ERROR`; input validation happens in C++ before the worker starts. Calls time out after 50 seconds (`RCLI_TIMEOUT_S` can lower the limit for development, never raise it above 50 seconds).
 
-## Build and run
+## Run
 
-The host has no CMake/Ninja/nlohmann packages, so the development image extends `lmcpp-dev` with `r-base-core` and builds against the installed lmcpp package:
+R 4.3.3 is the runtime policy for development and production (`r-base-core=4.3.3-2build2` on Ubuntu 24.04). The image pins the Ubuntu 24.04 multi-architecture manifest digest and lmcpp commit. Oracle tests still calculate version-sensitive expectations with the R executable in the same environment.
+
+For a local native build, install lmcpp and configure rcli with its CMake package prefix, then invoke `build/bin/rcli` directly. The production container and host shim are built with:
 
 ```sh
-docker build -f Dockerfile.dev -t rcli-dev .
-# In lmcpp, build and install to a local prefix:
-cmake -S . -B build-rcli -G Ninja -DCMAKE_INSTALL_PREFIX="$PWD/stage-rcli" -DLMCPP_BUILD_TESTS=ON
-cmake --build build-rcli --parallel 2 && ctest --test-dir build-rcli --output-on-failure
-cmake --install build-rcli
-# Here, configure rcli with -DCMAKE_PREFIX_PATH=/path/to/lmcpp/stage-rcli
+docker build -f docker/Dockerfile --target runtime -t rcli:runtime .
+docker build -f docker/Dockerfile --target test -t rcli:test .
 ```
 
-The Debian bookworm apt candidate in `rcli-dev` is R 4.2.2; the host runtime is R 4.3.3. Version-sensitive test expectations are computed by the `Rscript` in the same environment. R version is included in every result. No production Docker image or shim is part of this slice.
+Use `build/bin/rcli` for a native host binary, or put the absolute path to `bin` on `PATH` to run the isolated container shim. The shim requires a working directory below `$HOME`; it mounts only that directory read-write, disables network access, and starts a fresh container for each call. Build `rcli:runtime` first; `bin/rcli --schema` runs offline from that local image and can regenerate `cli.schema.dev.json`. lmscript recipes import that schema and work when `bin` is on `PATH`. The shim passes `RCLI_TIMEOUT_S` when set; its value can lower the 50-second call timeout.
+
+Array flags take one item per occurrence (`--p 0.975`; repeat `--p` for additional values). A JSON array passed as one flag value is not accepted.
 
 ```sh
 build/bin/rcli --schema
-build/bin/rcli dist_quantile --dist norm --p 0.975
-build/bin/rcli rng_draw --dist norm --n 2 --seed 42
-build/bin/rcli fit_lm --formula 'y ~ x' --file examples/data/oracle-lm.csv
+bin/rcli --schema
+bin/rcli dist_quantile --dist norm --p 0.975
+bin/rcli rng_draw --dist norm --n 2 --seed 42
+bin/rcli fit_lm --formula 'y ~ x' --file examples/data/oracle-lm.csv
 ```
 
-Build and test in the dev image with `cmake --build build --parallel 2 && ctest --test-dir build --output-on-failure`. R fixture scripts calculate expected values directly with the same environment's R; the lmscript recipes import the schema and assert against R-computed fixtures. The smoke suite covers R-oracle values, schema descriptions, schema-safe formulas, warnings, non-finite values, timeout/signal cleanup, TMPDIR forwarding, complexity-cap rejection, result shapes, and large vector input. Array flags take one item per occurrence (`--p 0.975`; repeat `--p` for more); JSON-array text as one flag value is not accepted. `scripts/check-no-libR.sh` enforces the no-link boundary and checks its detector against a planted `Rmath.h` include.
+The test target runs CTest, including R-computed oracles, expression conformance, no-libR checks, and host-shim contract tests. To check schema compatibility with lmts, generate `cli.schema.dev.json` from the binary and run the pinned lmts `parsePublishedSchema` check (also run in CI). See [docs/parity.md](docs/parity.md) for the operation contribution checklist and container behavior.
 
-Alternate RNG kinds and normal-generation kinds are not configurable; calls use the explicit defaults listed above. The `examples/oracle-lm.lms`, `examples/oracle-tests.lms`, `examples/fit-and-forecast.lms`, `examples/fit-curve.lms`, and `examples/minimize-rosenbrock.lms` recipes import the published schema, handle call status, and check R-computed numeric fixtures. Oracle-test fixtures use absolute tolerance 1e-8; the forecast recipe uses the same tolerance. The expression recipes verify noisy Michaelis-Menten parameter recovery within 0.2 and Rosenbrock's minimum within 0.005. R licensing and the separately invoked runtime are described in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-
-Stage 1a delivers the seven-family distribution functions, expanded seeded RNG catalogue, sampling, math-special functions, sample quantiles, FFT, common hypothesis tests, GLM, smoothing/interpolation, ARIMA/time-series summaries, STL, and clustering. Stage 1b adds fixed-grammar optimization, integration/root finding, and nonlinear least squares. It leaves the design's larger distribution family list for later. The fixed worker uses a small in-repo JSON codec, so host R does not need `jsonlite` installed. The dev image is based on Debian bookworm because that is the available `lmcpp-dev` image; its R is 4.2.2 rather than the host's 4.3.3, and every result records that version.
+Recipes: `examples/oracle-lm.lms`, `examples/oracle-tests.lms`, `examples/fit-and-forecast.lms`, `examples/fit-curve.lms`, and `examples/minimize-rosenbrock.lms`. Each imports the schema, checks tool status, and asserts numeric answers.
 
 ### Expression operations
 
