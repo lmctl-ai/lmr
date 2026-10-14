@@ -517,6 +517,193 @@
       ]
     },
     {
+      "name": "test_htest",
+      "access": "read",
+      "returns": "object",
+      "description": "Run a fixed R hypothesis test",
+      "params": [
+        {
+          "name": "test",
+          "type": "string",
+          "occurs": "1",
+          "enum": [
+            "t",
+            "wilcox",
+            "chisq",
+            "shapiro",
+            "ks",
+            "fisher",
+            "binom",
+            "prop",
+            "cor",
+            "var"
+          ]
+        },
+        {
+          "name": "x",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "y",
+          "type": "array",
+          "occurs": "?",
+          "items": "number"
+        },
+        {
+          "name": "expected",
+          "type": "array",
+          "occurs": "?",
+          "items": "number"
+        },
+        {
+          "name": "probabilities",
+          "type": "array",
+          "occurs": "?",
+          "items": "number"
+        },
+        {
+          "name": "trials",
+          "type": "array",
+          "occurs": "?",
+          "items": "number"
+        },
+        {
+          "name": "n",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "p",
+          "type": "number",
+          "occurs": "?",
+          "default": 0.5
+        },
+        {
+          "name": "alternative",
+          "type": "string",
+          "occurs": "?",
+          "default": "two.sided",
+          "enum": [
+            "two.sided",
+            "less",
+            "greater"
+          ]
+        },
+        {
+          "name": "conf_level",
+          "type": "number",
+          "occurs": "?",
+          "default": 0.95
+        },
+        {
+          "name": "conf_int",
+          "type": "boolean",
+          "occurs": "?",
+          "default": false
+        },
+        {
+          "name": "paired",
+          "type": "boolean",
+          "occurs": "?",
+          "default": false
+        },
+        {
+          "name": "var_equal",
+          "type": "boolean",
+          "occurs": "?",
+          "default": false
+        },
+        {
+          "name": "mu",
+          "type": "number",
+          "occurs": "?",
+          "default": 0.0
+        },
+        {
+          "name": "ratio",
+          "type": "number",
+          "occurs": "?",
+          "default": 1.0
+        },
+        {
+          "name": "correct",
+          "type": "boolean",
+          "occurs": "?",
+          "default": true
+        },
+        {
+          "name": "rows",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "cols",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "distribution",
+          "type": "string",
+          "occurs": "?",
+          "enum": [
+            "norm",
+            "unif",
+            "exp",
+            "pois"
+          ]
+        },
+        {
+          "name": "mean",
+          "type": "number",
+          "occurs": "?",
+          "default": 0.0
+        },
+        {
+          "name": "sd",
+          "type": "number",
+          "occurs": "?",
+          "default": 1.0
+        },
+        {
+          "name": "min",
+          "type": "number",
+          "occurs": "?",
+          "default": 0.0
+        },
+        {
+          "name": "max",
+          "type": "number",
+          "occurs": "?",
+          "default": 1.0
+        },
+        {
+          "name": "rate",
+          "type": "number",
+          "occurs": "?",
+          "default": 1.0
+        },
+        {
+          "name": "lambda",
+          "type": "number",
+          "occurs": "?",
+          "default": 1.0
+        },
+        {
+          "name": "method",
+          "type": "string",
+          "occurs": "?",
+          "default": "pearson",
+          "enum": [
+            "pearson",
+            "kendall",
+            "spearman"
+          ]
+        }
+      ]
+    },
+    {
       "name": "fit_lm",
       "access": "read",
       "returns": "object",

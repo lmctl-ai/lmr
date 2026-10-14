@@ -82,6 +82,20 @@ result <- withCallingHandlers(tryCatch({
   v<-quantile(numeric_file(req$x_file),probs=numeric_file(req$probs_file),na.rm=isTRUE(req$na_rm),names=FALSE,type=req$type);list(value=array_encode(as.numeric(v)),meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind(),type=req$type))
  } else if(op=='num_fft') {
   x<-numeric_file(req$x_file);z<-fft(x,inverse=isTRUE(req$inverse));if(isTRUE(req$inverse))z<-z/length(x);list(re=array_encode(Re(z)),im=array_encode(Im(z)),meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind(),inverse=isTRUE(req$inverse)))
+ } else if(op=='test_htest') {
+  x<-numeric_file(req$x_file);y<-if(is.null(req$y_file))NULL else numeric_file(req$y_file);alt<-req$alternative;cl<-req$conf_level;tst<-req$test
+  h<-switch(tst,
+   t=if(is.null(y))t.test(x,mu=numeric_input(req$mu),alternative=alt,conf.level=cl) else t.test(x,y,mu=numeric_input(req$mu),alternative=alt,paired=isTRUE(req$paired),var.equal=isTRUE(req$var_equal),conf.level=cl),
+   wilcox=wilcox.test(x,y,mu=numeric_input(req$mu),alternative=alt,paired=isTRUE(req$paired),conf.int=isTRUE(req$conf_int),conf.level=cl),
+   chisq={xx<-if(!is.null(req$rows))matrix(x,nrow=req$rows,ncol=req$cols) else x;if(is.null(req$expected_file))chisq.test(xx,correct=isTRUE(req$correct)) else chisq.test(xx,p=numeric_file(req$expected_file),correct=isTRUE(req$correct))},
+   shapiro=shapiro.test(x),
+   ks={fn<-switch(req$distribution,norm=pnorm,unif=punif,exp=pexp,pois=ppois);args<-switch(req$distribution,norm=list(mean=numeric_input(req$mean),sd=numeric_input(req$sd)),unif=list(min=numeric_input(req$min),max=numeric_input(req$max)),exp=list(rate=numeric_input(req$rate)),pois=list(lambda=numeric_input(req$lambda)));do.call(ks.test,c(list(x=x,y=fn,alternative=alt),args))},
+   fisher=fisher.test(matrix(x,nrow=2,ncol=2),alternative=alt,conf.level=cl),
+   binom=binom.test(as.integer(x[[1L]]),req$n,p=numeric_input(req$p),alternative=alt,conf.level=cl),
+   prop={pp<-if(is.null(req$probabilities_file))numeric_input(req$p) else numeric_file(req$probabilities_file);prop.test(as.integer(x),as.integer(numeric_file(req$trials_file)),p=pp,alternative=alt,correct=isTRUE(req$correct),conf.level=cl)},
+   cor=cor.test(x,y,alternative=alt,method=req$method,conf.level=cl),
+   var=var.test(x,y,ratio=numeric_input(req$ratio),alternative=alt,conf.level=cl))
+  list(statistic=if(length(h$statistic))as.numeric(h$statistic)[[1L]]else NULL,parameter=if(!length(h$parameter))NULL else if(length(h$parameter)==1L)as.numeric(h$parameter)[[1L]]else array_encode(as.numeric(h$parameter)),p_value=as.numeric(h$p.value),conf_int=if(is.null(h$conf.int))NULL else array_encode(as.numeric(h$conf.int)),estimate=if(is.null(h$estimate))NULL else array_encode(as.numeric(h$estimate)),method=as.character(h$method),alternative=if(is.null(h$alternative))NULL else as.character(h$alternative),meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind()))
  } else if(op=='fit_lm') {
   if(!is.null(req$file)) d<-read.csv(req$file,check.names=FALSE) else if(!is.null(req$data_files)) d<-as.data.frame(lapply(req$data_files,function(path) scan(path,what=double(),quiet=TRUE,na.strings='NA')),check.names=FALSE) else d<-as.data.frame(lapply(req$data,function(col) vapply(col,numeric_input,numeric(1))),check.names=FALSE)
   pieces<-strsplit(req$formula,'~',fixed=TRUE)[[1L]];if(length(pieces)!=2L) stop('bad formula');lhs<-trimws(pieces[1L]);rhs<-trimws(pieces[2L]);if(!lhs%in%names(d))stop('response must be a data column');tokens<-unlist(strsplit(gsub('[+-]',' ',rhs), '[[:space:]]+'));tokens<-tokens[nzchar(tokens)&!tokens%in%c('0','1')];if(any(!tokens%in%names(d))||'.'%in%tokens)stop('formula terms must be data columns');f<-as.formula(req$formula,env=baseenv());environment(f)<-baseenv();nafun<-if(identical(req$na_action,'exclude')) na.exclude else na.omit;fit<-lm(f,data=d,na.action=nafun);sm<-summary(fit);cf<-coef(fit);tab<-sm$coefficients;nm<-names(cf);col<-function(j){out<-rep(NA_real_,length(cf));names(out)<-nm;common<-intersect(nm,rownames(tab));out[common]<-tab[common,j];out};

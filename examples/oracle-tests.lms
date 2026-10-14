@@ -1,0 +1,30 @@
+// access: read
+// What it does: Draws two seeded samples and checks their two-sample t-test with R.
+// How to run: Put the absolute rcli build/bin directory on PATH, then run lmscript examples/oracle-tests.lms.
+left_call = system(["rcli", "rng_draw", "--dist", "norm", "--n", "12", "--seed", "31415"]);
+right_call = system(["rcli", "rng_draw", "--dist", "norm", "--n", "12", "--seed", "92653"]);
+if (left_call.code != 0 || right_call.code != 0) {
+  println("rcli RNG draw failed");
+  exit(1);
+}
+left = json_parse(left_call.stdout);
+right = json_parse(right_call.stdout);
+input = json_stringify({op: "test_htest", params: {test: "t", x: left.value, y: right.value, var_equal: true}});
+test_call = system(["rcli", "--input-json", input]);
+if (test_call.code != 0) {
+  println("rcli t-test command failed:", test_call.stderr);
+  exit(1);
+}
+test = json_parse(test_call.stdout);
+if (test.success == false) {
+  println("rcli t-test failed:", test.error.message);
+  exit(1);
+}
+println(sprintf("Seeded two-sample t-test: statistic %.8f, p-value %.8f", test.statistic, test.p_value));
+
+available = system(["sh", "-c", "command -v lmstats || command -v lmda || true"]);
+if (available.stdout == "") {
+  println("lmstats/lmda binaries are not on PATH; continuing with the R oracle result.");
+} else {
+  println("Cross-tool binary found:", available.stdout);
+}

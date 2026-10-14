@@ -15,6 +15,7 @@ R is licensed under GPL. This project invokes the unmodified R program as a sepa
 - `math_special`: vectorized `gamma`, `lgamma`, `beta`, `lbeta`, `digamma`, `trigamma`, `choose`, `lchoose`, and Bessel J/I/K/Y functions.
 - `summary_quantile`: R's nine sample-quantile definitions for supplied probabilities.
 - `num_fft`: real-valued FFT input with separate real and imaginary arrays; inverse mode returns the normalized inverse transform.
+- `test_htest`: `t`, `wilcox`, `chisq`, `shapiro`, `ks`, `fisher`, `binom`, `prop`, `cor`, and `var` tests. It uses one enum operation because R's `htest` objects share the statistic/parameter/p-value/interval/estimate/method result shape; test-specific parameters are validated in C++ before R starts.
 - `fit_lm`: formulas using named data columns, plus intercept-only `y ~ 1` and intercept removal with `-1` or `+0`, with inline JSON columns or a cwd-confined CSV path. Dot formulas and expressions are rejected. CSV inputs are capped at 16 MiB and 200,000 rows.
 
 Vector inputs are capped at 200,000 items. Density, probability, quantile, special-function, summary, and FFT results preserve R's double values; scalars remain scalars and vector results remain arrays. `rng_sample` samples from explicit `x` values (it does not use R's special scalar-`n` shorthand). All these operations accept numeric vectors and never evaluate caller-supplied expressions.
