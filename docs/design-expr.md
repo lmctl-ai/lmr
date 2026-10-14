@@ -10,12 +10,13 @@ product := unary (('*' | '/') unary)*
 unary   := '-' unary | power
 power   := atom ('^' unary)?                      # right-assoc, as in R
 atom    := NUMBER | IDENT | FUNC '(' expr (',' expr)* ')' | '(' expr ')' | 'ifelse' '(' cond ',' expr ',' expr ')'
-cond    := rel (('&' | '|') rel)*                 # only inside ifelse
+cond    := and ('|' and)*                         # only inside ifelse; R precedence
+and     := rel ('&' rel)*                         # & binds tighter than |
 rel     := expr ('<' | '<=' | '>' | '>=' | '==' | '!=') expr
 NUMBER  := [0-9]+ ('.' [0-9]*)? ([eE] [+-]? [0-9]+)?   # must be a finite double; no hex, no 1L, no Inf/NA/NaN/TRUE
 IDENT   := [a-z][a-z0-9_]{0,31}                        # lowercase; must be a declared name (see §3)
 ```
-`FUNC` is exactly the allowlist below, each with a fixed arity; `pi` and `e` are built-in constants (idents that are not declarable). Nothing else: no `[`, `[[`, `$`, `@`, `::`, strings, backticks, `=`/`<-`, `;`, comments, `%%`/`%/%`/`%in%`, `**`, `&&`/`||`, `!`, `function`/`\`, `c()`, `if`, `NULL`.
+`FUNC` is exactly the allowlist below, each with a fixed arity; `pi` and `e` are built-in constants (idents that are not declarable). Nothing else: no `[`, `[[`, `$`, `@`, `::`, strings, backticks, `=`/`<-`/`->`/`<<-`, `;`, comments, `%%`/`%/%`/`%in%`, `**`, `&&`/`||`, `!`, `function`/`\`, `c()`, `if`, `NULL`. Unary minus may be repeated as either `--x` or `- -x`, matching R.
 
 Allowlist (name → arity → R binding): `exp log log1p expm1 log2 log10 sqrt abs sin cos tan asin acos atan sinh cosh tanh floor ceiling trunc round sign gamma lgamma digamma pnorm dnorm qnorm plogis` → 1; `atan2 pmin pmax beta lbeta choose lchoose` → 2; `ifelse` → 3; reducers `sum mean prod min max` → 1 (produce a scalar from a vector; allowed only where the op expects a scalar objective, see §4). Operators bind to `base::"+" "-" "*" "/" "^" "<" "<=" ">" ">=" "==" "!=" "&" "|"`.
 

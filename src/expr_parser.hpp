@@ -16,6 +16,9 @@ class Parser {
 
   Json parse() {
     if (text_.size() > cap("bytes")) fail("EXPR_TOO_LONG", cap("bytes"));
+    for (size_t i=0;i<text_.size();++i) {
+      if (text_.compare(i,3,"<<-")==0 || text_.compare(i,2,"<-")==0 || text_.compare(i,2,"->")==0) fail("EXPR_SYNTAX",i);
+    }
     for (size_t i=0; i<text_.size(); ++i) {
       const unsigned char c=static_cast<unsigned char>(text_[i]);
       if (!(c=='\t'||c=='\n'||(c>=0x20&&c<=0x7e))) fail("EXPR_BAD_BYTE", i);
@@ -26,7 +29,6 @@ class Parser {
     if (tokens_>cap("tokens")) fail("EXPR_TOO_LONG",pos_);
     if (nodes_>cap("nodes")) fail("EXPR_TOO_MANY_NODES",pos_);
     if (identifiers_.size()>cap("idents")) fail("EXPR_TOO_MANY_NODES",pos_);
-    if (ast_depth(result)>cap("depth")) fail("EXPR_TOO_DEEP",pos_);
     return result;
   }
   const std::set<std::string>& identifiers() const { return identifiers_; }
@@ -36,24 +38,28 @@ class Parser {
   Json spec_; size_t pos_=0, tokens_=0, nodes_=0, calls_=0;
   std::set<std::string> identifiers_;
   size_t cap(const char *name) const { return spec_["caps"][name].get<size_t>(); }
-  size_t ast_depth(const Json&n) const {size_t d=1;if(n.contains("a")&&n["a"].is_array())for(const auto&x:n["a"])d=std::max(d,1+ast_depth(x));for(const char*k:{"a","b","c"})if(n.contains(k)&&n[k].is_object())d=std::max(d,1+ast_depth(n[k]));return d;}
   void whitespace(){while(pos_<text_.size()&&(text_[pos_]==' '||text_[pos_]=='\t'||text_[pos_]=='\n'))++pos_;}
   bool starts(const std::string&s) const { return text_.compare(pos_,s.size(),s)==0; }
   void token(){++tokens_;if(tokens_>cap("tokens"))fail("EXPR_TOO_LONG",pos_);}
   Json node(Json x){++nodes_;if(nodes_>cap("nodes"))fail("EXPR_TOO_MANY_NODES",pos_);if(x.value("t",std::string())=="op"){bool found=false;for(const auto&o:spec_["operators"])found|=o.get<std::string>()==x["o"].get<std::string>();if(!found)fail("EXPR_SPEC_MISMATCH",pos_);}return x;}
   [[noreturn]] void fail(const std::string&code,size_t at) const {
-    const size_t from=at>8?at-8:0;const size_t len=std::min<size_t>(16,text_.size()-std::min(from,text_.size()));
-    throw ParseFailure{code,at,text_.substr(from,len)};
+    size_t from=at>8?at-8:0;size_t end=std::min(text_.size(),from+16);
+    auto continuation=[&](size_t p){return p<text_.size()&&(static_cast<unsigned char>(text_[p])&0xc0)==0x80;};
+    while(from<end&&continuation(from))++from;
+    if(end<text_.size())while(end>from&&continuation(end))--end;
+    throw ParseFailure{code,at,text_.substr(from,end-from)};
   }
   bool take(char c){whitespace();if(pos_<text_.size()&&text_[pos_]==c){++pos_;token();return true;}return false;}
   bool takeop(const std::string&op){whitespace();if(starts(op)){pos_+=op.size();token();return true;}return false;}
   void enter(size_t depth){if(depth>cap("depth"))fail("EXPR_TOO_DEEP",pos_);}
   Json parse_sum(size_t d){enter(d);auto lhs=parse_product(d);for(;;){if(take('+'))lhs=node(Json{{"t","op"},{"o","+"},{"a",Json::array({lhs,parse_product(d)})}});else if(take('-'))lhs=node(Json{{"t","op"},{"o","-"},{"a",Json::array({lhs,parse_product(d)})}});else return lhs;}}
   Json parse_product(size_t d){auto lhs=parse_unary(d);for(;;){if(take('*'))lhs=node(Json{{"t","op"},{"o","*"},{"a",Json::array({lhs,parse_unary(d)})}});else if(take('/'))lhs=node(Json{{"t","op"},{"o","/"},{"a",Json::array({lhs,parse_unary(d)})}});else return lhs;}}
-  Json parse_unary(size_t d){enter(d);whitespace();if(pos_<text_.size()&&text_[pos_]=='-'&&pos_+1<text_.size()&&text_[pos_+1]=='-')fail("EXPR_SYNTAX",pos_);if(take('-'))return node(Json{{"t","neg"},{"a",Json::array({parse_unary(d+1)})}});return parse_power(d);}
+  Json parse_unary(size_t d){enter(d);if(take('-'))return node(Json{{"t","neg"},{"a",Json::array({parse_unary(d+1)})}});return parse_power(d);}
   Json parse_power(size_t d){auto lhs=parse_atom(d);if(take('^'))return node(Json{{"t","op"},{"o","^"},{"a",Json::array({lhs,parse_unary(d+1)})}});return lhs;}
   Json parse_rel(size_t d){auto lhs=parse_sum(d);for(const std::string op:{"<=",">=","==","!=","<",">"})if(takeop(op))return node(Json{{"t","op"},{"o",op},{"a",Json::array({lhs,parse_sum(d)})}});return lhs;}
-  Json parse_condition(size_t d){auto lhs=parse_rel(d);for(;;){if(take('&'))lhs=node(Json{{"t","op"},{"o","&"},{"a",Json::array({lhs,parse_rel(d)})}});else if(take('|'))lhs=node(Json{{"t","op"},{"o","|"},{"a",Json::array({lhs,parse_rel(d)})}});else return lhs;}}
+  Json parse_condition(size_t d){auto lhs=parse_or(d);return lhs;}
+  Json parse_or(size_t d){auto lhs=parse_and(d);while(take('|'))lhs=node(Json{{"t","op"},{"o","|"},{"a",Json::array({lhs,parse_and(d)})}});return lhs;}
+  Json parse_and(size_t d){auto lhs=parse_rel(d);while(take('&'))lhs=node(Json{{"t","op"},{"o","&"},{"a",Json::array({lhs,parse_rel(d)})}});return lhs;}
   Json parse_atom(size_t d){
     enter(d);whitespace();if(pos_>=text_.size())fail("EXPR_SYNTAX",pos_);
     if(take('(')){auto x=parse_sum(d+1);if(!take(')'))fail("EXPR_SYNTAX",pos_);return x;}
@@ -62,7 +68,7 @@ class Parser {
       while(pos_<text_.size()&&text_[pos_]>='0'&&text_[pos_]<='9')++pos_;
       if(pos_<text_.size()&&text_[pos_]=='.'){++pos_;while(pos_<text_.size()&&text_[pos_]>='0'&&text_[pos_]<='9')++pos_;}
       if(pos_<text_.size()&&(text_[pos_]=='e'||text_[pos_]=='E')){++pos_;if(pos_<text_.size()&&(text_[pos_]=='+'||text_[pos_]=='-'))++pos_;size_t es=pos_;while(pos_<text_.size()&&text_[pos_]>='0'&&text_[pos_]<='9')++pos_;if(es==pos_)fail("EXPR_SYNTAX",start);}
-      token();std::string lit=text_.substr(start,pos_-start);char*end=nullptr;errno=0;double v=std::strtod(lit.c_str(),&end);if(errno==ERANGE||!end||*end||!std::isfinite(v))fail("EXPR_SYNTAX",start);return node(Json{{"t","num"},{"v",v}});
+      token();std::string lit=text_.substr(start,pos_-start);char*end=nullptr;double v=std::strtod(lit.c_str(),&end);if(!end||*end||!std::isfinite(v))fail("EXPR_SYNTAX",start);return node(Json{{"t","num"},{"v",v}});
     }
     if(text_[pos_]>='a'&&text_[pos_]<='z'){
       ++pos_;while(pos_<text_.size()&&((text_[pos_]>='a'&&text_[pos_]<='z')||(text_[pos_]>='0'&&text_[pos_]<='9')||text_[pos_]=='_'))++pos_;

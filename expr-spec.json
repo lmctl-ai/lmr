@@ -44,6 +44,7 @@
     "max": {"arity": 1, "r": "base::max", "reducer": true}
   },
   "operators": ["+", "-", "*", "/", "^", "<", "<=", ">", ">=", "==", "!=", "&", "|"],
+  "precedence": ["|", "&", "< <= > >= == !=", "+ -", "* /", "unary -", "^"],
   "constants": {"pi": 3.141592653589793, "e": 2.718281828459045},
   "reserved": ["list"],
   "caps": {"bytes": 2048, "tokens": 512, "nodes": 512, "depth": 32, "calls": 16, "idents": 64}

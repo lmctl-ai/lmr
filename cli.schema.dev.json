@@ -1492,33 +1492,32 @@
             "L-BFGS-B",
             "SANN"
           ],
-          "description": "Base R optim method."
+          "description": "Base R optim method (default Nelder-Mead)."
         },
         {
           "name": "lower",
           "type": "object",
           "occurs": "?",
-          "description": "Named lower bounds; only accepted with L-BFGS-B."
+          "description": "Optional named lower bounds; only accepted with L-BFGS-B."
         },
         {
           "name": "upper",
           "type": "object",
           "occurs": "?",
-          "description": "Named upper bounds; only accepted with L-BFGS-B."
+          "description": "Optional named upper bounds; only accepted with L-BFGS-B."
         },
         {
           "name": "maxit",
           "type": "number",
           "occurs": "?",
-          "default": 1000,
-          "description": "Maximum optimizer iterations (1 to 10000)."
+          "description": "Maximum iterations; R defaults are 500 for Nelder-Mead, 100 for BFGS/CG/L-BFGS-B, and 10000 for SANN (range 1 to 10000)."
         },
         {
           "name": "reltol",
           "type": "number",
           "occurs": "?",
-          "default": 1e-08,
-          "description": "Relative convergence tolerance."
+          "default": 1.4901161193847656e-08,
+          "description": "R optim default relative tolerance sqrt(.Machine$double.eps). Not passed for L-BFGS-B."
         },
         {
           "name": "seed",
@@ -1531,13 +1530,13 @@
           "type": "boolean",
           "occurs": "?",
           "default": false,
-          "description": "Return optim's Hessian."
+          "description": "Return optim's Hessian (default false)."
         },
         {
           "name": "data",
           "type": "object",
           "occurs": "?",
-          "description": "Optional equal-length numeric columns available to the objective."
+          "description": "Optional equal-length numeric columns available to the objective (no default)."
         },
         {
           "name": "nonfinite",
@@ -1548,14 +1547,14 @@
             "inf",
             "error"
           ],
-          "description": "How NA/NaN objective values are handled."
+          "description": "How NA/NaN objective values are handled (default inf for Nelder-Mead/SANN; other methods return NONFINITE_OBJECTIVE)."
         },
         {
           "name": "max_evals",
           "type": "number",
           "occurs": "?",
           "default": 500000,
-          "description": "Expression evaluation limit (1 to 2000000)."
+          "description": "Expression evaluation limit (default 500000; 1 to 2000000)."
         }
       ]
     },
@@ -1588,21 +1587,21 @@
           "type": "boolean",
           "occurs": "?",
           "default": false,
-          "description": "Maximize instead of minimize."
+          "description": "Maximize instead of minimize (default false)."
         },
         {
           "name": "tol",
           "type": "number",
           "occurs": "?",
-          "default": 1e-08,
-          "description": "Positive relative tolerance."
+          "default": 0.0001220703125,
+          "description": "R optimize default tol (.Machine$double.eps^0.25)."
         },
         {
           "name": "max_evals",
           "type": "number",
           "occurs": "?",
           "default": 500000,
-          "description": "Expression evaluation limit (1 to 2000000)."
+          "description": "Expression evaluation limit (default 500000; 1 to 2000000)."
         }
       ]
     },
@@ -1634,15 +1633,15 @@
           "name": "tol",
           "type": "number",
           "occurs": "?",
-          "default": 1e-08,
-          "description": "Positive root tolerance."
+          "default": 0.0001220703125,
+          "description": "R uniroot default tol (.Machine$double.eps^0.25)."
         },
         {
           "name": "maxiter",
           "type": "number",
           "occurs": "?",
-          "default": 100,
-          "description": "Maximum iterations (1 to 1000)."
+          "default": 1000,
+          "description": "R uniroot default maximum iterations (1 to 1000)."
         },
         {
           "name": "extend_int",
@@ -1655,14 +1654,14 @@
             "upX",
             "downX"
           ],
-          "description": "Whether uniroot may extend the interval."
+          "description": "Whether uniroot may extend the interval (default no)."
         },
         {
           "name": "max_evals",
           "type": "number",
           "occurs": "?",
           "default": 500000,
-          "description": "Expression evaluation limit (1 to 2000000)."
+          "description": "Expression evaluation limit (default 500000; 1 to 2000000)."
         }
       ]
     },
@@ -1695,28 +1694,28 @@
           "type": "number",
           "occurs": "?",
           "default": 100,
-          "description": "Maximum subdivisions (1 to 1000)."
+          "description": "Maximum subdivisions (default 100; 1 to 1000)."
         },
         {
           "name": "rel_tol",
           "type": "number",
           "occurs": "?",
-          "default": 1e-08,
-          "description": "Nonnegative relative tolerance."
+          "default": 0.0001220703125,
+          "description": "R integrate default rel.tol (.Machine$double.eps^0.25)."
         },
         {
           "name": "abs_tol",
           "type": "number",
           "occurs": "?",
-          "default": 0.0,
-          "description": "Nonnegative absolute tolerance."
+          "default": 0.0001220703125,
+          "description": "R integrate default abs.tol (.Machine$double.eps^0.25)."
         },
         {
           "name": "max_evals",
           "type": "number",
           "occurs": "?",
           "default": 500000,
-          "description": "Expression evaluation limit (1 to 2000000)."
+          "description": "Expression evaluation limit (default 500000; 1 to 2000000)."
         }
       ]
     },
@@ -1759,7 +1758,7 @@
             "default",
             "port"
           ],
-          "description": "R nls algorithm; plinear is not supported."
+          "description": "R nls algorithm (default default); plinear is not supported."
         },
         {
           "name": "lower",
@@ -1777,36 +1776,36 @@
           "name": "maxiter",
           "type": "number",
           "occurs": "?",
-          "default": 100,
-          "description": "Maximum nls iterations (1 to 1000)."
+          "default": 50,
+          "description": "R nls.control default maximum iterations (1 to 1000)."
         },
         {
           "name": "tol",
           "type": "number",
           "occurs": "?",
-          "default": 1e-08,
-          "description": "Positive convergence tolerance."
+          "default": 1e-05,
+          "description": "R nls.control default convergence tolerance."
         },
         {
           "name": "fitted",
           "type": "boolean",
           "occurs": "?",
           "default": false,
-          "description": "Include fitted values."
+          "description": "Include fitted values (default false)."
         },
         {
           "name": "residuals",
           "type": "boolean",
           "occurs": "?",
           "default": false,
-          "description": "Include residuals."
+          "description": "Include residuals (default false)."
         },
         {
           "name": "max_evals",
           "type": "number",
           "occurs": "?",
           "default": 500000,
-          "description": "Expression evaluation limit (1 to 2000000)."
+          "description": "Expression evaluation limit (default 500000; 1 to 2000000)."
         }
       ]
     }
