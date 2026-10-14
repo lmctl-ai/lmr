@@ -1,6 +1,7 @@
 `%||%` <- function(x,y) if(is.null(x)) y else x
 library(stats)
 library(utils)
+@RCLI_EXPR_PRELUDE@
 parse_json <- function(s) {
  ch<-strsplit(enc2utf8(s), '', fixed=TRUE)[[1]]; i<-1L; n<-length(ch); peek<-function() if(i<=n) ch[[i]] else ''
  ws<-function(){while(i<=n&&peek()%in%c(' ','\n','\r','\t'))i<<-i+1L}
@@ -11,7 +12,7 @@ parse_json <- function(s) {
 }
 numeric_input <- function(x) { if(is.null(x)) return(NA_real_); if(is.character(x)&&length(x)==1L) { if(x=='NA') return(NA_real_); return(as.numeric(x)) }; as.numeric(x) }
 numeric_file <- function(path) scan(path,what=double(),quiet=TRUE,na.strings='NA')
-args <- commandArgs(TRUE); if(length(args)&&args[[1]]=='--') args<-args[-1]; op <- args[[1]]; req <- parse_json(paste(readLines(args[[2]],warn=FALSE),collapse='')); outpath <- args[[3]]
+args <- commandArgs(TRUE); if(length(args)&&args[[1]]=='--') args<-args[-1]; if(length(args)==1L&&args[[1]]=='--expr-spec-hash'){cat(EXPR_SPEC_SHA256,'\n',sep='');quit(status=0)}
 warnings <- character()
 encode <- function(x) {
  if (is.double(x)) { if(length(x)!=1L) return(array_encode(x));v<-x[[1L]];if(is.nan(v))return('NaN');if(is.na(v))return('NA');if(is.infinite(v))return(if(v>0)'Inf' else '-Inf');return(v) }
@@ -28,6 +29,9 @@ json_array <- function(x) {
  }
  paste0('[',paste(vapply(as.list(x),json,''),collapse=','),']')
 }
+json_quote <- function(s) {
+ cp<-utf8ToInt(enc2utf8(s));escaped<-vapply(cp,function(i){if(i==34L)'\\"'else if(i==92L)'\\\\'else if(i==8L)'\\b'else if(i==9L)'\\t'else if(i==10L)'\\n'else if(i==12L)'\\f'else if(i==13L)'\\r'else if(i<32L)sprintf('\\u%04x',i)else intToUtf8(i)},'');paste0('"',paste(escaped,collapse=''),'"')
+}
 json <- function(x) {
  if(is.null(x)) return('null')
  if(inherits(x,'rcli_array')) return(json_array(unclass(x)))
@@ -38,13 +42,76 @@ json <- function(x) {
  }
  if(length(x)==0) return('[]')
  if(length(x)>1) return(json_array(x))
- if(is.character(x)) { s<-gsub('\\\\','\\\\\\\\',x);s<-gsub('"','\\\\"',s,fixed=TRUE);s<-gsub('\n','\\\\n',s,fixed=TRUE);s<-gsub('\r','\\\\r',s,fixed=TRUE);s<-gsub('\t','\\\\t',s,fixed=TRUE);return(paste0('"',s,'"')) }
+ if(is.character(x)) return(json_quote(x))
  if(is.logical(x)) return(if(is.na(x)) '"NA"' else if(x) 'true' else 'false')
  if(is.numeric(x)) { if(is.nan(x)) return('"NaN"'); if(is.na(x)) return('"NA"'); if(is.infinite(x)) return(if(x>0) '"Inf"' else '"-Inf"'); return(sprintf('%.17g',x)) }
  'null'
 }
+expr_condition <- function(code, message=code) stop(structure(list(message=message,tool_code=code),class=c('rcli_expr_error','error','condition')))
+expr_keys <- function(x, expected) is.list(x) && !is.null(base::names(x)) && setequal(base::names(x),expected)
+build_expr_ast <- function(root, declared, allow_reducers=FALSE, counters=NULL, state=NULL, depth=0L, in_condition=FALSE) {
+ if (is.null(state)) { state <- new.env(parent=emptyenv());state$nodes<-0L;state$calls<-0L }
+ state$nodes <- state$nodes+1L
+ if (state$nodes>EXPR_CAPS[['nodes']] || depth>EXPR_CAPS[['depth']]) expr_condition('EXPR_SPEC_MISMATCH')
+ if (!is.list(root) || is.null(root$t) || !is.character(root$t) || length(root$t)!=1L) expr_condition('EXPR_SPEC_MISMATCH')
+ tick_fun <- function(fun) {
+  if (is.null(counters)) return(fun)
+  force(fun);force(counters)
+  function(...) { counters$evals<-counters$evals+1L;if(counters$evals>counters$limit)expr_condition('EVAL_LIMIT','expression evaluation limit exceeded');fun(...) }
+ }
+ kind<-root$t
+ if(in_condition&&kind!='op')expr_condition('EXPR_SPEC_MISMATCH')
+ if(kind=='num'){if(!expr_keys(root,c('t','v'))||!is.numeric(root$v)||length(root$v)!=1L||!is.finite(root$v))expr_condition('EXPR_SPEC_MISMATCH');return(as.double(root$v))}
+ if(kind=='const'){if(!expr_keys(root,c('t','n'))||!root$n%in%base::names(EXPR_CONST))expr_condition('EXPR_SPEC_MISMATCH');return(unname(EXPR_CONST[[root$n]]))}
+ if(kind=='var'){if(!expr_keys(root,c('t','n'))||!is.character(root$n)||length(root$n)!=1L||!grepl('^[a-z][a-z0-9_]{0,31}$',root$n)||root$n%in%c(EXPR_FUNCTIONS,base::names(EXPR_CONST),EXPR_RESERVED)||!root$n%in%declared)expr_condition('EXPR_SPEC_MISMATCH');return(as.name(root$n))}
+ if(kind=='neg'){if(!expr_keys(root,c('t','a'))||length(root$a)!=1L)expr_condition('EXPR_SPEC_MISMATCH');return(as.call(list(tick_fun(FN[['-']]),build_expr_ast(root$a[[1L]],declared,allow_reducers,counters,state,depth+1L,FALSE))))}
+ if(kind=='op'){
+  if(!expr_keys(root,c('t','o','a'))||length(root$a)!=2L||!root$o%in%EXPR_OPERATORS)expr_condition('EXPR_SPEC_MISMATCH')
+  rel<-root$o%in%c('<','<=','>','>=','==','!=','&','|');if(rel!=in_condition)expr_condition('EXPR_SPEC_MISMATCH')
+  child_condition<-root$o%in%c('&','|');return(as.call(list(tick_fun(FN[[root$o]]),build_expr_ast(root$a[[1L]],declared,allow_reducers,counters,state,depth+1L,child_condition),build_expr_ast(root$a[[2L]],declared,allow_reducers,counters,state,depth+1L,child_condition))))
+ }
+ if(kind=='call'){
+  if(!expr_keys(root,c('t','f','a'))||!is.character(root$f)||length(root$f)!=1L||!root$f%in%EXPR_FUNCTIONS||root$f=='ifelse'||length(root$a)!=ARITY[[root$f]])expr_condition('EXPR_SPEC_MISMATCH')
+  fn<-root$f;if(fn%in%c('sum','mean','prod','min','max')&&!allow_reducers)expr_condition('EXPR_SPEC_MISMATCH')
+  state$calls<-state$calls+1L;if(state$calls>EXPR_CAPS[['calls']])expr_condition('EXPR_SPEC_MISMATCH');args<-lapply(root$a,function(a)build_expr_ast(a,declared,allow_reducers,counters,state,depth+1L,FALSE));state$calls<-state$calls-1L
+  return(as.call(c(list(tick_fun(FN[[fn]])),args)))
+ }
+ if(kind=='ifelse'){
+  if(!expr_keys(root,c('t','c','a','b')))expr_condition('EXPR_SPEC_MISMATCH')
+  state$calls<-state$calls+1L;if(state$calls>EXPR_CAPS[['calls']])expr_condition('EXPR_SPEC_MISMATCH');args<-list(build_expr_ast(root$c,declared,allow_reducers,counters,state,depth+1L,TRUE),build_expr_ast(root$a,declared,allow_reducers,counters,state,depth+1L,FALSE),build_expr_ast(root$b,declared,allow_reducers,counters,state,depth+1L,FALSE));state$calls<-state$calls-1L
+  return(as.call(c(list(tick_fun(FN[['ifelse']])),args)))
+ }
+ expr_condition('EXPR_SPEC_MISMATCH')
+}
+expr_compile<-function(ast,declared,allow_reducers=FALSE)build_expr_ast(ast,declared,allow_reducers)
+expr_counter<-function(limit){z<-new.env(parent=emptyenv());z$evals<-0L;z$limit<-as.integer(limit);z}
+expr_eval<-function(ast,values,counter,allow_reducers=FALSE){counter$evals<-counter$evals+1L;if(counter$evals>counter$limit)expr_condition('EVAL_LIMIT','expression evaluation limit exceeded');body<-expr_compile(ast,base::names(values),allow_reducers);env<-list2env(values,parent=emptyenv());eval(body,envir=env)}
+expr_data<-function(req){if(!is.null(req$data_files))return(lapply(req$data_files,numeric_file));if(is.null(req$data))return(list());lapply(req$data,function(x)vapply(x,numeric_input,numeric(1)))}
+op <- args[[1]]; req <- parse_json(paste(readLines(args[[2]],warn=FALSE),collapse='')); outpath <- args[[3]]
 result <- withCallingHandlers(tryCatch({
- if(op=='r_info') list(r_version=as.character(getRversion()),rng_kind=RNGkind())
+ if(op=='expr_builder_check'){
+  tryCatch({build_expr_ast(req$ast,unlist(req$names),isTRUE(req$allow_reducers));list(accepted=TRUE)},error=function(e)list(accepted=FALSE,tool_code=if(is.null(e$tool_code))'EXPR_SPEC_MISMATCH' else e$tool_code))
+ }
+ else if(op=='expr_builder_batch') list(decisions=lapply(req$cases,function(z)tryCatch({build_expr_ast(z$ast,unlist(z$names),isTRUE(z$allow_reducers));list(accepted=TRUE)},error=function(e)list(accepted=FALSE,tool_code=if(is.null(e$tool_code))'EXPR_SPEC_MISMATCH' else e$tool_code))))
+ else if(op=='r_info') list(r_version=as.character(getRversion()),rng_kind=RNGkind(),expr_spec_sha256=EXPR_SPEC_SHA256)
+ else if(op=='opt_minimize') {
+  setTimeLimit(elapsed=45,transient=TRUE);counter<-expr_counter(req$max_evals);dat<-expr_data(req);pnames<-names(req$start);start<-unlist(req$start,use.names=TRUE);method<-req$method
+  objective<-function(par){vals<-c(as.list(setNames(as.numeric(par),pnames)),dat);v<-expr_eval(req$objective_ast,vals,counter,TRUE);if(length(v)!=1L||!is.numeric(v))expr_condition('EXPR_NOT_SCALAR','objective must return one numeric value');v<-as.double(v);if(!is.finite(v)){counter$nonfinite<-if(is.null(counter$nonfinite))1L else counter$nonfinite+1L;if(req$nonfinite=='inf'&&method%in%c('Nelder-Mead','SANN'))return(Inf);expr_condition('NONFINITE_OBJECTIVE','objective returned a non-finite value')};v}
+  objective(start);lower<-rep(-Inf,length(start));upper<-rep(Inf,length(start));names(lower)<-names(upper)<-pnames;if(!is.null(req$lower))lower[names(req$lower)]<-unlist(req$lower);if(!is.null(req$upper))upper[names(req$upper)]<-unlist(req$upper)
+  if(method=='SANN'){RNGkind('Mersenne-Twister','Inversion','Rejection');set.seed(req$seed)}
+  began<-proc.time()[['elapsed']];fit<-stats::optim(start,objective,method=method,lower=lower,upper=upper,control=list(maxit=req$maxit,reltol=req$reltol),hessian=isTRUE(req$hessian));elapsed<-round((proc.time()[['elapsed']]-began)*1000);counts<-fit$counts;if(is.null(counts))counts<-integer();conv<-fit$convergence;status<-if(conv==0)'OK'else if(conv==1)'MAXIT'else'NON_CONVERGED';hess<-if(isTRUE(req$hessian)&&!is.null(fit$hessian))lapply(seq_len(nrow(fit$hessian)),function(i)array_encode(fit$hessian[i,]))else NULL
+  list(par=as.list(setNames(as.double(fit$par),names(fit$par))),value=encode(fit$value),counts=list(`function`=if(length(counts))as.integer(counts[[1]])else NULL,gradient=if(length(counts)>1L)as.integer(counts[[2]])else NULL),convergence=as.integer(conv),message=if(is.null(fit$message))NULL else as.character(fit$message),domain_status=status,hessian=hess,evals=counter$evals,nonfinite_evals=if(is.null(counter$nonfinite))0L else counter$nonfinite,elapsed_ms=elapsed,meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind(),seed=if(method=='SANN')req$seed else NULL))
+ } else if(op=='opt_optimize') {
+  setTimeLimit(elapsed=45,transient=TRUE);counter<-expr_counter(req$max_evals);f<-function(x){v<-expr_eval(req$ast,list(x=as.double(x)),counter);if(length(v)!=1L||!is.numeric(v))expr_condition('EXPR_NOT_SCALAR','objective must return one numeric value');as.double(v)};fit<-stats::optimize(f,c(req$lower,req$upper),maximum=isTRUE(req$maximum),tol=req$tol);list(x=encode(fit$minimum),value=encode(fit$objective),evals=counter$evals,meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind()))
+ } else if(op=='num_root') {
+  setTimeLimit(elapsed=45,transient=TRUE);counter<-expr_counter(req$max_evals);f<-function(x){v<-expr_eval(req$ast,list(x=as.double(x)),counter);if(length(v)!=length(x)||!is.numeric(v))expr_condition('EXPR_NOT_SCALAR','root function must return one value per x');as.double(v)};fl<-f(req$lower);fu<-f(req$upper);if(length(fl)!=1L||length(fu)!=1L||!is.finite(fl)||!is.finite(fu)||fl*fu>0)expr_condition('BAD_INTERVAL','root interval endpoints must be finite and bracket a root');fit<-stats::uniroot(f,c(req$lower,req$upper),tol=req$tol,maxiter=req$maxiter,extendInt=req$extend_int);list(root=encode(fit$root),f_root=encode(fit$f.root),iter=as.integer(fit$iter),estim_prec=encode(fit$estim.prec),evals=counter$evals,meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind()))
+ } else if(op=='num_integrate') {
+  setTimeLimit(elapsed=45,transient=TRUE);counter<-expr_counter(req$max_evals);f<-function(x){v<-expr_eval(req$ast,list(x=as.double(x)),counter);if(length(v)!=length(x)||!is.numeric(v))expr_condition('EXPR_NOT_SCALAR','integrand must return one value per x');as.double(v)};lower<-numeric_input(req$lower);upper<-numeric_input(req$upper);fit<-tryCatch(stats::integrate(f,lower=lower,upper=upper,subdivisions=req$subdivisions,rel.tol=req$rel_tol,abs.tol=req$abs_tol,stop.on.error=FALSE),error=function(e){if(grepl('non-finite function value',conditionMessage(e),fixed=TRUE))return(structure(list(message=conditionMessage(e)),class='rcli_nonfinite_integral'));stop(e)});if(!inherits(fit,'rcli_nonfinite_integral')&&fit$message!='OK')warning(fit$message,call.=FALSE);if(inherits(fit,'rcli_nonfinite_integral'))list(value='NaN',abs_error='NaN',subdivisions=0L,message='non-finite function value',domain_status='NON_FINITE',evals=counter$evals)else list(value=encode(fit$value),abs_error=encode(fit$abs.error),subdivisions=as.integer(fit$subdivisions),message=fit$message,domain_status=if(fit$message=='OK')'OK'else'NON_CONVERGED',evals=counter$evals,meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind()))
+ } else if(op=='fit_nls') {
+  setTimeLimit(elapsed=45,transient=TRUE);counter<-expr_counter(req$max_evals);dat<-expr_data(req);sn<-names(req$start);starts<-unlist(req$start,use.names=TRUE);values<-c(as.list(starts),dat);values$list<-base::list;state<-new.env(parent=emptyenv());state$nodes<-0L;state$calls<-0L;body<-build_expr_ast(req$rhs_ast,names(values),FALSE,NULL,state);tick<-local({cc<-counter;function(expr){cc$evals<-cc$evals+1L;if(cc$evals>cc$limit)expr_condition('EVAL_LIMIT','expression evaluation limit exceeded');eval(substitute(expr),envir=parent.frame())}});body<-as.call(list(tick,body));env<-list2env(values,parent=emptyenv());form<-structure(as.call(list(as.name('~'),as.name(req$response),body)),class='formula',.Environment=env);d<-as.data.frame(dat,check.names=FALSE);control<-stats::nls.control(maxiter=req$maxiter,tol=req$tol,warnOnly=TRUE)
+  fit<-tryCatch(if(req$algorithm=='port')stats::nls(form,data=d,start=starts,algorithm='port',lower={z<-rep(-Inf,length(starts));names(z)<-sn;if(!is.null(req$lower))z[names(req$lower)]<-unlist(req$lower);z},upper={z<-rep(Inf,length(starts));names(z)<-sn;if(!is.null(req$upper))z[names(req$upper)]<-unlist(req$upper);z},control=control)else stats::nls(form,data=d,start=starts,algorithm='default',control=control),error=function(e){if(grepl('singular gradient|step factor|convergence failure',conditionMessage(e),ignore.case=TRUE))return(structure(list(message=conditionMessage(e)),class='rcli_nls_nonconvergence'));stop(e)})
+  if(inherits(fit,'rcli_nls_nonconvergence'))list(coefficients=as.list(sn),estimate=array_encode(starts),std_error=array_encode(rep(NA_real_,length(starts))),statistic=array_encode(rep(NA_real_,length(starts))),p_value=array_encode(rep(NA_real_,length(starts))),sigma='NaN',df=NA_integer_,converged=FALSE,iterations=req$maxiter,achieved_tol='NaN',domain_status='NON_CONVERGED',evals=counter$evals)else{sm<-summary(fit);tab<-sm$coefficients;cf<-coef(fit);list(coefficients=as.list(names(cf)),estimate=array_encode(as.numeric(cf)),std_error=array_encode(tab[,2]),statistic=array_encode(tab[,3]),p_value=array_encode(tab[,4]),sigma=encode(sm$sigma),df=encode(df.residual(fit)),converged=isTRUE(fit$convInfo$isConv),iterations=as.integer(fit$convInfo$finIter),achieved_tol=encode(fit$convInfo$finTol),domain_status=if(isTRUE(fit$convInfo$isConv))'OK'else if(fit$convInfo$stopCode==1L)'MAXIT'else'NON_CONVERGED',evals=counter$evals,fitted=if(isTRUE(req$fitted))array_encode(as.numeric(fitted(fit)))else NULL,residuals=if(isTRUE(req$residuals))array_encode(as.numeric(residuals(fit)))else NULL,meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind()))}
+ }
  else if(op=='dist_quantile') {
   fn <- switch(req$dist,norm=qnorm,t=qt,chisq=qchisq,gamma=qgamma,beta=qbeta,binom=qbinom,pois=qpois)
   if(is.null(fn)) stop('unknown distribution')
@@ -123,7 +190,7 @@ result <- withCallingHandlers(tryCatch({
   pieces<-strsplit(req$formula,'~',fixed=TRUE)[[1L]];if(length(pieces)!=2L) stop('bad formula');lhs<-trimws(pieces[1L]);rhs<-trimws(pieces[2L]);if(!lhs%in%names(d))stop('response must be a data column');tokens<-unlist(strsplit(gsub('[+-]',' ',rhs), '[[:space:]]+'));tokens<-tokens[nzchar(tokens)&!tokens%in%c('0','1')];if(any(!tokens%in%names(d))||'.'%in%tokens)stop('formula terms must be data columns');f<-as.formula(req$formula,env=baseenv());environment(f)<-baseenv();nafun<-if(identical(req$na_action,'exclude')) na.exclude else na.omit;fit<-lm(f,data=d,na.action=nafun);sm<-summary(fit);cf<-coef(fit);tab<-sm$coefficients;nm<-names(cf);col<-function(j){out<-rep(NA_real_,length(cf));names(out)<-nm;common<-intersect(nm,rownames(tab));out[common]<-tab[common,j];out};
   list(coefficients=as.list(nm),estimate=array_encode(cf),std_error=array_encode(col(2)),statistic=array_encode(col(3)),p_value=array_encode(col(4)),aliased=as.list(unname(nm[is.na(cf)])),rank=fit$rank,sigma=encode(sm$sigma),r_squared=encode(sm$r.squared),df=encode(sm$df[2]),residuals=if(isTRUE(req$residuals)) array_encode(residuals(fit)) else NULL,meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind()))
  } else stop('unknown operation')
-},error=function(e) structure(list(message=conditionMessage(e)),class='rcli_error')),warning=function(w){warnings<<-c(warnings,conditionMessage(w));invokeRestart('muffleWarning')})
-if(inherits(result,'rcli_error')) {writeLines(json(list(error=result$message,warnings=as.list(warnings))),outpath);quit(status=0)}
+},error=function(e) structure(list(message=conditionMessage(e),tool_code=if(!is.null(e$tool_code))e$tool_code else if(grepl('reached elapsed time limit',conditionMessage(e),fixed=TRUE))'R_TIMEOUT'else'R_ERROR'),class='rcli_error')),warning=function(w){warnings<<-c(warnings,conditionMessage(w));invokeRestart('muffleWarning')})
+if(inherits(result,'rcli_error')) {writeLines(json(list(error=result$message,tool_code=result$tool_code,warnings=as.list(warnings))),outpath);quit(status=0)}
 result$warnings<-as.list(warnings)
 writeLines(json(result),outpath)

@@ -1,7 +1,7 @@
 {
   "schema": "cli.schema.v1",
   "tool": "rcli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "inputs": [
     "flags",
     "json"
@@ -1459,6 +1459,354 @@
             "exclude"
           ],
           "description": "na_action input; numeric units follow the corresponding R function."
+        }
+      ]
+    },
+    {
+      "name": "opt_minimize",
+      "access": "read",
+      "returns": "object",
+      "description": "Minimize a fixed-grammar R objective",
+      "params": [
+        {
+          "name": "objective",
+          "type": "string",
+          "occurs": "1",
+          "description": "Arithmetic objective in the fixed expression grammar."
+        },
+        {
+          "name": "start",
+          "type": "object",
+          "occurs": "1",
+          "description": "Named finite starting parameters; names are expression variables."
+        },
+        {
+          "name": "method",
+          "type": "string",
+          "occurs": "?",
+          "default": "Nelder-Mead",
+          "enum": [
+            "Nelder-Mead",
+            "BFGS",
+            "CG",
+            "L-BFGS-B",
+            "SANN"
+          ],
+          "description": "Base R optim method."
+        },
+        {
+          "name": "lower",
+          "type": "object",
+          "occurs": "?",
+          "description": "Named lower bounds; only accepted with L-BFGS-B."
+        },
+        {
+          "name": "upper",
+          "type": "object",
+          "occurs": "?",
+          "description": "Named upper bounds; only accepted with L-BFGS-B."
+        },
+        {
+          "name": "maxit",
+          "type": "number",
+          "occurs": "?",
+          "default": 1000,
+          "description": "Maximum optimizer iterations (1 to 10000)."
+        },
+        {
+          "name": "reltol",
+          "type": "number",
+          "occurs": "?",
+          "default": 1e-08,
+          "description": "Relative convergence tolerance."
+        },
+        {
+          "name": "seed",
+          "type": "number",
+          "occurs": "?",
+          "description": "Required only for SANN."
+        },
+        {
+          "name": "hessian",
+          "type": "boolean",
+          "occurs": "?",
+          "default": false,
+          "description": "Return optim's Hessian."
+        },
+        {
+          "name": "data",
+          "type": "object",
+          "occurs": "?",
+          "description": "Optional equal-length numeric columns available to the objective."
+        },
+        {
+          "name": "nonfinite",
+          "type": "string",
+          "occurs": "?",
+          "default": "inf",
+          "enum": [
+            "inf",
+            "error"
+          ],
+          "description": "How NA/NaN objective values are handled."
+        },
+        {
+          "name": "max_evals",
+          "type": "number",
+          "occurs": "?",
+          "default": 500000,
+          "description": "Expression evaluation limit (1 to 2000000)."
+        }
+      ]
+    },
+    {
+      "name": "opt_optimize",
+      "access": "read",
+      "returns": "object",
+      "description": "Optimize a scalar expression over an interval",
+      "params": [
+        {
+          "name": "objective",
+          "type": "string",
+          "occurs": "1",
+          "description": "Scalar expression in the variable x."
+        },
+        {
+          "name": "lower",
+          "type": "number",
+          "occurs": "1",
+          "description": "Finite lower endpoint of the search interval."
+        },
+        {
+          "name": "upper",
+          "type": "number",
+          "occurs": "1",
+          "description": "Finite upper endpoint greater than lower."
+        },
+        {
+          "name": "maximum",
+          "type": "boolean",
+          "occurs": "?",
+          "default": false,
+          "description": "Maximize instead of minimize."
+        },
+        {
+          "name": "tol",
+          "type": "number",
+          "occurs": "?",
+          "default": 1e-08,
+          "description": "Positive relative tolerance."
+        },
+        {
+          "name": "max_evals",
+          "type": "number",
+          "occurs": "?",
+          "default": 500000,
+          "description": "Expression evaluation limit (1 to 2000000)."
+        }
+      ]
+    },
+    {
+      "name": "num_root",
+      "access": "read",
+      "returns": "object",
+      "description": "Find a root of a fixed-grammar expression",
+      "params": [
+        {
+          "name": "f",
+          "type": "string",
+          "occurs": "1",
+          "description": "Vectorized expression in x."
+        },
+        {
+          "name": "lower",
+          "type": "number",
+          "occurs": "1",
+          "description": "Finite lower bracket endpoint."
+        },
+        {
+          "name": "upper",
+          "type": "number",
+          "occurs": "1",
+          "description": "Finite upper bracket endpoint."
+        },
+        {
+          "name": "tol",
+          "type": "number",
+          "occurs": "?",
+          "default": 1e-08,
+          "description": "Positive root tolerance."
+        },
+        {
+          "name": "maxiter",
+          "type": "number",
+          "occurs": "?",
+          "default": 100,
+          "description": "Maximum iterations (1 to 1000)."
+        },
+        {
+          "name": "extend_int",
+          "type": "string",
+          "occurs": "?",
+          "default": "no",
+          "enum": [
+            "no",
+            "yes",
+            "upX",
+            "downX"
+          ],
+          "description": "Whether uniroot may extend the interval."
+        },
+        {
+          "name": "max_evals",
+          "type": "number",
+          "occurs": "?",
+          "default": 500000,
+          "description": "Expression evaluation limit (1 to 2000000)."
+        }
+      ]
+    },
+    {
+      "name": "num_integrate",
+      "access": "read",
+      "returns": "object",
+      "description": "Numerically integrate a fixed-grammar expression",
+      "params": [
+        {
+          "name": "f",
+          "type": "string",
+          "occurs": "1",
+          "description": "Vectorized integrand in x."
+        },
+        {
+          "name": "lower",
+          "type": "number",
+          "occurs": "1",
+          "description": "Finite bound or the special strings -Inf and Inf."
+        },
+        {
+          "name": "upper",
+          "type": "number",
+          "occurs": "1",
+          "description": "Finite bound or the special strings Inf and -Inf."
+        },
+        {
+          "name": "subdivisions",
+          "type": "number",
+          "occurs": "?",
+          "default": 100,
+          "description": "Maximum subdivisions (1 to 1000)."
+        },
+        {
+          "name": "rel_tol",
+          "type": "number",
+          "occurs": "?",
+          "default": 1e-08,
+          "description": "Nonnegative relative tolerance."
+        },
+        {
+          "name": "abs_tol",
+          "type": "number",
+          "occurs": "?",
+          "default": 0.0,
+          "description": "Nonnegative absolute tolerance."
+        },
+        {
+          "name": "max_evals",
+          "type": "number",
+          "occurs": "?",
+          "default": 500000,
+          "description": "Expression evaluation limit (1 to 2000000)."
+        }
+      ]
+    },
+    {
+      "name": "fit_nls",
+      "access": "read",
+      "returns": "object",
+      "description": "Fit nonlinear least squares with a fixed-grammar model",
+      "params": [
+        {
+          "name": "response",
+          "type": "string",
+          "occurs": "1",
+          "description": "Response column name."
+        },
+        {
+          "name": "rhs",
+          "type": "string",
+          "occurs": "1",
+          "description": "Model expression in start parameters and data columns."
+        },
+        {
+          "name": "data",
+          "type": "object",
+          "occurs": "1",
+          "description": "Equal-length numeric data columns, up to 200000 rows."
+        },
+        {
+          "name": "start",
+          "type": "object",
+          "occurs": "1",
+          "description": "Named finite starting coefficients."
+        },
+        {
+          "name": "algorithm",
+          "type": "string",
+          "occurs": "?",
+          "default": "default",
+          "enum": [
+            "default",
+            "port"
+          ],
+          "description": "R nls algorithm; plinear is not supported."
+        },
+        {
+          "name": "lower",
+          "type": "object",
+          "occurs": "?",
+          "description": "Named lower bounds required for port when supplied."
+        },
+        {
+          "name": "upper",
+          "type": "object",
+          "occurs": "?",
+          "description": "Named upper bounds required for port when supplied."
+        },
+        {
+          "name": "maxiter",
+          "type": "number",
+          "occurs": "?",
+          "default": 100,
+          "description": "Maximum nls iterations (1 to 1000)."
+        },
+        {
+          "name": "tol",
+          "type": "number",
+          "occurs": "?",
+          "default": 1e-08,
+          "description": "Positive convergence tolerance."
+        },
+        {
+          "name": "fitted",
+          "type": "boolean",
+          "occurs": "?",
+          "default": false,
+          "description": "Include fitted values."
+        },
+        {
+          "name": "residuals",
+          "type": "boolean",
+          "occurs": "?",
+          "default": false,
+          "description": "Include residuals."
+        },
+        {
+          "name": "max_evals",
+          "type": "number",
+          "occurs": "?",
+          "default": 500000,
+          "description": "Expression evaluation limit (1 to 2000000)."
         }
       ]
     }
