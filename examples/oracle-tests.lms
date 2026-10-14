@@ -1,30 +1,23 @@
 // access: read
-// What it does: Draws two seeded samples and checks their two-sample t-test with R.
+// What it does: Generates seeded samples, runs R's two-sample t-test, and checks its R 4.3.3 oracle fixture.
+// Tolerance: 1e-8 for the statistic and p-value.
 // How to run: Put the absolute rcli build/bin directory on PATH, then run lmscript examples/oracle-tests.lms.
-left_call = system(["rcli", "rng_draw", "--dist", "norm", "--n", "12", "--seed", "31415"]);
-right_call = system(["rcli", "rng_draw", "--dist", "norm", "--n", "12", "--seed", "92653"]);
-if (left_call.code != 0 || right_call.code != 0) {
-  println("rcli RNG draw failed");
-  exit(1);
-}
-left = json_parse(left_call.stdout);
-right = json_parse(right_call.stdout);
-input = json_stringify({op: "test_htest", params: {test: "t", x: left.value, y: right.value, var_equal: true}});
-test_call = system(["rcli", "--input-json", input]);
-if (test_call.code != 0) {
-  println("rcli t-test command failed:", test_call.stderr);
-  exit(1);
-}
-test = json_parse(test_call.stdout);
-if (test.success == false) {
-  println("rcli t-test failed:", test.error.message);
-  exit(1);
-}
-println(sprintf("Seeded two-sample t-test: statistic %.8f, p-value %.8f", test.statistic, test.p_value));
-
-available = system(["sh", "-c", "command -v lmstats || command -v lmda || true"]);
-if (available.stdout == "") {
-  println("lmstats/lmda binaries are not on PATH; continuing with the R oracle result.");
+import "../cli.schema.dev.json" as rcli;
+left_call = rcli.rng_draw({dist: "norm", n: 12, seed: 31415});
+if (left_call.status != "ok") { println("left RNG draw failed:", json_stringify(left_call)); exit(1); }
+right_call = rcli.rng_draw({dist: "norm", n: 12, seed: 92653});
+if (right_call.status != "ok") { println("right RNG draw failed:", json_stringify(right_call)); exit(1); }
+test = rcli.test_htest({test: "t", x: left_call.result.value, y: right_call.result.value, var_equal: true});
+if (test.status != "ok") { println("R t-test failed:", json_stringify(test)); exit(1); }
+delta_stat = abs(test.result.statistic - (-0.23673804946899932));
+delta_p = abs(test.result.p_value - 0.8150504263108703);
+println(sprintf("Seeded two-sample t-test: statistic %.8f, p-value %.8f", test.result.statistic, test.result.p_value));
+if (delta_stat > 0.00000001 || delta_p > 0.00000001) { println("R oracle comparison failed", delta_stat, delta_p); exit(1); }
+println("R oracle comparison passed (absolute tolerance 1e-8).");
+lmstats_path = which("lmstats");
+lmda_path = which("lmda");
+if (lmstats_path == null && lmda_path == null) {
+  println("lmstats/lmda binaries are not on PATH; continuing with the R oracle.");
 } else {
-  println("Cross-tool binary found:", available.stdout);
+  println("Found optional comparator:", lmstats_path != null ? lmstats_path : lmda_path);
 }

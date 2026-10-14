@@ -1,13 +1,16 @@
 // access: read
-// What it does: Simulates a seeded AR(1), fits it with R ARIMA, and prints forecasts.
+// What it does: Simulates a seeded AR(1), fits it with base R ARIMA, and checks the R 4.3.3 forecast fixture.
+// Tolerance: 1e-8 for the coefficient and each forecast.
 // How to run: Put the absolute rcli build/bin directory on PATH, then run lmscript examples/fit-and-forecast.lms.
-sim_call = system(["rcli", "--input-json", json_stringify({op: "rng_arima_sim", params: {n: 80, seed: 42, order: [1, 0, 0], ar: [0.65]}})]);
-if (sim_call.code != 0) { println("ARIMA simulation failed:", sim_call.stderr); exit(1); }
-sim = json_parse(sim_call.stdout);
-if (sim.success == false) { println("ARIMA simulation failed:", sim.error.message); exit(1); }
-fit_call = system(["rcli", "--input-json", json_stringify({op: "ts_arima", params: {x: sim.value, order: [1, 0, 0], n_ahead: 5}})]);
-if (fit_call.code != 0) { println("ARIMA fit failed:", fit_call.stderr); exit(1); }
-fit = json_parse(fit_call.stdout);
-if (fit.success == false) { println("ARIMA fit failed:", fit.error.message); exit(1); }
-println("AR(1) coefficient:", sprintf("%.6f", fit.estimate[0]));
-println("Five forecasts:", json_stringify(fit.forecast));
+import "../cli.schema.dev.json" as rcli;
+sim = rcli.rng_arima_sim({n: 80, seed: 42, order: [1, 0, 0], ar: [0.65]});
+if (sim.status != "ok") { println("ARIMA simulation failed:", json_stringify(sim)); exit(1); }
+fit = rcli.ts_arima({x: sim.result.value, order: [1, 0, 0], method: "CSS-ML", n_ahead: 5});
+if (fit.status != "ok") { println("ARIMA fit failed:", json_stringify(fit)); exit(1); }
+want = [0.203613879492466, 0.12032022325169149, 0.0672953366724529, 0.03353960155844138, 0.012050641815273329];
+actual = fit.result.forecast;
+bad = abs(actual[0] - want[0]) > 0.00000001 || abs(actual[1] - want[1]) > 0.00000001 || abs(actual[2] - want[2]) > 0.00000001 || abs(actual[3] - want[3]) > 0.00000001 || abs(actual[4] - want[4]) > 0.00000001;
+println("AR(1) coefficient:", sprintf("%.6f", fit.result.estimate[0]));
+println("Five forecasts:", json_stringify(actual));
+if (bad) { println("R forecast fixture mismatch:", actual); exit(1); }
+println("R forecast fixture passed (absolute tolerance 1e-8).");
