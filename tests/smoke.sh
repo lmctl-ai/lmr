@@ -15,6 +15,12 @@ s=json.load(open(sys.argv[1])); ops={o['name']:o for o in s['operations']}
 assert set(ops)=={'r_info','dist_quantile','dist_density','dist_probability','rng_draw','rng_sample','math_special','summary_quantile','num_fft','test_htest','fit_glm','smooth_spline','smooth_loess','interp_spline','interp_approx','ts_arima','rng_arima_sim','ts_acf','ts_pacf','ts_stl','cluster_kmeans','cluster_hclust','fit_lm','opt_minimize','opt_optimize','num_root','num_integrate','fit_nls'}
 assert all(o['access']=='read' for o in ops.values())
 assert all(p.get('description') for o in ops.values() for p in o.get('params',[]))
+params=lambda op:{p['name']:p for p in ops[op]['params']}
+assert params('opt_minimize')['maxit'].get('default') is None and '500 for Nelder-Mead' in params('opt_minimize')['maxit']['description'] and params('opt_minimize')['reltol']['default']==1.4901161193847656e-8
+assert params('opt_optimize')['tol']['default']==0.0001220703125
+assert params('num_root')['tol']['default']==0.0001220703125 and params('num_root')['maxiter']['default']==1000
+assert params('num_integrate')['rel_tol']['default']==params('num_integrate')['abs_tol']['default']==0.0001220703125
+assert params('fit_nls')['maxiter']['default']==50 and params('fit_nls')['tol']['default']==1e-5
 p={x['name']:x for x in ops['dist_quantile']['params']}
 assert p['p']['type']=='array' and p['p']['items']=='number' and 'log_p' in p
 PY

@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Match R expression semantics for logical precedence, defaults, interval extension, scalar integration, and NLS non-convergence; compile expression ASTs once per call.
+- Add 2,000-case deterministic parser differential coverage, expression guard/throughput regressions, method-specific optimizer defaults, and the R third-party notice.
 - Add the shared expression grammar, C++ parser, R-side AST validation, and the optimization, root-finding, integration, and nonlinear least-squares operations.
 - Add expression conformance/oracle tests and the noisy curve-fit and Rosenbrock lmscript recipes.
 - Added base R ARIMA fitting and forecasting, seeded ARMA simulation, ACF/PACF, STL decomposition, Hartigan-Wong k-means, and hierarchical clustering.

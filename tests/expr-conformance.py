@@ -22,7 +22,8 @@ for case in corpus['accept']:
 assert all(x['accepted'] for x in r_batch(accepted_asts))
 rejected=0;bad={'t':'call','f':'system','a':[]}
 for case in corpus['reject']:
-    got=cpp_check(case);assert not got['accepted'],(case,got);assert got['tool_code'].startswith('EXPR_'),(case,got);rejected+=1
+    assert case.get('expected_tool_code'),case
+    got=cpp_check(case);assert not got['accepted'],(case,got);assert got['tool_code']==case['expected_tool_code'],(case,got);rejected+=1
 results=r_batch([{'ast':bad,'names':['system']} for _ in corpus['reject']]);assert len(results)==len(corpus['reject']) and all(not x['accepted'] and x['tool_code']=='EXPR_SPEC_MISMATCH' for x in results)
 # Force a missing child executable for each invalid expression to prove rejection precedes exec.
 for case in corpus['reject']:
@@ -53,4 +54,8 @@ for params,code in [
 ]:
     reject_before_r({'op':'opt_minimize' if 'objective' in params else 'num_integrate','params':params},code)
 assert not r_batch([{'ast':{'t':'call','f':'system','a':[{'t':'num','v':1}]},'names':['system']}])[0]['accepted']
+# The hidden parser must keep the error excerpt valid UTF-8 when its byte window
+# intersects multibyte characters.
+near=cpp_check({'expression':'aaaaaaaaéaaaa€b','names':['a']})
+assert not near['accepted'] and len(near['near'].encode('utf-8'))<=16,near
 print(f'expression corpus: {accepted} accepted, {rejected} rejected; worker builder matched accepted cases and rejected hostile AST probes')
