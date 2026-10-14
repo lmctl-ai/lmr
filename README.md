@@ -4,12 +4,20 @@
 
 R is licensed under GPL. This project invokes the unmodified R program as a separate process and exchanges JSON through temporary files; it does not link `libR` or `libRmath`. See [CONTRIBUTING.md](CONTRIBUTING.md) for the dependency boundary.
 
-## Stage 0 operations
+## Operations
 
 - `r_info`: R version and RNG kinds.
 - `dist_quantile`: vectorized probabilities for `norm`, `t`, `chisq`, `gamma`, `beta`, `binom`, and `pois`, with `lower_tail` and `log_p` controls.
-- `rng_draw`: seeded `norm` and `unif` draws. Each call sets R's RNG kind to Mersenne-Twister / Inversion / Rejection before `set.seed`.
+- `dist_density`: vectorized `dnorm`/`dt`/`dchisq`/`dgamma`/`dbeta`/`dbinom`/`dpois`, with `log`.
+- `dist_probability`: vectorized matching CDFs, with `lower_tail` and `log_p`.
+- `rng_draw`: seeded `norm`, `unif`, `exp`, `gamma`, `beta`, `binom`, `pois`, `t`, and `chisq` draws. Each stochastic call sets R's RNG kind to Mersenne-Twister / Inversion / Rejection before `set.seed`.
+- `rng_sample`: seeded sample from an explicit numeric population, optionally with replacement and probability weights.
+- `math_special`: vectorized `gamma`, `lgamma`, `beta`, `lbeta`, `digamma`, `trigamma`, `choose`, `lchoose`, and Bessel J/I/K/Y functions.
+- `summary_quantile`: R's nine sample-quantile definitions for supplied probabilities.
+- `num_fft`: real-valued FFT input with separate real and imaginary arrays; inverse mode returns the normalized inverse transform.
 - `fit_lm`: formulas using named data columns, plus intercept-only `y ~ 1` and intercept removal with `-1` or `+0`, with inline JSON columns or a cwd-confined CSV path. Dot formulas and expressions are rejected. CSV inputs are capped at 16 MiB and 200,000 rows.
+
+Vector inputs are capped at 200,000 items. Density, probability, quantile, special-function, summary, and FFT results preserve R's double values; scalars remain scalars and vector results remain arrays. `rng_sample` samples from explicit `x` values (it does not use R's special scalar-`n` shorthand). All these operations accept numeric vectors and never evaluate caller-supplied expressions.
 
 All operations are read-only. Output numbers preserve round-trip doubles, and non-finite values use the strings `NA`, `NaN`, `Inf`, and `-Inf`. Fit statistic scalars remain scalars; estimates and other vector fields remain arrays, including one-element coefficient vectors. Results include R version/RNG metadata and a `warnings` array, including on R errors. Numeric inputs accept null or the strings `NA`, `NaN`, `Inf`, and `-Inf`; R determines each operation-specific result. R errors return `COMMAND_FAILED` with `tool_code: R_ERROR`; input validation happens in C++ before the worker starts. Calls time out after 50 seconds (`RCLI_TIMEOUT_S` can lower the limit for development, never raise it above 50 seconds).
 
@@ -39,4 +47,4 @@ Build and test in the dev image with `cmake --build build --parallel 2 && ctest 
 
 Alternate RNG kinds and normal-generation kinds are not configurable; calls use the explicit defaults listed above. The `examples/oracle-lm.lms` recipe is self-contained because no prebuilt lmda binary was available and its release build was intentionally not started. It checks the rcli fit against the known R result.
 
-Stage 0 differences from the design notes: this slice exposes the four requested operations, with the selected seven quantile families and an `na_action` enum for `fit_lm`; it does not add a Docker runtime/shim or lmda cross-tool assertion. Its worker uses a small in-repo JSON codec, so host R does not need `jsonlite` installed. The dev image is based on Debian bookworm because that is the available `lmcpp-dev` image; its R is 4.2.2 rather than the host's 4.3.3, and every result records that version.
+Stage 1a delivers the seven-family distribution functions, the expanded seeded RNG catalogue, sampling, math-special functions, sample quantiles, and FFT. It leaves the design's larger distribution family list for later. The fixed worker uses a small in-repo JSON codec, so host R does not need `jsonlite` installed. The dev image is based on Debian bookworm because that is the available `lmcpp-dev` image; its R is 4.2.2 rather than the host's 4.3.3, and every result records that version.

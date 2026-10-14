@@ -108,10 +108,10 @@
       ]
     },
     {
-      "name": "rng_draw",
+      "name": "dist_density",
       "access": "read",
       "returns": "object",
-      "description": "Seeded R normal or uniform draws",
+      "description": "Vectorized R distribution densities",
       "params": [
         {
           "name": "dist",
@@ -119,7 +119,192 @@
           "occurs": "1",
           "enum": [
             "norm",
-            "unif"
+            "t",
+            "chisq",
+            "gamma",
+            "beta",
+            "binom",
+            "pois"
+          ]
+        },
+        {
+          "name": "x",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "log",
+          "type": "boolean",
+          "occurs": "?",
+          "default": false
+        },
+        {
+          "name": "mean",
+          "type": "number",
+          "occurs": "?",
+          "default": 0.0
+        },
+        {
+          "name": "sd",
+          "type": "number",
+          "occurs": "?",
+          "default": 1.0
+        },
+        {
+          "name": "df",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "shape",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "rate",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "a",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "b",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "size",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "prob",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "lambda",
+          "type": "number",
+          "occurs": "?"
+        }
+      ]
+    },
+    {
+      "name": "dist_probability",
+      "access": "read",
+      "returns": "object",
+      "description": "Vectorized R distribution probabilities",
+      "params": [
+        {
+          "name": "dist",
+          "type": "string",
+          "occurs": "1",
+          "enum": [
+            "norm",
+            "t",
+            "chisq",
+            "gamma",
+            "beta",
+            "binom",
+            "pois"
+          ]
+        },
+        {
+          "name": "q",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "lower_tail",
+          "type": "boolean",
+          "occurs": "?",
+          "default": true
+        },
+        {
+          "name": "log_p",
+          "type": "boolean",
+          "occurs": "?",
+          "default": false
+        },
+        {
+          "name": "mean",
+          "type": "number",
+          "occurs": "?",
+          "default": 0.0
+        },
+        {
+          "name": "sd",
+          "type": "number",
+          "occurs": "?",
+          "default": 1.0
+        },
+        {
+          "name": "df",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "shape",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "rate",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "a",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "b",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "size",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "prob",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "lambda",
+          "type": "number",
+          "occurs": "?"
+        }
+      ]
+    },
+    {
+      "name": "rng_draw",
+      "access": "read",
+      "returns": "object",
+      "description": "Seeded R distribution draws",
+      "params": [
+        {
+          "name": "dist",
+          "type": "string",
+          "occurs": "1",
+          "enum": [
+            "norm",
+            "unif",
+            "exp",
+            "gamma",
+            "beta",
+            "binom",
+            "pois",
+            "t",
+            "chisq"
           ]
         },
         {
@@ -155,6 +340,179 @@
           "type": "number",
           "occurs": "?",
           "default": 1.0
+        },
+        {
+          "name": "rate",
+          "type": "number",
+          "occurs": "?",
+          "default": 1.0
+        },
+        {
+          "name": "shape",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "a",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "b",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "size",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "prob",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "lambda",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "df",
+          "type": "number",
+          "occurs": "?"
+        }
+      ]
+    },
+    {
+      "name": "rng_sample",
+      "access": "read",
+      "returns": "object",
+      "description": "Seeded sample with or without replacement",
+      "params": [
+        {
+          "name": "x",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "size",
+          "type": "number",
+          "occurs": "1"
+        },
+        {
+          "name": "seed",
+          "type": "number",
+          "occurs": "1"
+        },
+        {
+          "name": "replace",
+          "type": "boolean",
+          "occurs": "?",
+          "default": false
+        },
+        {
+          "name": "prob",
+          "type": "array",
+          "occurs": "?",
+          "items": "number"
+        }
+      ]
+    },
+    {
+      "name": "math_special",
+      "access": "read",
+      "returns": "object",
+      "description": "Vectorized R special functions",
+      "params": [
+        {
+          "name": "fn",
+          "type": "string",
+          "occurs": "1",
+          "enum": [
+            "gamma",
+            "lgamma",
+            "beta",
+            "lbeta",
+            "digamma",
+            "trigamma",
+            "choose",
+            "lchoose",
+            "besselJ",
+            "besselI",
+            "besselK",
+            "besselY"
+          ]
+        },
+        {
+          "name": "x",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "y",
+          "type": "array",
+          "occurs": "?",
+          "items": "number"
+        },
+        {
+          "name": "nu",
+          "type": "number",
+          "occurs": "?"
+        }
+      ]
+    },
+    {
+      "name": "summary_quantile",
+      "access": "read",
+      "returns": "object",
+      "description": "R sample quantiles with type 1 through 9",
+      "params": [
+        {
+          "name": "x",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "probs",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "type",
+          "type": "number",
+          "occurs": "?",
+          "default": 7
+        },
+        {
+          "name": "na_rm",
+          "type": "boolean",
+          "occurs": "?",
+          "default": false
+        }
+      ]
+    },
+    {
+      "name": "num_fft",
+      "access": "read",
+      "returns": "object",
+      "description": "R discrete Fourier transform",
+      "params": [
+        {
+          "name": "x",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "inverse",
+          "type": "boolean",
+          "occurs": "?",
+          "default": false
         }
       ]
     },

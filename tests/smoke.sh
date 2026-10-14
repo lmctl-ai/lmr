@@ -12,7 +12,7 @@ trap cleanup EXIT
 python3 - "$tmp/schema" <<'PY'
 import json,sys
 s=json.load(open(sys.argv[1])); ops={o['name']:o for o in s['operations']}
-assert set(ops)=={'r_info','dist_quantile','rng_draw','fit_lm'}
+assert set(ops)=={'r_info','dist_quantile','dist_density','dist_probability','rng_draw','rng_sample','math_special','summary_quantile','num_fft','fit_lm'}
 assert all(o['access']=='read' for o in ops.values())
 p={x['name']:x for x in ops['dist_quantile']['params']}
 assert p['p']['type']=='array' and p['p']['items']=='number' and 'log_p' in p
@@ -141,6 +141,8 @@ grep -q 'INPUT_TOO_LARGE' "$tmp/csv-rows-error"
 "$bin" dist_quantile --dist pois --lambda 3 --p 0.75 > "$tmp/pois"
 Rscript --vanilla --default-packages=NULL "$root/tests/dist-oracle.R" "$tmp/dist-expected"
 python3 "$root/tests/compare-dist.py" "$tmp/dist-expected" "$tmp/t" "$tmp/chisq" "$tmp/gamma" "$tmp/beta" "$tmp/binom" "$tmp/pois"
+mkdir "$tmp/stage1a-oracle"
+python3 "$root/tests/stage1a.py" "$bin" "$tmp/stage1a-oracle"
 "$bin" dist_quantile --dist norm --log-p --p -0.025317807984289897 > "$tmp/log-p"
 python3 -c 'import json,sys,math; assert abs(json.load(open(sys.argv[1]))["value"][0]-1.9599639845400536)<1e-14' "$tmp/log-p"
 python3 - "$bin" "$tmp" <<'PYTIME'

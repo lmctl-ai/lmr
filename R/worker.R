@@ -10,6 +10,7 @@ parse_json <- function(s) {
  value()
 }
 numeric_input <- function(x) { if(is.null(x)) return(NA_real_); if(is.character(x)&&length(x)==1L) { if(x=='NA') return(NA_real_); return(as.numeric(x)) }; as.numeric(x) }
+numeric_file <- function(path) scan(path,what=double(),quiet=TRUE,na.strings='NA')
 args <- commandArgs(TRUE); if(length(args)&&args[[1]]=='--') args<-args[-1]; op <- args[[1]]; req <- parse_json(paste(readLines(args[[2]],warn=FALSE),collapse='')); outpath <- args[[3]]
 warnings <- character()
 encode <- function(x) {
@@ -55,10 +56,32 @@ result <- withCallingHandlers(tryCatch({
   if(req$dist=='binom') {args2$size<-numeric_input(req$size);args2$prob<-numeric_input(req$prob)}
   if(req$dist=='pois') args2$lambda<-numeric_input(req$lambda)
   list(value=array_encode(do.call(fn,args2)),meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind()))
+ } else if(op%in%c('dist_density','dist_probability')) {
+  density<-op=='dist_density';family<-req$dist
+  fn<-switch(family,norm=if(density)dnorm else pnorm,t=if(density)dt else pt,chisq=if(density)dchisq else pchisq,gamma=if(density)dgamma else pgamma,beta=if(density)dbeta else pbeta,binom=if(density)dbinom else pbinom,pois=if(density)dpois else ppois)
+  arg<-list(if(density)numeric_file(req$x_file) else numeric_file(req$q_file));names(arg)<-if(density)'x' else 'q'
+  if(family=='norm'){arg$mean<-numeric_input(req$mean);arg$sd<-numeric_input(req$sd)}
+  if(family%in%c('t','chisq'))arg$df<-numeric_input(req$df)
+  if(family=='gamma'){arg$shape<-numeric_input(req$shape);if(!is.null(req$rate))arg$rate<-numeric_input(req$rate)}
+  if(family=='beta'){arg$shape1<-numeric_input(req$a);arg$shape2<-numeric_input(req$b)}
+  if(family=='binom'){arg$size<-numeric_input(req$size);arg$prob<-numeric_input(req$prob)}
+  if(family=='pois')arg$lambda<-numeric_input(req$lambda)
+  if(density)arg$log<-isTRUE(req$log) else {arg$lower.tail<-isTRUE(req$lower_tail);arg$log.p<-isTRUE(req$log_p)}
+  list(value=array_encode(do.call(fn,arg)),meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind()))
  } else if(op=='rng_draw') {
   RNGkind('Mersenne-Twister','Inversion','Rejection'); set.seed(req$seed)
-  n<-req$n; value<-switch(req$dist,norm=rnorm(n,if('mean'%in%names(req))numeric_input(req$mean) else 0,if('sd'%in%names(req))numeric_input(req$sd) else 1),unif=runif(n,if('min'%in%names(req))numeric_input(req$min) else 0,if('max'%in%names(req))numeric_input(req$max) else 1))
+  n<-req$n; value<-switch(req$dist,norm=rnorm(n,numeric_input(req$mean),numeric_input(req$sd)),unif=runif(n,numeric_input(req$min),numeric_input(req$max)),exp=rexp(n,numeric_input(req$rate)),gamma=rgamma(n,numeric_input(req$shape),rate=numeric_input(req$rate)),beta=rbeta(n,numeric_input(req$a),numeric_input(req$b)),binom=rbinom(n,numeric_input(req$size),numeric_input(req$prob)),pois=rpois(n,numeric_input(req$lambda)),t=rt(n,numeric_input(req$df)),chisq=rchisq(n,numeric_input(req$df)))
   list(value=array_encode(value),meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind(),seed=req$seed))
+ } else if(op=='rng_sample') {
+  RNGkind('Mersenne-Twister','Inversion','Rejection');set.seed(req$seed);x<-numeric_file(req$x_file);w<-if(is.null(req$prob_file))NULL else numeric_file(req$prob_file);list(value=array_encode(sample(x,size=req$size,replace=isTRUE(req$replace),prob=w)),meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind(),seed=req$seed))
+ } else if(op=='math_special') {
+  x<-numeric_file(req$x_file);fn<-switch(req$fn,gamma=gamma,lgamma=lgamma,beta=beta,lbeta=lbeta,digamma=digamma,trigamma=trigamma,choose=choose,lchoose=lchoose,besselJ=besselJ,besselI=besselI,besselK=besselK,besselY=besselY)
+  value<-if(req$fn%in%c('beta','lbeta','choose','lchoose'))do.call(fn,list(x,numeric_file(req$y_file))) else if(grepl('^bessel',req$fn))do.call(fn,list(x,numeric_input(req$nu))) else fn(x)
+  list(value=array_encode(value),meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind()))
+ } else if(op=='summary_quantile') {
+  v<-quantile(numeric_file(req$x_file),probs=numeric_file(req$probs_file),na.rm=isTRUE(req$na_rm),names=FALSE,type=req$type);list(value=array_encode(as.numeric(v)),meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind(),type=req$type))
+ } else if(op=='num_fft') {
+  x<-numeric_file(req$x_file);z<-fft(x,inverse=isTRUE(req$inverse));if(isTRUE(req$inverse))z<-z/length(x);list(re=array_encode(Re(z)),im=array_encode(Im(z)),meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind(),inverse=isTRUE(req$inverse)))
  } else if(op=='fit_lm') {
   if(!is.null(req$file)) d<-read.csv(req$file,check.names=FALSE) else if(!is.null(req$data_files)) d<-as.data.frame(lapply(req$data_files,function(path) scan(path,what=double(),quiet=TRUE,na.strings='NA')),check.names=FALSE) else d<-as.data.frame(lapply(req$data,function(col) vapply(col,numeric_input,numeric(1))),check.names=FALSE)
   pieces<-strsplit(req$formula,'~',fixed=TRUE)[[1L]];if(length(pieces)!=2L) stop('bad formula');lhs<-trimws(pieces[1L]);rhs<-trimws(pieces[2L]);if(!lhs%in%names(d))stop('response must be a data column');tokens<-unlist(strsplit(gsub('[+-]',' ',rhs), '[[:space:]]+'));tokens<-tokens[nzchar(tokens)&!tokens%in%c('0','1')];if(any(!tokens%in%names(d))||'.'%in%tokens)stop('formula terms must be data columns');f<-as.formula(req$formula,env=baseenv());environment(f)<-baseenv();nafun<-if(identical(req$na_action,'exclude')) na.exclude else na.omit;fit<-lm(f,data=d,na.action=nafun);sm<-summary(fit);cf<-coef(fit);tab<-sm$coefficients;nm<-names(cf);col<-function(j){out<-rep(NA_real_,length(cf));names(out)<-nm;common<-intersect(nm,rownames(tab));out[common]<-tab[common,j];out};
