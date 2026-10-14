@@ -1,7 +1,13 @@
+## Unreleased
+
+- Added base R ARIMA fitting and forecasting, seeded ARMA simulation, ACF/PACF, STL decomposition, Hartigan-Wong k-means, and hierarchical clustering.
+- Added the `fit-and-forecast.lms` seeded simulation-to-forecast recipe.
+
 # Changelog
 
 ## Unreleased
 
 - Add vectorized density/CDF operations, expanded seeded draws and sampling, special math functions, quantile types 1–9, and FFT/inverse FFT.
 - Add the enum-based `test_htest` operation for common base R tests, with shared typed results and pre-R validation.
+- Add GLM fitting with convergence status and base R spline/loess smoothers plus interpolation methods.
 - Stream large quantile probabilities and inline model columns through temporary numeric files, load them with vectorized `scan()`, and encode numeric result arrays in one vectorized pass. The 200,000-probability smoke test enforces a five-second ceiling.

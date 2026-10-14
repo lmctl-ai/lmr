@@ -704,6 +704,482 @@
       ]
     },
     {
+      "name": "fit_glm",
+      "access": "read",
+      "returns": "object",
+      "description": "Fit a base R generalized linear model",
+      "params": [
+        {
+          "name": "response",
+          "type": "string",
+          "occurs": "1"
+        },
+        {
+          "name": "predictors",
+          "type": "array",
+          "occurs": "1",
+          "items": "string"
+        },
+        {
+          "name": "data",
+          "type": "object",
+          "occurs": "1"
+        },
+        {
+          "name": "family",
+          "type": "string",
+          "occurs": "1",
+          "enum": [
+            "gaussian",
+            "binomial",
+            "poisson",
+            "Gamma"
+          ]
+        },
+        {
+          "name": "link",
+          "type": "string",
+          "occurs": "?",
+          "default": "default",
+          "enum": [
+            "default",
+            "identity",
+            "log",
+            "inverse",
+            "logit",
+            "probit",
+            "cloglog",
+            "cauchit",
+            "sqrt"
+          ]
+        },
+        {
+          "name": "maxit",
+          "type": "number",
+          "occurs": "?",
+          "default": 50
+        }
+      ]
+    },
+    {
+      "name": "smooth_spline",
+      "access": "read",
+      "returns": "object",
+      "description": "Fit and predict an R smoothing spline",
+      "params": [
+        {
+          "name": "x",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "y",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "new_x",
+          "type": "array",
+          "occurs": "?",
+          "items": "number"
+        },
+        {
+          "name": "df",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "spar",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "cv",
+          "type": "boolean",
+          "occurs": "?",
+          "default": false
+        }
+      ]
+    },
+    {
+      "name": "smooth_loess",
+      "access": "read",
+      "returns": "object",
+      "description": "Fit and predict an R loess smoother",
+      "params": [
+        {
+          "name": "x",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "y",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "new_x",
+          "type": "array",
+          "occurs": "?",
+          "items": "number"
+        },
+        {
+          "name": "span",
+          "type": "number",
+          "occurs": "?",
+          "default": 0.75
+        },
+        {
+          "name": "degree",
+          "type": "number",
+          "occurs": "?",
+          "default": 2
+        },
+        {
+          "name": "family",
+          "type": "string",
+          "occurs": "?",
+          "default": "gaussian",
+          "enum": [
+            "gaussian",
+            "symmetric"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "interp_spline",
+      "access": "read",
+      "returns": "object",
+      "description": "Evaluate a cubic R spline interpolant",
+      "params": [
+        {
+          "name": "x",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "y",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "xout",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "method",
+          "type": "string",
+          "occurs": "?",
+          "default": "fmm",
+          "enum": [
+            "fmm",
+            "natural",
+            "periodic",
+            "monoH.FC"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "interp_approx",
+      "access": "read",
+      "returns": "object",
+      "description": "Evaluate an R piecewise approximation",
+      "params": [
+        {
+          "name": "x",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "y",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "xout",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "method",
+          "type": "string",
+          "occurs": "?",
+          "default": "linear",
+          "enum": [
+            "linear",
+            "constant"
+          ]
+        },
+        {
+          "name": "rule",
+          "type": "number",
+          "occurs": "?",
+          "default": 1
+        }
+      ]
+    },
+    {
+      "name": "ts_arima",
+      "access": "read",
+      "returns": "object",
+      "description": "Fit a base R ARIMA model and optionally forecast",
+      "params": [
+        {
+          "name": "x",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "order",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "seasonal_order",
+          "type": "array",
+          "occurs": "?",
+          "items": "number"
+        },
+        {
+          "name": "period",
+          "type": "number",
+          "occurs": "?"
+        },
+        {
+          "name": "method",
+          "type": "string",
+          "occurs": "?",
+          "default": "ML",
+          "enum": [
+            "ML",
+            "CSS-ML",
+            "CSS"
+          ]
+        },
+        {
+          "name": "residuals",
+          "type": "boolean",
+          "occurs": "?",
+          "default": false
+        },
+        {
+          "name": "n_ahead",
+          "type": "number",
+          "occurs": "?",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "name": "rng_arima_sim",
+      "access": "read",
+      "returns": "object",
+      "description": "Generate seeded data with stats::arima.sim",
+      "params": [
+        {
+          "name": "n",
+          "type": "number",
+          "occurs": "1"
+        },
+        {
+          "name": "seed",
+          "type": "number",
+          "occurs": "1"
+        },
+        {
+          "name": "order",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "ar",
+          "type": "array",
+          "occurs": "?",
+          "items": "number"
+        },
+        {
+          "name": "ma",
+          "type": "array",
+          "occurs": "?",
+          "items": "number"
+        },
+        {
+          "name": "sd",
+          "type": "number",
+          "occurs": "?",
+          "default": 1.0
+        }
+      ]
+    },
+    {
+      "name": "ts_acf",
+      "access": "read",
+      "returns": "object",
+      "description": "Autocorrelation",
+      "params": [
+        {
+          "name": "x",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "lag_max",
+          "type": "number",
+          "occurs": "?"
+        }
+      ]
+    },
+    {
+      "name": "ts_pacf",
+      "access": "read",
+      "returns": "object",
+      "description": "Partial autocorrelation",
+      "params": [
+        {
+          "name": "x",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "lag_max",
+          "type": "number",
+          "occurs": "?"
+        }
+      ]
+    },
+    {
+      "name": "ts_stl",
+      "access": "read",
+      "returns": "object",
+      "description": "Decompose a time series with base R STL",
+      "params": [
+        {
+          "name": "x",
+          "type": "array",
+          "occurs": "1",
+          "items": "number"
+        },
+        {
+          "name": "period",
+          "type": "number",
+          "occurs": "1"
+        },
+        {
+          "name": "seasonal_window",
+          "type": "number",
+          "occurs": "?",
+          "default": 7
+        },
+        {
+          "name": "periodic",
+          "type": "boolean",
+          "occurs": "?",
+          "default": false
+        },
+        {
+          "name": "robust",
+          "type": "boolean",
+          "occurs": "?",
+          "default": false
+        }
+      ]
+    },
+    {
+      "name": "cluster_kmeans",
+      "access": "read",
+      "returns": "object",
+      "description": "Hartigan-Wong k-means clustering",
+      "params": [
+        {
+          "name": "data",
+          "type": "object",
+          "occurs": "1"
+        },
+        {
+          "name": "k",
+          "type": "number",
+          "occurs": "1"
+        },
+        {
+          "name": "seed",
+          "type": "number",
+          "occurs": "1"
+        },
+        {
+          "name": "nstart",
+          "type": "number",
+          "occurs": "?",
+          "default": 1
+        }
+      ]
+    },
+    {
+      "name": "cluster_hclust",
+      "access": "read",
+      "returns": "object",
+      "description": "Hierarchical clustering",
+      "params": [
+        {
+          "name": "data",
+          "type": "object",
+          "occurs": "1"
+        },
+        {
+          "name": "method",
+          "type": "string",
+          "occurs": "?",
+          "default": "complete",
+          "enum": [
+            "ward.D",
+            "ward.D2",
+            "single",
+            "complete",
+            "average",
+            "mcquitty",
+            "median",
+            "centroid"
+          ]
+        },
+        {
+          "name": "dist_method",
+          "type": "string",
+          "occurs": "?",
+          "default": "euclidean",
+          "enum": [
+            "euclidean",
+            "maximum",
+            "manhattan",
+            "canberra",
+            "binary",
+            "minkowski"
+          ]
+        },
+        {
+          "name": "cut_k",
+          "type": "number",
+          "occurs": "?"
+        }
+      ]
+    },
+    {
       "name": "fit_lm",
       "access": "read",
       "returns": "object",

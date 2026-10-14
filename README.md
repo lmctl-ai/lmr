@@ -16,6 +16,15 @@ R is licensed under GPL. This project invokes the unmodified R program as a sepa
 - `summary_quantile`: R's nine sample-quantile definitions for supplied probabilities.
 - `num_fft`: real-valued FFT input with separate real and imaginary arrays; inverse mode returns the normalized inverse transform.
 - `test_htest`: `t`, `wilcox`, `chisq`, `shapiro`, `ks`, `fisher`, `binom`, `prop`, `cor`, and `var` tests. It uses one enum operation because R's `htest` objects share the statistic/parameter/p-value/interval/estimate/method result shape; test-specific parameters are validated in C++ before R starts.
+- `fit_glm`: base R Gaussian, binomial, Poisson, and Gamma GLMs with supported standard links, coefficients, inference arrays, deviance, AIC, iteration count, and a convergence domain status. Input is inline numeric columns and named predictors.
+- `smooth_spline` and `smooth_loess`: base R smoothers with fitted values and optional predictions at `new_x`.
+- `interp_spline` and `interp_approx`: R spline and piecewise approximation methods evaluated at `xout`.
+- `ts_arima`: base R ARIMA estimation with optional seasonal order, coefficient inference, fit diagnostics, optional residuals, and forecasts.
+- `rng_arima_sim`: seeded `arima.sim` for ARMA models (d must be zero; AR/MA coefficient counts match p/q).
+- `ts_acf` and `ts_pacf`: vectorized autocorrelation and partial autocorrelation summaries.
+- `ts_stl`: STL seasonal/trend/remainder decomposition.
+- `cluster_kmeans`: seeded Hartigan-Wong k-means with centers, memberships, within-cluster sums, and sizes.
+- `cluster_hclust`: distance plus hierarchical clustering with merge, height, order, and optional `cutree` assignments. Hclust is capped at 5,000 rows due to quadratic memory use.
 - `fit_lm`: formulas using named data columns, plus intercept-only `y ~ 1` and intercept removal with `-1` or `+0`, with inline JSON columns or a cwd-confined CSV path. Dot formulas and expressions are rejected. CSV inputs are capped at 16 MiB and 200,000 rows.
 
 Vector inputs are capped at 200,000 items. Density, probability, quantile, special-function, summary, and FFT results preserve R's double values; scalars remain scalars and vector results remain arrays. `rng_sample` samples from explicit `x` values (it does not use R's special scalar-`n` shorthand). All these operations accept numeric vectors and never evaluate caller-supplied expressions.
@@ -48,4 +57,4 @@ Build and test in the dev image with `cmake --build build --parallel 2 && ctest 
 
 Alternate RNG kinds and normal-generation kinds are not configurable; calls use the explicit defaults listed above. The `examples/oracle-lm.lms` recipe is self-contained because no prebuilt lmda binary was available and its release build was intentionally not started. It checks the rcli fit against the known R result.
 
-Stage 1a delivers the seven-family distribution functions, the expanded seeded RNG catalogue, sampling, math-special functions, sample quantiles, and FFT. It leaves the design's larger distribution family list for later. The fixed worker uses a small in-repo JSON codec, so host R does not need `jsonlite` installed. The dev image is based on Debian bookworm because that is the available `lmcpp-dev` image; its R is 4.2.2 rather than the host's 4.3.3, and every result records that version.
+Stage 1a delivers the seven-family distribution functions, expanded seeded RNG catalogue, sampling, math-special functions, sample quantiles, FFT, common hypothesis tests, GLM, smoothing/interpolation, ARIMA/time-series summaries, STL, and clustering. It leaves the design's larger distribution family list for later. The fixed worker uses a small in-repo JSON codec, so host R does not need `jsonlite` installed. The dev image is based on Debian bookworm because that is the available `lmcpp-dev` image; its R is 4.2.2 rather than the host's 4.3.3, and every result records that version.

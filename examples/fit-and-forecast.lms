@@ -1,0 +1,13 @@
+// access: read
+// What it does: Simulates a seeded AR(1), fits it with R ARIMA, and prints forecasts.
+// How to run: Put the absolute rcli build/bin directory on PATH, then run lmscript examples/fit-and-forecast.lms.
+sim_call = system(["rcli", "--input-json", json_stringify({op: "rng_arima_sim", params: {n: 80, seed: 42, order: [1, 0, 0], ar: [0.65]}})]);
+if (sim_call.code != 0) { println("ARIMA simulation failed:", sim_call.stderr); exit(1); }
+sim = json_parse(sim_call.stdout);
+if (sim.success == false) { println("ARIMA simulation failed:", sim.error.message); exit(1); }
+fit_call = system(["rcli", "--input-json", json_stringify({op: "ts_arima", params: {x: sim.value, order: [1, 0, 0], n_ahead: 5}})]);
+if (fit_call.code != 0) { println("ARIMA fit failed:", fit_call.stderr); exit(1); }
+fit = json_parse(fit_call.stdout);
+if (fit.success == false) { println("ARIMA fit failed:", fit.error.message); exit(1); }
+println("AR(1) coefficient:", sprintf("%.6f", fit.estimate[0]));
+println("Five forecasts:", json_stringify(fit.forecast));
