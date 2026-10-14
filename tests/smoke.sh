@@ -143,12 +143,13 @@ Rscript --vanilla --default-packages=NULL "$root/tests/dist-oracle.R" "$tmp/dist
 python3 "$root/tests/compare-dist.py" "$tmp/dist-expected" "$tmp/t" "$tmp/chisq" "$tmp/gamma" "$tmp/beta" "$tmp/binom" "$tmp/pois"
 "$bin" dist_quantile --dist norm --log-p --p -0.025317807984289897 > "$tmp/log-p"
 python3 -c 'import json,sys,math; assert abs(json.load(open(sys.argv[1]))["value"][0]-1.9599639845400536)<1e-14' "$tmp/log-p"
-python3 - "$tmp/large.json" <<'PY'
-import json,sys
-with open(sys.argv[1],"w") as f: json.dump({"op":"dist_quantile","params":{"dist":"norm","p":[0.5]*200000}},f,separators=(",",":"))
-PY
-python3 - "$bin" "$tmp/large.json" "$tmp/large.out" <<'PYTIME'
-import subprocess,sys,time
-t=time.perf_counter(); subprocess.run([sys.argv[1], '--input-file',sys.argv[2]],stdout=open(sys.argv[3],'w'),check=True); print(f'rcli 200000 values elapsed={time.perf_counter()-t:.2f} sec')
+python3 - "$bin" "$tmp" <<'PYTIME'
+import json,subprocess,sys,time
+for n in (20000,200000):
+ request=f'{sys.argv[2]}/large-{n}.json'; output=f'{sys.argv[2]}/large-{n}.out'
+ with open(request,'w') as f: json.dump({'op':'dist_quantile','params':{'dist':'norm','p':[0.5]*n}},f,separators=(',',':'))
+ t=time.perf_counter(); subprocess.run([sys.argv[1],'--input-file',request],stdout=open(output,'w'),check=True); elapsed=time.perf_counter()-t
+ data=json.load(open(output)); assert len(data['value'])==n and all(v==0 for v in data['value'])
+ print(f'rcli {n} values elapsed={elapsed:.3f} sec')
+ if n==200000: assert elapsed<5.0, f'200000-value regression exceeded 5 seconds: {elapsed:.3f}'
 PYTIME
-python3 -c 'import json,sys; assert len(json.load(open(sys.argv[1]))["value"])==200000' "$tmp/large.out"

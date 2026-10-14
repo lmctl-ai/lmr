@@ -17,16 +17,26 @@ encode <- function(x) {
  if (is.list(x)) return(lapply(x, encode))
  x
 }
-array_encode <- function(x) lapply(seq_along(x),function(i) encode(as.double(x[[i]])))
+array_encode <- function(x) structure(as.double(x),class='rcli_array')
+json_array <- function(x) {
+ if(is.numeric(x)) {
+  if(!length(x)) return('[]')
+  parts<-sprintf('%.17g',x); nan<-is.nan(x); na<-is.na(x)&!nan; inf<-is.infinite(x)
+  parts[nan]<-'"NaN"';parts[na]<-'"NA"';parts[inf&x>0]<-'"Inf"';parts[inf&x<0]<-'"-Inf"'
+  return(paste0('[',paste(parts,collapse=','),']'))
+ }
+ paste0('[',paste(vapply(as.list(x),json,''),collapse=','),']')
+}
 json <- function(x) {
  if(is.null(x)) return('null')
+ if(inherits(x,'rcli_array')) return(json_array(unclass(x)))
  if(is.list(x)) {
   n<-names(x)
   if(!is.null(n) && all(n!='')) return(paste0('{',paste(vapply(seq_along(x),function(i) paste0(json(n[[i]]),':',json(x[[i]])),''),collapse=','),'}'))
   return(paste0('[',paste(vapply(x,json,''),collapse=','),']'))
  }
  if(length(x)==0) return('[]')
- if(length(x)>1) return(paste0('[',paste(vapply(as.list(x),json,''),collapse=','),']'))
+ if(length(x)>1) return(json_array(x))
  if(is.character(x)) { s<-gsub('\\\\','\\\\\\\\',x);s<-gsub('"','\\\\"',s,fixed=TRUE);s<-gsub('\n','\\\\n',s,fixed=TRUE);s<-gsub('\r','\\\\r',s,fixed=TRUE);s<-gsub('\t','\\\\t',s,fixed=TRUE);return(paste0('"',s,'"')) }
  if(is.logical(x)) return(if(is.na(x)) 'null' else if(x) 'true' else 'false')
  if(is.numeric(x)) { if(is.nan(x)) return('"NaN"'); if(is.na(x)) return('"NA"'); if(is.infinite(x)) return(if(x>0) '"Inf"' else '"-Inf"'); return(sprintf('%.17g',x)) }
@@ -37,7 +47,7 @@ result <- withCallingHandlers(tryCatch({
  else if(op=='dist_quantile') {
   fn <- switch(req$dist,norm=qnorm,t=qt,chisq=qchisq,gamma=qgamma,beta=qbeta,binom=qbinom,pois=qpois)
   if(is.null(fn)) stop('unknown distribution')
-  p <- vapply(req$p,numeric_input,numeric(1)); args2 <- list(p=p,lower.tail=if(is.null(req$lower_tail)) TRUE else req$lower_tail,log.p=if(is.null(req$log_p)) FALSE else req$log_p)
+  p <- if(!is.null(req$p_file)) scan(req$p_file,what=double(),quiet=TRUE,na.strings='NA') else vapply(req$p,numeric_input,numeric(1)); args2 <- list(p=p,lower.tail=if(is.null(req$lower_tail)) TRUE else req$lower_tail,log.p=if(is.null(req$log_p)) FALSE else req$log_p)
   if(req$dist=='norm') {args2$mean<-if('mean'%in%names(req)) numeric_input(req$mean) else 0;args2$sd<-if('sd'%in%names(req)) numeric_input(req$sd) else 1}
   if(req$dist%in%c('t','chisq')) args2$df<-numeric_input(req$df)
   if(req$dist=='gamma') {args2$shape<-numeric_input(req$shape);if('rate'%in%names(req))args2$rate<-numeric_input(req$rate)}
@@ -50,7 +60,7 @@ result <- withCallingHandlers(tryCatch({
   n<-req$n; value<-switch(req$dist,norm=rnorm(n,if('mean'%in%names(req))numeric_input(req$mean) else 0,if('sd'%in%names(req))numeric_input(req$sd) else 1),unif=runif(n,if('min'%in%names(req))numeric_input(req$min) else 0,if('max'%in%names(req))numeric_input(req$max) else 1))
   list(value=array_encode(value),meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind(),seed=req$seed))
  } else if(op=='fit_lm') {
-  if(!is.null(req$file)) d<-read.csv(req$file,check.names=FALSE) else d<-as.data.frame(lapply(req$data,function(col) vapply(col,numeric_input,numeric(1))),check.names=FALSE)
+  if(!is.null(req$file)) d<-read.csv(req$file,check.names=FALSE) else if(!is.null(req$data_files)) d<-as.data.frame(lapply(req$data_files,function(path) scan(path,what=double(),quiet=TRUE,na.strings='NA')),check.names=FALSE) else d<-as.data.frame(lapply(req$data,function(col) vapply(col,numeric_input,numeric(1))),check.names=FALSE)
   pieces<-strsplit(req$formula,'~',fixed=TRUE)[[1L]];if(length(pieces)!=2L) stop('bad formula');lhs<-trimws(pieces[1L]);rhs<-trimws(pieces[2L]);if(!lhs%in%names(d))stop('response must be a data column');tokens<-unlist(strsplit(gsub('[+-]',' ',rhs), '[[:space:]]+'));tokens<-tokens[nzchar(tokens)&!tokens%in%c('0','1')];if(any(!tokens%in%names(d))||'.'%in%tokens)stop('formula terms must be data columns');f<-as.formula(req$formula,env=baseenv());environment(f)<-baseenv();nafun<-if(identical(req$na_action,'exclude')) na.exclude else na.omit;fit<-lm(f,data=d,na.action=nafun);sm<-summary(fit);cf<-coef(fit);tab<-sm$coefficients;nm<-names(cf);col<-function(j){out<-rep(NA_real_,length(cf));names(out)<-nm;common<-intersect(nm,rownames(tab));out[common]<-tab[common,j];out};
   list(coefficients=as.list(nm),estimate=array_encode(cf),std_error=array_encode(col(2)),statistic=array_encode(col(3)),p_value=array_encode(col(4)),aliased=as.list(unname(nm[is.na(cf)])),rank=fit$rank,sigma=encode(sm$sigma),r_squared=encode(sm$r.squared),df=encode(sm$df[2]),residuals=if(isTRUE(req$residuals)) array_encode(residuals(fit)) else NULL,meta=list(r_version=as.character(getRversion()),rng_kind=RNGkind()))
  } else stop('unknown operation')

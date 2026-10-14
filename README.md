@@ -1,6 +1,6 @@
 # rcli
 
-`rcli` is an lmcpp native tool that runs a fixed catalogue of R computations in a fresh `Rscript --vanilla` child process per call. C++ validates the published schema and policy; the worker accepts data only and dispatches through fixed operations. The worker is embedded in the binary and materialized in a private temporary file for each call. It never evaluates caller-supplied R code.
+`rcli` is an lmcpp native tool that runs a fixed catalogue of R computations in a fresh `Rscript --vanilla` child process per call. C++ validates the published schema and policy; the worker accepts data only and dispatches through fixed operations. The worker is embedded in the binary and materialized in a private temporary file for each call. Large numeric inputs travel through private one-number-per-line files and are loaded with R's vectorized `scan()`; small options and strings use the in-repo JSON codec. It never evaluates caller-supplied R code.
 
 R is licensed under GPL. This project invokes the unmodified R program as a separate process and exchanges JSON through temporary files; it does not link `libR` or `libRmath`. See [CONTRIBUTING.md](CONTRIBUTING.md) for the dependency boundary.
 

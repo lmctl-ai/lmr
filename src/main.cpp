@@ -9,12 +9,14 @@
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
+#include <iomanip>
 using namespace lmcpp; namespace fs=std::filesystem;
 static bool special_value(const Json&v){return v.is_null()||(v.is_string()&&(v=="NA"||v=="NaN"||v=="Inf"||v=="-Inf"));}
 static std::string temp(){const char* d=getenv("TMPDIR");std::string p=(d&&*d?d:"/tmp");if(p.back()!='/')p+='/';p+="rcli-XXXXXX";std::vector<char>b(p.begin(),p.end());b.push_back(0);int fd=mkstemp(b.data());if(fd<0)throw std::runtime_error("cannot create temp file");close(fd);return b.data();}
 struct TempGuard{std::vector<std::string> paths;~TempGuard(){for(const auto&p:paths)unlink(p.c_str());}std::string add(){paths.push_back(temp());return paths.back();}};
+static void write_numeric_file(const Json& values,const std::string& path){std::ofstream f(path);if(!f)throw std::runtime_error("cannot write numeric input");for(const auto&v:values){if(v.is_null())f<<"NA\n";else if(v.is_string())f<<v.get<std::string>()<<'\n';else f<<std::setprecision(17)<<v.get<double>()<<'\n';}if(!f)throw std::runtime_error("cannot write numeric input");}
 static Json call(const std::string& op,const Params& p){
- TempGuard files;std::string req=files.add(),out=files.add(),worker=files.add();{std::ofstream f(req);f<<p.dump();if(!f)throw std::runtime_error("cannot write request");}{std::ofstream f(worker);f<<RCLI_WORKER_SOURCE;if(!f)throw std::runtime_error("cannot write worker");}
+ TempGuard files;Json request=p; if(op=="dist_quantile"&&request.contains("p")){auto path=files.add();write_numeric_file(request["p"],path);request.erase("p");request["p_file"]=path;}if(op=="fit_lm"&&request.contains("data")){Json paths=Json::object();for(auto it=request["data"].begin();it!=request["data"].end();++it){auto path=files.add();write_numeric_file(it.value(),path);paths[it.key()]=path;}request.erase("data");request["data_files"]=paths;}std::string req=files.add(),out=files.add(),worker=files.add();{std::ofstream f(req);f<<request.dump();if(!f)throw std::runtime_error("cannot write request");}{std::ofstream f(worker);f<<RCLI_WORKER_SOURCE;if(!f)throw std::runtime_error("cannot write worker");}
  const char* configured=getenv("RCLI_RSCRIPT");std::string exe=configured?configured:"/usr/bin/Rscript";
  int timeout_s=50;if(const char*t=getenv("RCLI_TIMEOUT_S")){try{timeout_s=std::max(1,std::min(50,std::stoi(t)));}catch(...){}}
  ChildResult c=run_child({exe,"--vanilla","--default-packages=NULL",worker,"--",op,req,out},{{"PATH","/usr/bin:/bin"},{"HOME","/tmp"},{"LC_ALL","C.UTF-8"},{"LANG","C.UTF-8"},{"R_LIBS_USER",""},{"R_PROFILE_USER","/dev/null"},{"R_ENVIRON_USER","/dev/null"},{"OMP_NUM_THREADS","1"}},std::chrono::seconds(timeout_s),1024*1024);
