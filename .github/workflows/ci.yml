@@ -50,19 +50,45 @@ jobs:
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLMCPP_BUILD_TESTS=OFF -DLMCPP_STATIC_STDLIB=ON -DCMAKE_INSTALL_PREFIX="$RUNNER_TEMP/lmcpp"
           cmake --build build --parallel 2
           cmake --install build
-      - name: Build, test and lint rcli
+      # Every gate after the build runs even when an earlier gate failed (if: !cancelled() plus the outcome of the step it needs), so
+      # one run shows all results per architecture; a failed step still fails the job.
+      - name: Build rcli
+        id: build
         working-directory: rcli
         run: |
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/lmcpp" -DBUILD_TESTING=ON
           cmake --build build --parallel 2
-          ctest --test-dir build --output-on-failure
-          scripts/check-no-libR.sh build/bin/rcli
-          build/bin/rcli --schema > cli.schema.dev.json
+      - name: CTest (R oracles, expression conformance, no-libR, shim contract)
+        id: ctest
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: rcli
+        run: ctest --test-dir build --output-on-failure
+      - name: No libR / libRmath linkage
+        id: nolibr
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: rcli
+        run: scripts/check-no-libR.sh build/bin/rcli
+      - name: Schema gate (binary against the checked-in schema)
+        id: schema
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        working-directory: rcli
+        run: |
+          build/bin/rcli --schema > published.json
+          python3 -c 'import json,sys; a=json.load(open("published.json")); b=json.load(open("cli.schema.dev.json")); sys.exit(0 if a==b else "cli.schema.dev.json is stale: regenerate with build/bin/rcli --schema")'
       - name: Set up Bun
+        if: ${{ !cancelled() }}
         uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76
         with:
           bun-version: 1.4.2
       - name: Parse generated schema with lmts
+        id: lmts
+        if: ${{ !cancelled() }}
         working-directory: lmts
         run: |
           bun -e 'import { readFileSync } from "node:fs"; import { parsePublishedSchema } from "./src/publish.ts"; const result = parsePublishedSchema(JSON.parse(readFileSync("../rcli/cli.schema.dev.json", "utf8"))); if (!result.ok) { console.error(result); process.exit(1); } console.log("lmts parsed rcli schema");'
+      - name: Gate summary
+        if: ${{ !cancelled() }}
+        run: |
+          { echo "## Gates (${{ matrix.runner }})"; echo "| gate | outcome |"; echo "|---|---|";
+            echo "| build | ${{ steps.build.outcome }} |"; echo "| CTest | ${{ steps.ctest.outcome }} |"; echo "| no libR | ${{ steps.nolibr.outcome }} |";
+            echo "| schema | ${{ steps.schema.outcome }} |"; echo "| lmts parse | ${{ steps.lmts.outcome }} |"; } | tee -a "$GITHUB_STEP_SUMMARY"
