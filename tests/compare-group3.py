@@ -29,8 +29,22 @@ def call(op,params,expected):
             got=result[key]
             if not isinstance(got,list): got=[float(got)]
             else: got=[float(x) for x in got]
-            assert got==want,(op,key,got,want)
+            if key in TOLERANT:
+                rel=TOLERANT[key]
+                assert len(got)==len(want) and all(abs(g-w)<=rel*abs(w)+1e-9 for g,w in zip(got,want)),(op,key,got,want,rel)
+            else:
+                assert got==want,(op,key,got,want)
     return result
+
+# Every value is produced by the same R 4.3.3 code path in the worker and in the oracle and is therefore bit-identical on any platform,
+# with one exception. The worker always passes weights (1) and an offset (0) to glm(); R then recomputes null.deviance by an
+# intercept-only IRLS fit (glm(): "if (length(offset) && intercept) fit2 <- method(x = X[, "(Intercept)"], ..., offset = offset)")
+# instead of the closed form sum(dev.resids(y, weighted mean, weights)) the oracle gets. The two differ by rounding of two different
+# evaluation orders (1 ulp on amd64 in CI run 38840663416, 0 on aarch64) and, in principle, by the IRLS stopping rule
+# |dev - devold| / (|dev| + 0.1) < epsilon = 1e-8 (glm.control): hence a relative tolerance of 1e-8 (plus 1e-9 absolute for the
+# "+ 0.1"). A wrong null deviance (wrong family, dropped weights, deviance instead of null deviance) differs by orders of magnitude
+# more and still fails (scratch mutation: deviance reported as null deviance -> AssertionError).
+TOLERANT={"null_deviance":1e-8}
 
 data={"x":list(range(1,9)),"yg":[1,2,3,5,7,8,9,11],"yb":[0,1,0,1,1,0,1,0],"yp":[1,0,2,1,3,4,2,5],"yG":[1.2,2.1,1.7,3,4.2,2.5,5,4.6]}
 families={"gaussian":("yg","identity"),"binomial":("yb","logit"),"poisson":("yp","log"),"Gamma":("yG","inverse")}

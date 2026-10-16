@@ -59,5 +59,8 @@ with tempfile.TemporaryDirectory() as temp:
  pth=pathlib.Path('examples/data/review2-quoted.csv');pth.write_text(path.read_text())
  try:
   rc,d=call('fit_lm',{'formula':'y ~ x','file':str(pth)})
-  assert rc==0 and d['estimate']==[-0.4999999999999992,1.3999999999999997],('quoted CSV header',rc,d)
+  # lm() through LAPACK QR: the coefficient error is bounded by about cond(X) * eps with cond([1, x], x = 1..4) = 10, so 64 eps = 1.4e-14
+  # relative is the platform-independent bound (the literal bits are R 4.3.3 on aarch64; amd64 may differ in the last bit).
+  want=[-0.5,1.4]
+  assert rc==0 and len(d['estimate'])==2 and all(abs(g-w)<=64*2.220446049250313e-16*max(1.0,abs(w)) for g,w in zip(d['estimate'],want)),('quoted CSV header',rc,d)
  finally: pth.unlink(missing_ok=True)
