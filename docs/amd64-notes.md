@@ -43,4 +43,4 @@ job summary; the job still fails when any gate failed.
 
 ## Status
 
-amd64 CI status: see README "Build and test"; updated from the CI run, never from local reasoning.
+GitHub Actions run 38934174891 (commit 31ce63b, 2026-10-16): **both `ubuntu-24.04-arm` and `ubuntu-24.04` green** (7/7 CTest groups, no-libR, schema gate, lmts parse). Updated from CI runs only.

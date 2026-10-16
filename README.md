@@ -64,7 +64,7 @@ bin/rcli rng_draw --dist norm --n 2 --seed 42
 bin/rcli fit_lm --formula 'y ~ x' --file examples/data/oracle-lm.csv
 ```
 
-The test target runs CTest, including R-computed oracles, expression conformance, no-libR checks, and host-shim contract tests. To check schema compatibility with lmts, generate `cli.schema.dev.json` from the binary and run the pinned lmts `parsePublishedSchema` check (also run in CI). See [docs/parity.md](docs/parity.md) for the operation contribution checklist and container behavior.
+The test target runs CTest, including R-computed oracles, expression conformance, no-libR checks, and host-shim contract tests. To check schema compatibility with lmts, generate `cli.schema.dev.json` from the binary and run the pinned lmts `parsePublishedSchema` check (also run in CI). CI (`.github/workflows/ci.yml`) builds and runs the suite with R 4.3.3 on `ubuntu-24.04-arm` and `ubuntu-24.04`: GitHub Actions run 38934174891 (commit 31ce63b, 2026-10-16) passed every gate on both architectures (7/7 CTest groups, no-libR, schema, lmts parse); the earlier amd64 failure was a one-ulp difference between two R code paths for the GLM null deviance, now compared with a derived tolerance (docs/amd64-notes.md). The R oracles are bit-exact for the same R binary and code path; across BLAS builds and architectures only the documented tolerances are promised. See [docs/parity.md](docs/parity.md) for the operation contribution checklist and container behavior.
 
 Recipes: `examples/oracle-lm.lms`, `examples/oracle-tests.lms`, `examples/fit-and-forecast.lms`, `examples/fit-curve.lms`, and `examples/minimize-rosenbrock.lms`. Each imports the schema, checks tool status, and asserts numeric answers. The optional lmstats cross-tool recipes are listed below.
 
