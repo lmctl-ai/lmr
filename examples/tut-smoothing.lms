@@ -1,14 +1,49 @@
-// Topic: Smoothing noisy measurements (after: scipy-lectures statistics chapter)
-// What it does: Applies smoothing spline and LOESS, then checks both reproduce the observation grid.
-// Data: Seed-91 noisy samples from a smooth triangular trend.
+// access: read
+// Topic: smoothing and interpolation measured against the true function (after: R ?smooth.spline, ?loess, ?spline, ?approx)
+// What it does: samples a cubic f(x) = x^3 - 3x with noise, smooths it with smooth_spline (GCV) and smooth_loess, prints the
+//   error of each smoother against f on the grid and at new points, and checks that both beat the raw noise, that the
+//   smoothing spline predicts f at new x within a few noise sd, that interp_spline (fmm) reproduces a cubic exactly at
+//   midpoints and interp_approx is exact at the knots and linear between them.
+// Data: 61 points x = -2, -1.9333, ..., 2; y = f(x) + N(0, 0.3^2) (rng_draw seed 91).
 // Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-smoothing.lms
 import "../cli.schema.dev.json" as rcli;
-x = []; for (i = 0; i < 25; i = i + 1) { x = concat(x, [i / 4]); }
-e = rcli.rng_draw({dist: "norm", n: 25, mean: 0, sd: 0.12, seed: 91});
-if (e.status != "ok") { println("noise generation failed"); exit(1); }
-y = []; for (i = 0; i < 25; i = i + 1) { y = concat(y, [(x[i] < 3 ? x[i] : 6 - x[i]) + e.result.value[i]]); }
-a = rcli.smooth_spline({x: x, y: y, df: 8}); b = rcli.smooth_loess({x: x, y: y, span: 0.6, degree: 2});
-if (a.status != "ok" || b.status != "ok") { println("smoothing failed"); exit(1); }
-err_a = 0; err_b = 0; for (i = 0; i < 25; i = i + 1) { err_a = err_a + abs(a.result.fitted[i]-y[i]); err_b = err_b + abs(b.result.fitted[i]-y[i]); }
-println(sprintf("Mean absolute residual: spline %.4f, LOESS %.4f", err_a/25, err_b/25));
-if (len(a.result.fitted) != 25 || len(b.result.fitted) != 25 || err_a/25 > 0.3 || err_b/25 > 0.3) { println("Smoother shape/error check failed"); exit(1); }
+
+function f(x) { return x * x * x - 3 * x; }
+n = 61; sd = 0.3;
+e = rcli.rng_draw({dist: "norm", n: n, mean: 0, sd: sd, seed: 91});
+if (e.status == "simulated") { println("smoothing simulated."); exit(0); }
+if (e.status != "ok") { println("rng_draw failed:", json_stringify(e)); exit(1); }
+x = []; y = []; fx = [];
+for (i = 0; i < n; i = i + 1) { xi = -2 + 4 * i / (n - 1); x = concat(x, [xi]); fx = concat(fx, [f(xi)]); y = concat(y, [f(xi) + e.result.value[i]]); }
+new_x = [-1.75, -0.5, 0.25, 1.1, 1.9];
+ss = rcli.smooth_spline({x: x, y: y, new_x: new_x});
+lo = rcli.smooth_loess({x: x, y: y, new_x: new_x, span: 0.4, degree: 2});
+if (ss.status != "ok" || lo.status != "ok") { println("smoothing failed:", json_stringify(ss), json_stringify(lo)); exit(1); }
+function rmse(fitted) { s = 0; for (i = 0; i < n; i = i + 1) { s = s + pow(fitted[i] - fx[i], 2); } return sqrt(s / n); }
+noise_rmse = rmse(y); rmse_ss = rmse(ss.result.fitted); rmse_lo = rmse(lo.result.fitted);
+println(sprintf("noise sd %.2f (raw RMSE vs f %.4f); smoothing spline df=%.2f lambda=%s RMSE %.4f; loess(span 0.4, degree 2) RMSE %.4f", sd, noise_rmse, ss.result.df, str(ss.result.lambda), rmse_ss, rmse_lo));
+println("   x      f(x)    spline   loess");
+worst_new = 0;
+for (j = 0; j < len(new_x); j = j + 1) {
+  d = abs(ss.result.predicted[j] - f(new_x[j])); if (d > worst_new) { worst_new = d; }
+  println(sprintf("%6.2f  %7.4f  %7.4f  %7.4f", new_x[j], f(new_x[j]), ss.result.predicted[j], lo.result.predicted[j]));
+}
+// Interpolation through exact cubic samples at integer knots.
+kx = [-2, -1, 0, 1, 2]; ky = []; for (v in kx) { ky = concat(ky, [f(v)]); }
+mid = [-1.5, -0.5, 0.5, 1.5];
+sp = rcli.interp_spline({x: kx, y: ky, xout: mid, method: "fmm"});
+ap = rcli.interp_approx({x: kx, y: ky, xout: concat(kx, mid), method: "linear"});
+if (sp.status != "ok" || ap.status != "ok") { println("interpolation failed"); exit(1); }
+
+// Self-checks.
+if (rmse_ss > 0.5 * noise_rmse || rmse_lo > 0.5 * noise_rmse) { println("a smoother does not halve the noise:", rmse_ss, rmse_lo); exit(1); }
+if (worst_new > 2 * sd) { println("spline prediction at new x off by", worst_new); exit(1); }
+if (ss.result.df < 3 || ss.result.df > 15) { println("GCV chose an implausible df:", ss.result.df); exit(1); }
+// fmm end conditions fit a cubic through the end knots, so a cubic is interpolated exactly.
+for (j = 0; j < len(mid); j = j + 1) { if (abs(sp.result.value[j] - f(mid[j])) > 0.000000001) { println("fmm spline not exact for a cubic at", mid[j]); exit(1); } }
+for (j = 0; j < len(kx); j = j + 1) { if (abs(ap.result.value[j] - ky[j]) > 0.000000001) { println("linear interpolation not exact at a knot"); exit(1); } }
+for (j = 0; j < len(mid); j = j + 1) {
+  lin = (f(mid[j] - 0.5) + f(mid[j] + 0.5)) / 2;
+  if (abs(ap.result.value[len(kx) + j] - lin) > 0.000000001) { println("linear interpolation wrong between knots"); exit(1); }
+}
+println(sprintf("Checks passed: spline RMSE %.4f and loess RMSE %.4f vs raw %.4f; new-x error %.4f; fmm exact on a cubic; approx exact at knots and midpoints.", rmse_ss, rmse_lo, noise_rmse, worst_new));

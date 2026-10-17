@@ -1,0 +1,48 @@
+// access: read
+// Topic: identifying the AR order from the PACF and from AIC (after: R ?pacf, ?ar, the Box-Jenkins identification step)
+// What it does: simulates an AR(2) process with rng_arima_sim, prints the ACF and PACF with the 1.96/sqrt(n) band
+//   (ts_acf, ts_pacf), fits AR(1), AR(2) and AR(3) by maximum likelihood (ts_arima) and prints their AIC, then checks that
+//   the PACF is outside the band at lags 1-2 and inside at lags 3-8, that AIC picks order 2, that the AR(2) coefficients
+//   are within 3 SE of the generating values, and that the theoretical lag-1 ACF phi1/(1-phi2) matches the sample ACF.
+// Data: 400 values of x_t = 0.5 x_{t-1} + 0.3 x_{t-2} + N(0, 1), rng_arima_sim seed 2024.
+// Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-pacf-order.lms
+import "../cli.schema.dev.json" as rcli;
+
+phi = [0.5, 0.3]; n = 400;
+sim = rcli.rng_arima_sim({n: n, seed: 2024, order: [2, 0, 0], ar: phi, sd: 1});
+if (sim.status == "simulated") { println("order identification simulated."); exit(0); }
+if (sim.status != "ok") { println("rng_arima_sim failed:", json_stringify(sim)); exit(1); }
+x = sim.result.value;
+acf = rcli.ts_acf({x: x, lag_max: 8}); pacf = rcli.ts_pacf({x: x, lag_max: 8});
+if (acf.status != "ok" || pacf.status != "ok") { println(json_stringify(acf), json_stringify(pacf)); exit(1); }
+band = 1.96 / sqrt(n);
+rho1 = phi[0] / (1 - phi[1]);
+println(sprintf("n=%d  band +-%.3f  theoretical ACF(1) = phi1/(1-phi2) = %.4f", n, band, rho1));
+println("lag   acf      pacf     outside band?");
+for (k = 1; k <= 8; k = k + 1) {
+  p = pacf.result.value[k - 1];
+  println(sprintf("%3d  %7.4f  %7.4f  %s", k, acf.result.value[k], p, abs(p) > band ? "yes" : "no"));
+}
+println("order  ar coefficients (SE)                      sigma2   loglik    AIC");
+fits = []; aics = [];
+for (p = 1; p <= 3; p = p + 1) {
+  f = rcli.ts_arima({x: x, order: [p, 0, 0], method: "ML"});
+  if (f.status != "ok") { println("AR(", p, ") failed:", json_stringify(f)); exit(1); }
+  r = f.result; fits = concat(fits, [r]); aics = concat(aics, [r.aic]);
+  desc = "";
+  for (j = 0; j < p; j = j + 1) { desc = desc + sprintf("%.3f (%.3f) ", r.estimate[j], r.std_error[j]); }
+  println(sprintf("  %d    %-40s %.4f  %8.2f  %8.2f", p, desc, r.sigma2, r.loglik, r.aic));
+}
+
+// Self-checks.
+for (k = 1; k <= 2; k = k + 1) { if (abs(pacf.result.value[k - 1]) <= band) { println("PACF inside the band at lag", k); exit(1); } }
+for (k = 3; k <= 8; k = k + 1) { if (abs(pacf.result.value[k - 1]) > band + 0.05) { println("PACF outside the band at lag", k); exit(1); } }
+if (!(aics[1] < aics[0] && aics[1] < aics[2])) { println("AIC does not select AR(2):", json_stringify(aics)); exit(1); }
+ar2 = fits[1];
+for (j = 0; j < 2; j = j + 1) { if (abs(ar2.estimate[j] - phi[j]) > 3 * ar2.std_error[j]) { println("AR(2) coefficient", j + 1, "more than 3 SE from truth"); exit(1); } }
+rho1_hat = ar2.estimate[0] / (1 - ar2.estimate[1]);
+if (abs(acf.result.value[1] - rho1_hat) > 0.05) { println("lag-1 ACF far from the fitted phi1/(1-phi2):", acf.result.value[1], rho1_hat); exit(1); }
+if (abs(acf.result.value[1] - rho1) > 0.15) { println("lag-1 ACF far from the generating phi1/(1-phi2):", acf.result.value[1], rho1); exit(1); }
+if (acf.result.value[0] != 1) { println("ACF(0) must be 1"); exit(1); }
+if (abs(ar2.sigma2 - 1) > 0.25) { println("AR(2) innovation variance far from 1:", ar2.sigma2); exit(1); }
+println(sprintf("Checks passed: PACF cuts off after lag 2; AIC %.2f < %.2f, %.2f; ar1=%.3f ar2=%.3f within 3 SE of (0.5, 0.3); ACF(1)=%.3f vs fitted %.3f (generating %.3f).", aics[1], aics[0], aics[2], ar2.estimate[0], ar2.estimate[1], acf.result.value[1], rho1_hat, rho1));

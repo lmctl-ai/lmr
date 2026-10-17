@@ -1,12 +1,56 @@
-// Topic: Count regression (after: R ?glm help page, Dobson counts style)
-// What it does: Fits a Poisson log-link model to a small synthetic dose/count table.
-// Data: Seed-2718 generated counts resembling a modest exposure trend, in tut-counts.csv.
+// access: read
+// Topic: Poisson count regression with rate ratios and a dispersion check (after: R ?glm, Dobson's count examples)
+// What it does: fits count ~ dose with a log link (fit_glm) from examples/data/tut-counts.csv, prints the coefficient
+//   table with rate ratios and 95% intervals, checks the generating rates against the intervals, tests the dose effect
+//   with the deviance drop (chi-square, dist_probability), checks the deviance/df ratio for overdispersion, and compares
+//   the fitted mean at dose 2 with the exact Poisson quantiles at the true rate (dist_quantile).
+// Data: examples/data/tut-counts.csv, 80 rows: 20 doses on a 0..4 grid x 4 replicates, count ~ Poisson(exp(0.3 + 0.5 dose));
+//   seed 2719, scripts/generate-tutorial-data.py.
 // Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-glm-poisson.lms
 import "../cli.schema.dev.json" as rcli;
+// sci(v): "m.mme-k" for small p-values, since sprintf has no %e.
+function sci(v) {
+  if (v == 0) { return "0"; }
+  k = 0; m = abs(v);
+  while (m < 1) { m = m * 10; k = k - 1; }
+  while (m >= 10) { m = m / 10; k = k + 1; }
+  return sprintf("%.2fe%d", v < 0 ? -m : m, k);
+}
+
+E = 2.718281828459045;
+b0 = 0.3; b1 = 0.5;
 rows = read_csv("examples/data/tut-counts.csv");
-fit = rcli.fit_glm({response: "count", predictors: ["dose"], data: {count: pluck(rows, "count"), dose: pluck(rows, "dose")}, family: "poisson"});
-if (fit.status != "ok") { println("Poisson GLM failed", json_stringify(fit)); exit(1); }
-q = rcli.dist_quantile({dist: "pois", p: [0.5], lambda: 4});
-if (q.status != "ok") { println("count prediction failed", json_stringify(q)); exit(1); }
-println(sprintf("Poisson slope %.4f; predicted median count at dose 2 is %.0f", fit.result.estimate[1], q.result.value[0]));
-if (fit.result.estimate[1] <= 0 || q.result.value[0] < 1) { println("Count trend check failed"); exit(1); }
+count = pluck(rows, "count"); dose = pluck(rows, "dose"); n = len(count);
+fit = rcli.fit_glm({response: "count", predictors: ["dose"], data: {count: count, dose: dose}, family: "poisson"});
+if (fit.status == "simulated") { println("GLM simulated."); exit(0); }
+if (fit.status != "ok") { println("fit_glm failed:", json_stringify(fit)); exit(1); }
+r = fit.result;
+z = rcli.dist_quantile({dist: "norm", p: [0.975]});
+if (z.status != "ok") { println(json_stringify(z)); exit(1); }
+zq = z.result.value[0];
+df = n - r.rank;
+println(sprintf("n=%d  total count=%d  deviance=%.3f on %d df (ratio %.3f)  null deviance=%.3f  AIC=%.2f", n, sum(count), r.deviance, df, r.deviance / df, r.null_deviance, r.aic));
+println("term          estimate   std_err    z        p          rate ratio [95% CI]   truth");
+truth = {"(Intercept)": b0, dose: b1};
+for (i = 0; i < len(r.coefficients); i = i + 1) {
+  lo = r.estimate[i] - zq * r.std_error[i]; hi = r.estimate[i] + zq * r.std_error[i];
+  println(sprintf("%-12s %9.4f %9.4f %8.3f %s  %7.3f [%.3f, %.3f]   %.3f", r.coefficients[i], r.estimate[i], r.std_error[i], r.statistic[i], sci(r.p_value[i]), pow(E, r.estimate[i]), pow(E, lo), pow(E, hi), pow(E, truth[r.coefficients[i]])));
+  // Self-check 1: the generating log-rates lie inside the 95% Wald intervals.
+  if (truth[r.coefficients[i]] < lo || truth[r.coefficients[i]] > hi) { println("true", r.coefficients[i], "outside its 95% interval"); exit(1); }
+}
+// Self-check 2: the dose effect is decisive by the likelihood-ratio test.
+lr = r.null_deviance - r.deviance;
+pr = rcli.dist_probability({dist: "chisq", q: [lr], df: 1, lower_tail: false});
+if (pr.status != "ok") { println(json_stringify(pr)); exit(1); }
+println(sprintf("Likelihood-ratio test of dose: chi^2(1)=%.2f, p=%s", lr, sci(pr.result.value[0])));
+if (pr.result.value[0] > 0.000001) { println("dose effect not detected"); exit(1); }
+// Self-check 3: no overdispersion: deviance/df within [0.6, 1.5] for Poisson data of this size (chi-square(78)/78 has sd 0.16).
+if (r.deviance / df < 0.6 || r.deviance / df > 1.5) { println("deviance/df suggests misfit:", r.deviance / df); exit(1); }
+// Self-check 4: the fitted mean at dose 2 is within 20% of exp(1.3), and the exact Poisson quartiles at the true rate bracket it.
+mu2 = pow(E, r.estimate[0] + 2 * r.estimate[1]); lam2 = pow(E, b0 + 2 * b1);
+qs = rcli.dist_quantile({dist: "pois", p: [0.25, 0.5, 0.75], lambda: lam2});
+if (qs.status != "ok") { println(json_stringify(qs)); exit(1); }
+println(sprintf("fitted mean count at dose 2: %.3f (true rate %.3f); Poisson quartiles at the true rate: %s", mu2, lam2, json_stringify(qs.result.value)));
+if (abs(mu2 - lam2) > 0.2 * lam2) { println("fitted mean at dose 2 off by more than 20%"); exit(1); }
+if (mu2 < qs.result.value[0] || mu2 > qs.result.value[2]) { println("fitted mean outside the interquartile range of the true rate"); exit(1); }
+println(sprintf("Checks passed: truth inside both intervals; LR p=%s; deviance/df=%.3f; rate ratio per unit dose %.3f (true %.3f).", sci(pr.result.value[0]), r.deviance / df, pow(E, r.estimate[1]), pow(E, b1)));

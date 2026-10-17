@@ -1,0 +1,54 @@
+// access: read
+// Topic: numerical integration against closed forms, including singular, infinite and divergent cases (after: R ?integrate,
+//   ?uniroot, ?optimize; numerical-analysis quadrature exercises)
+// What it does: integrates seven functions with num_integrate and prints each value next to its closed form, verifying the
+//   error estimate brackets the truth (wide finite bounds stand in for infinite ones: the lmscript client types them as numbers); shows the three outcomes R distinguishes (OK, "maximum number of subdivisions"
+//   as a NON_CONVERGED domain status, and a non-finite integrand); then cross-checks the Gamma integral with
+//   math_special, locates pi/2 as the root of cos (num_root) and the maximum of sin (opt_optimize).
+// Data: analytic functions only.
+// Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-integrate.lms
+import "../cli.schema.dev.json" as rcli;
+
+PI = 3.141592653589793;
+cases = [
+  ["sin(x)", 0, PI, 2, "2"],
+  ["4/(1+x^2)", 0, 1, PI, "pi"],
+  ["x^2*exp(-x)", 0, 200, 2, "Gamma(3) = 2 (tail < 1e-80)"],
+  ["1/sqrt(x)", 0, 1, 2, "2 (integrable singularity)"],
+  ["exp(-x^2/2)", -40, 40, sqrt(2 * PI), "sqrt(2 pi) (tails < 1e-300)"],
+  ["log(x)", 0, 1, -1, "-1 (log singularity)"],
+  ["x^3-3*x", -2, 2, 0, "0 (odd function)"]
+];
+println("integrand        bounds             value              exact                 |error|      est. bound   subdivisions");
+for (c in cases) {
+  g = rcli.num_integrate({f: c[0], lower: c[1], upper: c[2], rel_tol: 0.000000000001, subdivisions: 200});
+  if (g.status == "simulated") { println("integration simulated."); exit(0); }
+  if (g.status != "ok") { println(c[0], "failed:", json_stringify(g)); exit(1); }
+  r = g.result;
+  err = abs(r.value - c[3]);
+  println(sprintf("%-16s [%6s, %6s]  %18.12f  %-20s  %-11s  %-11s  %3d  %s", c[0], str(c[1]), str(c[2]), r.value, c[4], str(err), str(r.abs_error), r.subdivisions, r.domain_status));
+  // Self-check 1: every value is within the reported error bound plus 1e-9 of the closed form, and the status is OK.
+  if (err > r.abs_error + 0.000000001 || r.domain_status != "OK") { println("integral of", c[0], "outside its error bound or not OK"); exit(1); }
+}
+// Self-check 2: a divergent integral is reported, not silently returned: 1/x on (0, 1] exhausts the subdivisions.
+div = rcli.num_integrate({f: "1/x", lower: 0, upper: 1, subdivisions: 50});
+if (div.status != "ok") { println(json_stringify(div)); exit(1); }
+println(sprintf("1/x on (0,1]: value %.3f, message '%s', domain_status %s", div.result.value, div.result.message, div.result.domain_status));
+if (div.result.domain_status != "NON_CONVERGED" || div.result.subdivisions != 50) { println("divergent integral not flagged"); exit(1); }
+// A non-finite integrand (sqrt of a negative argument) is a domain outcome too.
+bad = rcli.num_integrate({f: "sqrt(x)", lower: -1, upper: 1});
+if (bad.status != "ok") { println(json_stringify(bad)); exit(1); }
+println(sprintf("sqrt(x) on [-1,1]: domain_status %s, message '%s'", bad.result.domain_status, bad.result.message));
+if (bad.result.domain_status != "NON_FINITE") { println("non-finite integrand not flagged"); exit(1); }
+// Self-check 3: Gamma(3) from math_special equals the integral above, and Gamma(0.5)^2 = pi.
+gm = rcli.math_special({"fn": "gamma", x: [3, 0.5]});
+if (gm.status != "ok") { println(json_stringify(gm)); exit(1); }
+println(sprintf("Gamma(3) = %.12f, Gamma(1/2)^2 = %.12f (pi = %.12f)", gm.result.value[0], gm.result.value[1] * gm.result.value[1], PI));
+if (abs(gm.result.value[0] - 2) > 0.000000000001 || abs(gm.result.value[1] * gm.result.value[1] - PI) > 0.000000000001) { println("Gamma values wrong"); exit(1); }
+// Self-check 4: pi/2 as the root of cos on [1, 2] and the maximiser of sin on [0, 3].
+rt = rcli.num_root({f: "cos(x)", lower: 1, upper: 2, tol: 0.000000000001});
+mx = rcli.opt_optimize({objective: "sin(x)", lower: 0, upper: 3, maximum: true, tol: 0.000000001});
+if (rt.status != "ok" || mx.status != "ok") { println(json_stringify(rt), json_stringify(mx)); exit(1); }
+println(sprintf("root of cos in [1,2]: %.12f; argmax of sin on [0,3]: %.9f; pi/2 = %.12f", rt.result.root, mx.result.x, PI / 2));
+if (abs(rt.result.root - PI / 2) > 0.000000001 || abs(mx.result.x - PI / 2) > 0.00001 || abs(mx.result.value - 1) > 0.000000001) { println("pi/2 not recovered"); exit(1); }
+println("Checks passed: seven integrals inside their error bounds; divergence and non-finite integrands flagged; Gamma(3) = 2, Gamma(1/2)^2 = pi; cos root and sin maximum at pi/2.");

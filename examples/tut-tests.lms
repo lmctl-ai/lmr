@@ -1,14 +1,70 @@
-// Topic: Classical tests for two small groups (after: R ?t.test and ?wilcox.test)
-// What it does: Generates seeded samples, runs parametric and rank tests, then checks direction.
-// Data: Two seeded normal samples mimicking a small PlantGrowth-style experiment.
+// access: read
+// Topic: classical hypothesis tests on data built to have known outcomes (after: R ?t.test, ?wilcox.test, ?chisq.test,
+//   ?fisher.test, ?binom.test, ?shapiro.test, ?cor.test, ?var.test)
+// What it does: runs nine tests with test_htest and checks each against what the construction guarantees: a shifted
+//   normal sample is detected by t and Wilcoxon and the true shift sits in the t interval; equal variances are not
+//   rejected; a balanced 2x2 table gives chi^2 = 0, p = 1 exactly; a diagonal table is rejected by chi-square and Fisher;
+//   60/100 successes give the exact two-sided binomial p = 0.05689; a correlated pair is detected with the estimate
+//   near the true correlation; Shapiro-Wilk passes a normal sample and fails an exponential one.
+// Data: seeded rng_draw samples (seeds 701..706) plus fixed contingency tables; no external data.
 // Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-tests.lms
 import "../cli.schema.dev.json" as rcli;
-a = rcli.rng_draw({dist: "norm", n: 18, mean: 5, sd: 0.7, seed: 701});
-b = rcli.rng_draw({dist: "norm", n: 18, mean: 5.8, sd: 0.7, seed: 702});
-if (a.status != "ok" || b.status != "ok") { println("sample generation failed"); exit(1); }
-t = rcli.test_htest({test: "t", x: a.result.value, y: b.result.value, var_equal: true});
-w = rcli.test_htest({test: "wilcox", x: a.result.value, y: b.result.value});
-s = rcli.test_htest({test: "shapiro", x: a.result.value});
-if (t.status != "ok" || w.status != "ok" || s.status != "ok") { println("test failed", json_stringify(t), json_stringify(w), json_stringify(s)); exit(1); }
-println(sprintf("Group means differ by %.3f; t p=%.5f, Wilcoxon p=%.5f, Shapiro p=%.5f", avg(a.result.value)-avg(b.result.value), t.result.p_value, w.result.p_value, s.result.p_value));
-if (t.result.p_value >= 0.05 || w.result.p_value >= 0.05) { println("Seeded group-separation check failed"); exit(1); }
+// sci(v): "m.mme-k" for small p-values, since sprintf has no %e.
+function sci(v) {
+  if (v == 0) { return "0"; }
+  k = 0; m = abs(v);
+  while (m < 1) { m = m * 10; k = k - 1; }
+  while (m >= 10) { m = m / 10; k = k + 1; }
+  return sprintf("%.2fe%d", v < 0 ? -m : m, k);
+}
+
+shift = 0.8; sd = 0.7; n = 30;
+a = rcli.rng_draw({dist: "norm", n: n, mean: 5, sd: sd, seed: 701});
+if (a.status == "simulated") { println("tests simulated."); exit(0); }
+b = rcli.rng_draw({dist: "norm", n: n, mean: 5 + shift, sd: sd, seed: 702});
+if (a.status != "ok" || b.status != "ok") { println("rng_draw failed"); exit(1); }
+x = a.result.value; y = b.result.value;
+function run(label, params) {
+  h = rcli.test_htest(params);
+  if (h.status != "ok") { println(label, "failed:", json_stringify(h)); exit(1); }
+  r = h.result;
+  ci = r.conf_int == null ? "" : sprintf("  95%% CI [%.4f, %.4f]", r.conf_int[0], r.conf_int[1]);
+  stat = r.statistic == null ? "(no statistic)" : sprintf("%s=%.4f", r.statistic_name, r.statistic);
+  println(sprintf("%-26s %-22s p=%s%s  (%s)", label, stat, sci(r.p_value), ci, r.method));
+  return r;
+}
+println("test                       statistic  p-value  interval  method");
+t2 = run("two-sample t", {test: "t", x: x, y: y, var_equal: true, conf_int: true});
+w2 = run("Wilcoxon rank-sum", {test: "wilcox", x: x, y: y});
+vt = run("F test of variances", {test: "var", x: x, y: y});
+bal = run("chi-square, balanced 2x2", {test: "chisq", x: [50, 50, 50, 50], rows: 2, cols: 2});
+dep = run("chi-square, diagonal 2x2", {test: "chisq", x: [80, 20, 20, 80], rows: 2, cols: 2});
+fis = run("Fisher, diagonal 2x2", {test: "fisher", x: [80, 20, 20, 80]});
+bin = run("binomial 60/100 vs 0.5", {test: "binom", x: [60], n: 100, p: 0.5});
+// A correlated pair: v = u + noise with sd 0.5 against u ~ N(0, 1): corr = 1 / sqrt(1 + 0.25) = 0.894.
+u = rcli.rng_draw({dist: "norm", n: 60, seed: 703}); e = rcli.rng_draw({dist: "norm", n: 60, sd: 0.5, seed: 704});
+if (u.status != "ok" || e.status != "ok") { println("rng_draw failed"); exit(1); }
+v = []; for (i = 0; i < 60; i = i + 1) { v = concat(v, [u.result.value[i] + e.result.value[i]]); }
+rho_true = 1 / sqrt(1.25);
+cor = run("Pearson correlation", {test: "cor", x: u.result.value, y: v, method: "pearson"});
+normal = rcli.rng_draw({dist: "norm", n: 80, seed: 705}); skewed = rcli.rng_draw({dist: "exp", n: 80, rate: 1, seed: 706});
+if (normal.status != "ok" || skewed.status != "ok") { println("rng_draw failed"); exit(1); }
+sw_n = run("Shapiro-Wilk, normal", {test: "shapiro", x: normal.result.value});
+sw_e = run("Shapiro-Wilk, exponential", {test: "shapiro", x: skewed.result.value});
+
+// Self-checks. The t statistic for a shift of 0.8 with sd 0.7 and n = 30 per group has expectation about 4.4, so p < 0.01.
+if (t2.p_value >= 0.01 || w2.p_value >= 0.01) { println("shift of 0.8 not detected"); exit(1); }
+if (-shift < t2.conf_int[0] || -shift > t2.conf_int[1]) { println("true difference -0.8 outside the t interval"); exit(1); }
+if (abs(t2.estimate[0] - avg(x)) > 0.000000001 || abs(t2.estimate[1] - avg(y)) > 0.000000001) { println("t estimates are not the sample means"); exit(1); }
+if (t2.parameter != 2 * n - 2) { println("pooled t should have 58 df"); exit(1); }
+if (vt.p_value < 0.05) { println("equal variances rejected at 5%"); exit(1); }
+if (bal.statistic != 0 || bal.p_value != 1) { println("balanced table should give chi^2 = 0, p = 1"); exit(1); }
+if (dep.p_value > 0.000001 || fis.p_value > 0.000001) { println("diagonal table not rejected"); exit(1); }
+if (fis.estimate[0] < 10) { println("Fisher odds ratio for 80/20 vs 20/80 should exceed 10:", fis.estimate[0]); exit(1); }
+if (abs(bin.p_value - 0.05688793) > 0.00000001) { println("binomial p differs from the exact 0.05688793:", bin.p_value); exit(1); }
+if (abs(bin.estimate[0] - 0.6) > 0.000000001) { println("binomial estimate should be 0.6"); exit(1); }
+if (cor.p_value > 0.000001 || abs(cor.estimate[0] - rho_true) > 0.1) { println("correlation not recovered:", cor.estimate[0], "vs", rho_true); exit(1); }
+if (rho_true < cor.conf_int[0] || rho_true > cor.conf_int[1]) { println("true correlation outside its interval"); exit(1); }
+if (sw_n.p_value < 0.05) { println("normal sample rejected by Shapiro-Wilk"); exit(1); }
+if (sw_e.p_value > 0.001) { println("exponential sample not rejected by Shapiro-Wilk"); exit(1); }
+println(sprintf("Checks passed: shift detected (t p=%s, W p=%s), -0.8 in CI; variances equal (p=%.2f); balanced table p=1; diagonal p<1e-6; exact binomial p=%.8f; r=%.3f (true %.3f); Shapiro %.3f / %s.", sci(t2.p_value), sci(w2.p_value), vt.p_value, bin.p_value, cor.estimate[0], rho_true, sw_n.p_value, sci(sw_e.p_value)));

@@ -1,12 +1,67 @@
-// Topic: Multiple regression and residual checks (after: R ?lm help page)
-// What it does: Fits a car-economy-style regression, then summarizes fitted residuals.
-// Data: Seed-2718 synthetic fuel economy, weight, and power; examples/data/tut-cars.csv.
-// Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-lm.lms
+// access: read
+// Topic: multiple regression with a coefficient table and residual diagnostics (after: R ?lm, ?summary.lm, ?confint)
+// What it does: fits mpg ~ weight + power from examples/data/tut-cars.csv with fit_lm, prints the coefficient table with
+//   95% intervals built from the t quantile (dist_quantile), then checks that the generating parameters lie inside the
+//   intervals, that the residuals sum to zero and reproduce sigma and R^2, that the residuals pass Shapiro-Wilk, and that
+//   a collinear copy of weight is reported as aliased with the rank unchanged.
+// Data: examples/data/tut-cars.csv, 60 rows of mpg = 42 - 5.0 weight - 0.015 power + N(0, 1.2^2), weight ~ U(1.5, 4.5),
+//   power = 60 + 40 weight + N(0, 15^2); seed 2718, scripts/generate-tutorial-data.py.
+// Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-lm.lms   (cwd = repository root, below HOME)
 import "../cli.schema.dev.json" as rcli;
+// sci(v): "m.mme-k" for small p-values, since sprintf has no %e.
+function sci(v) {
+  if (v == 0) { return "0"; }
+  k = 0; m = abs(v);
+  while (m < 1) { m = m * 10; k = k - 1; }
+  while (m >= 10) { m = m / 10; k = k + 1; }
+  return sprintf("%.2fe%d", v < 0 ? -m : m, k);
+}
+
+truth = {"(Intercept)": 42, weight: -5.0, power: -0.015};
+sigma_true = 1.2;
 rows = read_csv("examples/data/tut-cars.csv");
-fit = rcli.fit_lm({formula: "mpg ~ weight + power", data: {mpg: pluck(rows, "mpg"), weight: pluck(rows, "weight"), power: pluck(rows, "power")}, residuals: true});
-if (fit.status != "ok") { println("lm failed", json_stringify(fit)); exit(1); }
-q = rcli.summary_quantile({x: fit.result.residuals, probs: [0.25, 0.5, 0.75]});
-if (q.status != "ok") { println("residual quantiles failed", json_stringify(q)); exit(1); }
-println(sprintf("Car-like model R² %.4f; residual median %.6f", fit.result.r_squared, q.result.value[1]));
-if (abs(q.result.value[1]) > 0.5) { println("Residual median check failed"); exit(1); }
+mpg = pluck(rows, "mpg"); weight = pluck(rows, "weight"); power = pluck(rows, "power");
+n = len(mpg);
+
+fit = rcli.fit_lm({formula: "mpg ~ weight + power", data: {mpg: mpg, weight: weight, power: power}, residuals: true});
+if (fit.status == "simulated") { println("lm simulated."); exit(0); }
+if (fit.status != "ok") { println("fit_lm failed:", json_stringify(fit)); exit(1); }
+r = fit.result;
+q = rcli.dist_quantile({dist: "t", p: [0.975], df: r.df});
+if (q.status != "ok") { println(json_stringify(q)); exit(1); }
+tq = q.result.value[0];
+
+println(sprintf("n=%d  rank=%d  df=%d  sigma=%.4f (true %.1f)  R^2=%.4f  t(0.975, %d)=%.4f", n, r.rank, r.df, r.sigma, sigma_true, r.r_squared, r.df, tq));
+println("term          estimate    std_err     t         p         95% CI");
+for (i = 0; i < len(r.coefficients); i = i + 1) {
+  lo = r.estimate[i] - tq * r.std_error[i]; hi = r.estimate[i] + tq * r.std_error[i];
+  println(sprintf("%-12s %10.4f %10.4f %9.3f %s  [%.4f, %.4f]", r.coefficients[i], r.estimate[i], r.std_error[i], r.statistic[i], sci(r.p_value[i]), lo, hi));
+}
+
+// Self-check 1: every generating parameter lies inside its 95% interval (a fixed property of this fixture).
+for (i = 0; i < len(r.coefficients); i = i + 1) {
+  t = truth[r.coefficients[i]];
+  lo = r.estimate[i] - tq * r.std_error[i]; hi = r.estimate[i] + tq * r.std_error[i];
+  if (t < lo || t > hi) { println("true", r.coefficients[i], "=", t, "outside its 95% interval"); exit(1); }
+}
+// Self-check 2: residuals sum to zero (intercept model), sigma^2 = SSR / df, R^2 = 1 - SSR / SST.
+sum_e = 0; ssr = 0; sst = 0; ybar = avg(mpg);
+for (i = 0; i < n; i = i + 1) { e = r.residuals[i]; sum_e = sum_e + e; ssr = ssr + e * e; sst = sst + (mpg[i] - ybar) * (mpg[i] - ybar); }
+if (abs(sum_e) > 0.000001) { println("residuals do not sum to zero:", sum_e); exit(1); }
+if (abs(sqrt(ssr / r.df) - r.sigma) > 0.000001) { println("sigma does not match SSR/df"); exit(1); }
+if (abs(1 - ssr / sst - r.r_squared) > 0.000001) { println("R^2 does not match SSR/SST"); exit(1); }
+// Self-check 3: sigma is within 25% of the generating 1.2 (chi-square(57) spread is about 9%), and the residuals look normal.
+if (abs(r.sigma - sigma_true) > 0.25 * sigma_true) { println("sigma far from 1.2:", r.sigma); exit(1); }
+sw = rcli.test_htest({test: "shapiro", x: r.residuals});
+if (sw.status != "ok") { println(json_stringify(sw)); exit(1); }
+println(sprintf("Shapiro-Wilk on the residuals: W=%.4f, p=%.3f", sw.result.statistic, sw.result.p_value));
+if (sw.result.p_value < 0.01) { println("residuals fail normality at 1%"); exit(1); }
+// Self-check 4: an exact linear copy of weight is aliased, the rank stays 3 and the other estimates are unchanged.
+twice = []; for (w in weight) { twice = concat(twice, [2 * w]); }
+alias = rcli.fit_lm({formula: "mpg ~ weight + power + twice", data: {mpg: mpg, weight: weight, power: power, twice: twice}});
+if (alias.status != "ok") { println(json_stringify(alias)); exit(1); }
+a = alias.result;
+println(sprintf("with twice = 2*weight: rank=%d, aliased=%s, estimates %s", a.rank, json_stringify(a.aliased), json_stringify(slice(a.estimate, 0, 3))));
+if (a.rank != 3 || len(a.aliased) != 1 || a.aliased[0] != "twice") { println("collinear term not reported as aliased"); exit(1); }
+for (i = 0; i < 3; i = i + 1) { if (abs(a.estimate[i] - r.estimate[i]) > 0.000001) { println("aliased refit changed the estimates"); exit(1); } }
+println(sprintf("Checks passed: truth inside every 95%% CI; sum(residuals)=%s; sigma and R^2 reproduced; Shapiro p=%.3f; aliasing detected.", sci(sum_e), sw.result.p_value));

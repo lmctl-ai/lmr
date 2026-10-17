@@ -1,0 +1,54 @@
+// access: read
+// Topic: ARMA simulation and estimation round trip with residual diagnostics (after: R ?arima.sim, ?arima, ?tsdiag)
+// What it does: simulates an ARMA(1,1) with rng_arima_sim, fits ARIMA(1,0,1) by exact ML (ts_arima) and prints the
+//   coefficient table against the generating values, then checks the estimates within 3 SE, the innovation variance,
+//   whiteness of the residuals (ACF inside the band plus 0.05, ts_acf), a 6-step forecast whose standard errors start at
+//   sqrt(sigma2) and grow, that the CSS-ML method agrees with ML, and that the same seed reproduces the series exactly.
+// Data: 500 values of x_t = 0.7 x_{t-1} + e_t - 0.4 e_{t-1}, e ~ N(0, 1.5^2), rng_arima_sim seed 314.
+// Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-arima-roundtrip.lms
+import "../cli.schema.dev.json" as rcli;
+
+ar = 0.7; ma = -0.4; sd = 1.5; n = 500;
+sim = rcli.rng_arima_sim({n: n, seed: 314, order: [1, 0, 1], ar: [ar], ma: [ma], sd: sd});
+if (sim.status == "simulated") { println("round trip simulated."); exit(0); }
+again = rcli.rng_arima_sim({n: n, seed: 314, order: [1, 0, 1], ar: [ar], ma: [ma], sd: sd});
+if (sim.status != "ok" || again.status != "ok") { println("rng_arima_sim failed:", json_stringify(sim)); exit(1); }
+x = sim.result.value;
+fit = rcli.ts_arima({x: x, order: [1, 0, 1], method: "ML", residuals: true, n_ahead: 6});
+css = rcli.ts_arima({x: x, order: [1, 0, 1], method: "CSS-ML"});
+if (fit.status != "ok" || css.status != "ok") { println("ts_arima failed:", json_stringify(fit), json_stringify(css)); exit(1); }
+r = fit.result;
+truth = {ar1: ar, ma1: ma, intercept: 0};
+println(sprintf("n=%d  sigma2=%.4f (true %.2f)  loglik=%.2f  AIC=%.2f  converged=%s", n, r.sigma2, sd * sd, r.loglik, r.aic, r.converged));
+println("coefficient  estimate   std_err   truth    |z|   CSS-ML estimate");
+for (i = 0; i < len(r.coefficients); i = i + 1) {
+  name = r.coefficients[i]; j = index_of(css.result.coefficients, name);
+  zdev = abs(r.estimate[i] - truth[name]) / r.std_error[i];
+  println(sprintf("%-12s %9.4f %9.4f %7.2f  %5.2f   %9.4f", name, r.estimate[i], r.std_error[i], truth[name], zdev, css.result.estimate[j]));
+  // Self-check 1: each estimate within 3 SE of the generating value; CSS-ML agrees with ML to 0.02.
+  if (zdev > 3) { println(name, "more than 3 SE from truth"); exit(1); }
+  if (abs(r.estimate[i] - css.result.estimate[j]) > 0.02) { println("CSS-ML and ML disagree on", name); exit(1); }
+}
+// Self-check 2: innovation variance within 20% of 2.25 (its SE is about sigma2 sqrt(2/n) = 0.14).
+if (abs(r.sigma2 - sd * sd) > 0.2 * sd * sd) { println("sigma2 far from 2.25"); exit(1); }
+// Self-check 3: residuals are white: ACF at lags 1-10 inside 1.96/sqrt(n) + 0.03, and their variance matches sigma2.
+res = r.residuals;
+racf = rcli.ts_acf({x: res, lag_max: 10});
+if (racf.status != "ok") { println(json_stringify(racf)); exit(1); }
+band = 1.96 / sqrt(n); worst = 0;
+for (k = 1; k <= 10; k = k + 1) { if (abs(racf.result.value[k]) > worst) { worst = abs(racf.result.value[k]); } }
+ss = 0; for (e in res) { ss = ss + e * e; }
+println(sprintf("residual ACF, largest |r_k| for k=1..10: %.4f (band %.4f); residual mean square %.4f vs sigma2 %.4f", worst, band, ss / n, r.sigma2));
+if (worst > band + 0.05) { println("residuals are not white"); exit(1); }
+if (abs(ss / n - r.sigma2) > 0.05 * r.sigma2) { println("residual mean square disagrees with sigma2"); exit(1); }
+// Self-check 4: the forecast standard errors start at sqrt(sigma2) and never shrink.
+println("  h  forecast  se");
+for (h = 0; h < 6; h = h + 1) { println(sprintf("%3d  %8.4f  %.4f", h + 1, r.forecast[h], r.forecast_se[h])); }
+if (abs(r.forecast_se[0] - sqrt(r.sigma2)) > 0.000001) { println("one-step forecast SE is not sqrt(sigma2)"); exit(1); }
+for (h = 1; h < 6; h = h + 1) { if (r.forecast_se[h] < r.forecast_se[h - 1] - 0.000001) { println("forecast SE shrinks at h =", h + 1); exit(1); } }
+// The two-step SE for ARMA(1,1) is sigma sqrt(1 + (phi - theta)^2) with R's sign convention (theta = ma1).
+psi1 = r.estimate[index_of(r.coefficients, "ar1")] + r.estimate[index_of(r.coefficients, "ma1")];
+if (abs(r.forecast_se[1] - sqrt(r.sigma2 * (1 + psi1 * psi1))) > 0.000001) { println("two-step forecast SE differs from the psi-weight formula"); exit(1); }
+// Self-check 5: seeded reproducibility.
+if (json_stringify(slice(x, 0, 10)) != json_stringify(slice(again.result.value, 0, 10))) { println("seed 314 did not reproduce the series"); exit(1); }
+println(sprintf("Checks passed: ar1=%.3f ma1=%.3f within 3 SE of (0.7, -0.4); sigma2=%.3f; residual ACF max %.3f; forecast SEs follow the psi weights; seed reproducible.", r.estimate[index_of(r.coefficients, "ar1")], r.estimate[index_of(r.coefficients, "ma1")], r.sigma2, worst));

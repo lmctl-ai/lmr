@@ -1,15 +1,65 @@
-// Topic: Seasonal time-series diagnostics and forecasting (after: R ?arima help page)
-// What it does: Simulates an AR series, fits ARIMA, forecasts, and computes ACF/PACF and STL.
-// Data: Seed-73 AR(1) noise plus a fixed 12-month seasonal cycle, mimicking a seasonal passenger series.
+// access: read
+// Topic: seasonal decomposition, AR(1) fitting and forecasting with intervals (after: R ?stl, ?arima, ?predict.Arima, ?acf)
+// What it does: builds a seasonal series from a simulated AR(1) (rng_arima_sim) plus a fixed 12-period cycle, shows the
+//   seasonality in the ACF (lag 12 above lag 6), decomposes it with ts_stl and checks the recovered seasonal pattern,
+//   fits ARIMA(1,0,0) to the deseasonalised series, prints a 12-step forecast with 95% intervals from the normal quantile
+//   (dist_quantile), and checks the AR coefficient against the generating 0.6, the PACF cut-off, and the interval widths
+//   against the AR(1) variance formula.
+// Data: 240 values of 0.6-AR(1) noise with sd 0.7 (seed 73) plus the cycle [-2,-1,1,3,4,2,-1,-3,-4,-2,1,2] repeated.
 // Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-timeseries.lms
 import "../cli.schema.dev.json" as rcli;
-sim = rcli.rng_arima_sim({n: 72, seed: 73, order: [1,0,0], ar: [0.55], sd: 0.7});
-if (sim.status != "ok") { println("simulation failed", json_stringify(sim)); exit(1); }
-pattern = [-2,-1,1,3,4,2,-1,-3,-4,-2,1,2]; x = [];
-for (i = 0; i < 72; i = i + 1) { x = concat(x, [sim.result.value[i] + pattern[i - floor(i / 12) * 12]]); }
-fit = rcli.ts_arima({x: x, order: [1,0,0], n_ahead: 4, residuals: true});
-ac = rcli.ts_acf({x: x, lag_max: 12}); pc = rcli.ts_pacf({x: x, lag_max: 12});
-st = rcli.ts_stl({x: x, period: 12, periodic: true});
-if (fit.status != "ok" || ac.status != "ok" || pc.status != "ok" || st.status != "ok") { println("time-series analysis failed"); exit(1); }
-println(sprintf("AR(1) estimate %.4f; 4-step forecast starts %.4f; ACF(1) %.4f; STL trend length %d", fit.result.estimate[0], fit.result.forecast[0], ac.result.value[1], len(st.result.trend)));
-if (len(fit.result.forecast) != 4 || len(st.result.trend) != 72) { println("Time-series shape check failed"); exit(1); }
+
+phi = 0.6; sd = 0.7; n = 240; period = 12;
+pattern = [-2, -1, 1, 3, 4, 2, -1, -3, -4, -2, 1, 2];
+sim = rcli.rng_arima_sim({n: n, seed: 73, order: [1, 0, 0], ar: [phi], sd: sd});
+if (sim.status == "simulated") { println("time series simulated."); exit(0); }
+if (sim.status != "ok") { println("rng_arima_sim failed:", json_stringify(sim)); exit(1); }
+x = []; season_true = [];
+for (i = 0; i < n; i = i + 1) { s = pattern[i - floor(i / period) * period]; season_true = concat(season_true, [s]); x = concat(x, [sim.result.value[i] + s]); }
+
+acf = rcli.ts_acf({x: x, lag_max: 24});
+if (acf.status != "ok") { println(json_stringify(acf)); exit(1); }
+println(sprintf("raw series: ACF(6)=%.3f  ACF(12)=%.3f  ACF(24)=%.3f  (seasonal peaks at multiples of 12)", acf.result.value[6], acf.result.value[12], acf.result.value[24]));
+stl = rcli.ts_stl({x: x, period: period, periodic: true});
+if (stl.status != "ok") { println(json_stringify(stl)); exit(1); }
+println("month  true  stl seasonal");
+worst = 0; pattern_mean = avg(pattern);
+for (m = 0; m < period; m = m + 1) {
+  d = abs(stl.result.seasonal[m] - (pattern[m] - pattern_mean));
+  if (d > worst) { worst = d; }
+  println(sprintf("%5d %5.1f %8.3f", m + 1, pattern[m] - pattern_mean, stl.result.seasonal[m]));
+}
+deseason = []; for (i = 0; i < n; i = i + 1) { deseason = concat(deseason, [x[i] - stl.result.seasonal[i]]); }
+fit = rcli.ts_arima({x: deseason, order: [1, 0, 0], n_ahead: 12});
+if (fit.status != "ok") { println(json_stringify(fit)); exit(1); }
+r = fit.result;
+i_ar = index_of(r.coefficients, "ar1"); i_c = index_of(r.coefficients, "intercept");
+phi_hat = r.estimate[i_ar]; se_phi = r.std_error[i_ar]; mu_hat = r.estimate[i_c];
+println(sprintf("ARIMA(1,0,0) on the deseasonalised series: ar1 %.4f (SE %.4f, true %.1f), intercept %.4f (SE %.4f, true 0), sigma2 %.4f (true %.2f), loglik %.2f, AIC %.2f", phi_hat, se_phi, phi, mu_hat, r.std_error[i_c], r.sigma2, sd * sd, r.loglik, r.aic));
+z = rcli.dist_quantile({dist: "norm", p: [0.975]});
+if (z.status != "ok") { println(json_stringify(z)); exit(1); }
+zq = z.result.value[0];
+println("  h   forecast   95% interval          width");
+for (h = 0; h < 12; h = h + 1) {
+  lo = r.forecast[h] - zq * r.forecast_se[h]; hi = r.forecast[h] + zq * r.forecast_se[h];
+  println(sprintf("%3d  %9.4f   [%8.4f, %8.4f]  %.4f", h + 1, r.forecast[h], lo, hi, hi - lo));
+}
+pacf = rcli.ts_pacf({x: deseason, lag_max: 6});
+if (pacf.status != "ok") { println(json_stringify(pacf)); exit(1); }
+
+// Self-checks.
+if (acf.result.value[12] <= acf.result.value[6] || acf.result.value[12] <= 0.3) { println("no seasonal peak at lag 12"); exit(1); }
+// STL with a periodic window recovers the centred cycle to within the noise of a 20-cycle average (sd 0.7 / sqrt(20) ~ 0.16).
+if (worst > 0.5) { println("STL seasonal pattern off by", worst); exit(1); }
+if (abs(phi_hat - phi) > 3 * se_phi) { println("ar1 more than 3 SE from 0.6"); exit(1); }
+if (abs(mu_hat) > 3 * r.std_error[i_c]) { println("intercept more than 3 SE from 0"); exit(1); }
+if (abs(r.sigma2 - sd * sd) > 0.3 * sd * sd) { println("sigma2 far from 0.49:", r.sigma2); exit(1); }
+band = 1.96 / sqrt(n);
+for (k = 2; k <= 6; k = k + 1) { if (abs(pacf.result.value[k - 1]) > band + 0.05) { println("PACF does not cut off after lag 1 at lag", k); exit(1); } }
+// Forecasts approach the intercept and the interval widths follow sqrt(sigma2 (1 - phi^(2h)) / (1 - phi^2)).
+if (abs(r.forecast[11] - mu_hat) > abs(r.forecast[0] - mu_hat) + 0.000001) { println("forecasts do not approach the mean"); exit(1); }
+for (h = 1; h <= 12; h = h + 1) {
+  se = sqrt(r.sigma2 * (1 - pow(phi_hat, 2 * h)) / (1 - phi_hat * phi_hat));
+  if (abs(r.forecast_se[h - 1] - se) > 0.000001) { println("forecast SE differs from the AR(1) formula at h =", h, r.forecast_se[h - 1], se); exit(1); }
+}
+println(sprintf("Checks passed: ACF(12)=%.3f > ACF(6); STL cycle within %.3f; ar1=%.4f within 3 SE of 0.6; PACF cut-off; forecast SEs match the AR(1) formula.", acf.result.value[12], worst, phi_hat));

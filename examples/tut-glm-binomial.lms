@@ -1,13 +1,60 @@
-// Topic: Logistic dose response (after: R ?glm help page)
-// What it does: Builds a seeded synthetic binary response and fits a binomial GLM.
-// Data: 80 generated uniform draws against a smooth dose-response probability.
+// access: read
+// Topic: logistic regression with odds ratios and a likelihood-ratio test (after: R ?glm, ?predict.glm)
+// What it does: simulates a dose-response experiment with a known logit, fits a binomial GLM (fit_glm), prints the
+//   coefficient table with odds ratios and 95% intervals from the normal quantile, tests the slope with the deviance
+//   likelihood-ratio statistic (dist_probability, chi-square), and checks the fitted probability at the true ED50.
+// Data: 300 doses ~ U(-3, 3) (rng_draw seed 818); y = 1 when a second uniform draw (seed 819) is below
+//   p(dose) = 1 / (1 + exp(-(-0.5 + 1.2 dose))), so the truth is intercept -0.5, slope 1.2, ED50 = 0.5/1.2.
 // Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-glm-binomial.lms
 import "../cli.schema.dev.json" as rcli;
-u = rcli.rng_draw({dist: "unif", n: 80, min: 0, max: 1, seed: 818});
-if (u.status != "ok") { println("RNG failed", json_stringify(u)); exit(1); }
-x = []; y = [];
-for (i = 0; i < 80; i = i + 1) { dose = (i - 39.5) / 12; x = concat(x, [dose]); p = 0.1 + 0.8 * i / 79; y = concat(y, [u.result.value[i] < p ? 1 : 0]); }
-fit = rcli.fit_glm({response: "y", predictors: ["dose"], data: {y: y, dose: x}, family: "binomial"});
-if (fit.status != "ok") { println("binomial GLM failed", json_stringify(fit)); exit(1); }
-println(sprintf("Logistic dose slope %.4f (expected positive)", fit.result.estimate[1]));
-if (fit.result.estimate[1] <= 0) { println("Slope sign check failed"); exit(1); }
+// sci(v): "m.mme-k" for small p-values, since sprintf has no %e.
+function sci(v) {
+  if (v == 0) { return "0"; }
+  k = 0; m = abs(v);
+  while (m < 1) { m = m * 10; k = k - 1; }
+  while (m >= 10) { m = m / 10; k = k + 1; }
+  return sprintf("%.2fe%d", v < 0 ? -m : m, k);
+}
+
+E = 2.718281828459045;
+b0 = -0.5; b1 = 1.2; n = 300;
+doses = rcli.rng_draw({dist: "unif", n: n, min: -3, max: 3, seed: 818});
+if (doses.status == "simulated") { println("GLM simulated."); exit(0); }
+u = rcli.rng_draw({dist: "unif", n: n, min: 0, max: 1, seed: 819});
+if (doses.status != "ok" || u.status != "ok") { println("rng_draw failed:", json_stringify(doses), json_stringify(u)); exit(1); }
+dose = doses.result.value; y = []; events = 0;
+for (i = 0; i < n; i = i + 1) {
+  p = 1 / (1 + pow(E, -(b0 + b1 * dose[i])));
+  hit = u.result.value[i] < p ? 1 : 0; events = events + hit; y = concat(y, [hit]);
+}
+
+fit = rcli.fit_glm({response: "y", predictors: ["dose"], data: {y: y, dose: dose}, family: "binomial"});
+if (fit.status != "ok") { println("fit_glm failed:", json_stringify(fit)); exit(1); }
+r = fit.result;
+z = rcli.dist_quantile({dist: "norm", p: [0.975]});
+if (z.status != "ok") { println(json_stringify(z)); exit(1); }
+zq = z.result.value[0];
+println(sprintf("n=%d events=%d  deviance=%.3f on %d df  null deviance=%.3f  AIC=%.2f  converged=%s in %d iterations", n, events, r.deviance, n - r.rank, r.null_deviance, r.aic, r.converged, r.iterations));
+println("term          estimate   std_err    z        p          odds ratio [95% CI]");
+truth = {"(Intercept)": b0, dose: b1};
+for (i = 0; i < len(r.coefficients); i = i + 1) {
+  lo = r.estimate[i] - zq * r.std_error[i]; hi = r.estimate[i] + zq * r.std_error[i];
+  println(sprintf("%-12s %9.4f %9.4f %8.3f %s  %7.3f [%.3f, %.3f]", r.coefficients[i], r.estimate[i], r.std_error[i], r.statistic[i], sci(r.p_value[i]), pow(E, r.estimate[i]), pow(E, lo), pow(E, hi)));
+  // Self-check 1: the generating logit parameters lie inside the 95% Wald intervals.
+  if (truth[r.coefficients[i]] < lo || truth[r.coefficients[i]] > hi) { println("true", r.coefficients[i], "outside its 95% interval"); exit(1); }
+}
+// Self-check 2: the likelihood-ratio test of the slope is the chi-square(1) tail of the deviance drop, and it is decisive.
+lr = r.null_deviance - r.deviance;
+pr = rcli.dist_probability({dist: "chisq", q: [lr], df: 1, lower_tail: false});
+if (pr.status != "ok") { println(json_stringify(pr)); exit(1); }
+println(sprintf("Likelihood-ratio test of the slope: chi^2(1)=%.2f, p=%s; Wald z=%.2f", lr, sci(pr.result.value[0]), r.statistic[1]));
+if (pr.result.value[0] > 0.000001) { println("slope not detected by the LR test"); exit(1); }
+if (r.dispersion != 1 || r.statistic_type != "z") { println("binomial family should report dispersion 1 and z statistics"); exit(1); }
+// Self-check 3: the fitted probability at the true ED50 (dose 0.5/1.2) is within 0.1 of one half.
+ed50 = -b0 / b1;
+p_hat = 1 / (1 + pow(E, -(r.estimate[0] + r.estimate[1] * ed50)));
+println(sprintf("fitted P(y=1) at the true ED50 %.4f: %.3f (truth 0.5); fitted ED50 %.4f", ed50, p_hat, -r.estimate[0] / r.estimate[1]));
+if (abs(p_hat - 0.5) > 0.1) { println("fitted probability at ED50 far from 0.5"); exit(1); }
+// Self-check 4: the residual deviance is below the null deviance by at least the LR statistic's own value (consistency).
+if (r.deviance >= r.null_deviance) { println("model does not improve on the null"); exit(1); }
+println(sprintf("Checks passed: truth inside both Wald intervals; LR p=%s; P(ED50)=%.3f; odds ratio per unit dose %.3f (true %.3f).", sci(pr.result.value[0]), p_hat, pow(E, r.estimate[1]), pow(E, b1)));

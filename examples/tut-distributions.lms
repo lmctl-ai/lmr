@@ -1,15 +1,54 @@
-// Topic: Distribution tables and seeded simulation (after: scipy-lectures statistics chapter)
-// What it does: Inverts and evaluates the normal distribution, then checks a seeded sample summary.
-// Data: Seed-42 standard-normal simulation; no downloaded observations.
+// access: read
+// Topic: distribution functions, quantile tables and seeded simulation (after: R ?Distributions, ?qnorm, ?quantile, ?set.seed;
+//   scipy-lectures statistics chapter)
+// What it does: prints a quantile table for the normal, t, chi-square and binomial laws against textbook values, checks
+//   p(q(p)) round trips and the identity qchisq(1-a, 1) = qnorm(1-a/2)^2 (dist_quantile, dist_probability), integrates the
+//   normal density to 1 (num_integrate, dist_density), and summarises a seeded normal sample (rng_draw, summary_quantile)
+//   against the theoretical quantiles, checking the sample mean within 3 standard errors and seeded reproducibility.
+// Data: a 4000-draw N(3, 2^2) sample, rng_draw seed 42 (small enough for lmscript to pass inline through the shim); everything else is analytic.
 // Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-distributions.lms
 import "../cli.schema.dev.json" as rcli;
-q = rcli.dist_quantile({dist: "norm", p: [0.025, 0.5, 0.975]});
-d = rcli.dist_density({dist: "norm", x: q.result.value});
-s = rcli.rng_draw({dist: "norm", n: 1000, seed: 42});
-if (q.status != "ok" || d.status != "ok" || s.status != "ok") { println("distribution call failed"); exit(1); }
-summary = rcli.summary_quantile({x: s.result.value, probs: [0.25, 0.5, 0.75]});
-if (summary.status != "ok") { println("sample summary failed"); exit(1); }
-println(sprintf("Normal q(.025/.5/.975) %.4f / %.4f / %.4f; density at median %.6f; seeded sample median %.4f", q.result.value[0], q.result.value[1], q.result.value[2], d.result.value[1], summary.result.value[1]));
-if (q.result.value[1] != 0) { println("Median quantile check failed"); exit(1); }
-if (abs(d.result.value[1]-0.3989422804014327) > 0.000000000001) { println("Density check failed"); exit(1); }
-if (abs(summary.result.value[1]) > 0.15) { println("Seeded sample median check failed"); exit(1); }
+
+ps = [0.005, 0.025, 0.05, 0.5, 0.95, 0.975, 0.995];
+qn = rcli.dist_quantile({dist: "norm", p: ps});
+if (qn.status == "simulated") { println("distributions simulated."); exit(0); }
+qt = rcli.dist_quantile({dist: "t", p: ps, df: 10});
+qc = rcli.dist_quantile({dist: "chisq", p: ps, df: 1});
+qb = rcli.dist_quantile({dist: "binom", p: ps, size: 20, prob: 0.3});
+if (qn.status != "ok" || qt.status != "ok" || qc.status != "ok" || qb.status != "ok") { println("dist_quantile failed"); exit(1); }
+println("p       norm       t(10)      chisq(1)   binom(20, 0.3)");
+for (i = 0; i < len(ps); i = i + 1) { println(sprintf("%.3f  %9.6f  %9.6f  %9.6f  %6d", ps[i], qn.result.value[i], qt.result.value[i], qc.result.value[i], qb.result.value[i])); }
+// Self-check 1: textbook values to 1e-9 (Abramowitz-Stegun / R reference values).
+known = [[1.959963984540054, qn.result.value[5]], [2.5758293035489, qn.result.value[6]], [2.228138851986274, qt.result.value[5]], [3.841458820694124, qc.result.value[4]]];
+for (k in known) { if (abs(k[0] - k[1]) > 0.000000001) { println("quantile differs from the reference value:", k[0], k[1]); exit(1); } }
+// Self-check 2: qchisq(1-a, 1) = qnorm(1-a/2)^2 and p(q(p)) = p round trips.
+if (abs(qc.result.value[4] - qn.result.value[5] * qn.result.value[5]) > 0.000000001) { println("chi-square(1) quantile is not the squared normal quantile"); exit(1); }
+pn = rcli.dist_probability({dist: "norm", q: qn.result.value}); pt = rcli.dist_probability({dist: "t", q: qt.result.value, df: 10});
+if (pn.status != "ok" || pt.status != "ok") { println("dist_probability failed"); exit(1); }
+for (i = 0; i < len(ps); i = i + 1) { if (abs(pn.result.value[i] - ps[i]) > 0.000000000001 || abs(pt.result.value[i] - ps[i]) > 0.000000000001) { println("p(q(p)) round trip failed at", ps[i]); exit(1); } }
+// The binomial quantile is the smallest k with P(X <= k) >= p.
+pb = rcli.dist_probability({dist: "binom", q: qb.result.value, size: 20, prob: 0.3});
+pb1 = []; for (v in qb.result.value) { pb1 = concat(pb1, [v - 1]); }
+pbm = rcli.dist_probability({dist: "binom", q: pb1, size: 20, prob: 0.3});
+if (pb.status != "ok" || pbm.status != "ok") { println("binomial probabilities failed"); exit(1); }
+for (i = 0; i < len(ps); i = i + 1) { if (pb.result.value[i] < ps[i] || pbm.result.value[i] >= ps[i]) { println("binomial quantile definition violated at", ps[i]); exit(1); } }
+// Self-check 3: the standard normal density integrates to 1 and dnorm(0) = 1/sqrt(2 pi).
+area = rcli.num_integrate({f: "dnorm(x)", lower: -40, upper: 40});
+d0 = rcli.dist_density({dist: "norm", x: [0]});
+if (area.status != "ok" || d0.status != "ok") { println("density checks failed"); exit(1); }
+println(sprintf("integral of dnorm over [-40, 40] (tails < 1e-300) = %.12f; dnorm(0) = %.15f (1/sqrt(2 pi) = %.15f)", area.result.value, d0.result.value[0], 1 / sqrt(2 * 3.141592653589793)));
+if (abs(area.result.value - 1) > 0.000000001 || abs(d0.result.value[0] - 1 / sqrt(2 * 3.141592653589793)) > 0.000000000000001) { println("density checks failed"); exit(1); }
+// Self-check 4: a seeded sample: mean within 3 SE, sample quantiles near the theoretical ones, same seed -> same draws.
+n = 4000; mu = 3; sigma = 2;
+s = rcli.rng_draw({dist: "norm", n: n, mean: mu, sd: sigma, seed: 42});
+again = rcli.rng_draw({dist: "norm", n: n, mean: mu, sd: sigma, seed: 42});
+if (s.status != "ok" || again.status != "ok") { println("rng_draw failed"); exit(1); }
+x = s.result.value; xbar = avg(x); se = sigma / sqrt(n);
+sq = rcli.summary_quantile({x: x, probs: [0.025, 0.5, 0.975], type: 7});
+if (sq.status != "ok") { println(json_stringify(sq)); exit(1); }
+println(sprintf("N(3, 4) sample of %d: mean %.4f (SE %.4f); quantiles 2.5%%/50%%/97.5%%: %.4f / %.4f / %.4f vs theory %.4f / %.4f / %.4f", n, xbar, se, sq.result.value[0], sq.result.value[1], sq.result.value[2], mu + sigma * qn.result.value[1], mu, mu + sigma * qn.result.value[5]));
+if (abs(xbar - mu) > 3 * se) { println("sample mean more than 3 SE from 3"); exit(1); }
+// Sample-quantile standard errors at n = 4000: about 0.04 at the median and 0.085 at the 2.5%/97.5% points; allow 3.5 SE.
+if (abs(sq.result.value[1] - mu) > 0.15 || abs(sq.result.value[0] - (mu + sigma * qn.result.value[1])) > 0.3 || abs(sq.result.value[2] - (mu + sigma * qn.result.value[5])) > 0.3) { println("sample quantiles far from theory"); exit(1); }
+if (json_stringify(slice(x, 0, 5)) != json_stringify(slice(again.result.value, 0, 5))) { println("seeded draws not reproducible"); exit(1); }
+println(sprintf("Checks passed: reference quantiles to 1e-9; chi-square(1) = normal^2; p(q(p)) round trips; density integrates to 1; sample mean %.4f within 3 SE; seed 42 reproducible.", xbar));
