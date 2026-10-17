@@ -1,0 +1,11 @@
+// Topic: Scalar and multivariate numerical methods (after: scipy-lectures optimization chapter)
+// What it does: Minimizes a bowl, finds a root, and integrates a Gaussian kernel.
+// Data: Deterministic analytic functions; no external dataset.
+// Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-optimization.lms
+import "../cli.schema.dev.json" as rcli;
+o = rcli.opt_optimize({objective: "(x-3)^2", lower: -5, upper: 9});
+r = rcli.num_root({f: "x^2-2", lower: 1, upper: 2});
+i = rcli.num_integrate({f: "x^2", lower: 0, upper: 1});
+if (o.status != "ok" || r.status != "ok" || i.status != "ok") { println("numerics failed", json_stringify(o), json_stringify(r), json_stringify(i)); exit(1); }
+println(sprintf("Minimum x %.8f; root %.8f; unit-square integral %.8f", o.result.x, r.result.root, i.result.value));
+if (abs(o.result.x-3) > 0.001 || abs(r.result.root-sqrt(2)) > 0.001 || abs(i.result.value-0.3333333333333333) > 0.00001) { println("Numerical oracle check failed"); exit(1); }

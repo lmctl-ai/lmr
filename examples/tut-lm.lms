@@ -1,0 +1,12 @@
+// Topic: Multiple regression and residual checks (after: R ?lm help page)
+// What it does: Fits a car-economy-style regression, then summarizes fitted residuals.
+// Data: Seed-2718 synthetic fuel economy, weight, and power; examples/data/tut-cars.csv.
+// Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-lm.lms
+import "../cli.schema.dev.json" as rcli;
+rows = read_csv("examples/data/tut-cars.csv");
+fit = rcli.fit_lm({formula: "mpg ~ weight + power", data: {mpg: pluck(rows, "mpg"), weight: pluck(rows, "weight"), power: pluck(rows, "power")}, residuals: true});
+if (fit.status != "ok") { println("lm failed", json_stringify(fit)); exit(1); }
+q = rcli.summary_quantile({x: fit.result.residuals, probs: [0.25, 0.5, 0.75]});
+if (q.status != "ok") { println("residual quantiles failed", json_stringify(q)); exit(1); }
+println(sprintf("Car-like model R² %.4f; residual median %.6f", fit.result.r_squared, q.result.value[1]));
+if (abs(q.result.value[1]) > 0.5) { println("Residual median check failed"); exit(1); }

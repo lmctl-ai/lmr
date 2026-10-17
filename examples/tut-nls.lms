@@ -1,0 +1,13 @@
+// Topic: Nonlinear least squares (after: R ?nls help page)
+// What it does: Creates noisy Michaelis-Menten observations and recovers curve parameters.
+// Data: Seed-42 perturbations around a synthetic enzyme saturation curve.
+// Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-nls.lms
+import "../cli.schema.dev.json" as rcli;
+x = []; for (i = 0; i < 15; i = i + 1) { x = concat(x, [i / 3]); }
+e = rcli.rng_draw({dist: "norm", n: 15, mean: 0, sd: 0.015, seed: 42});
+if (e.status != "ok") { println("noise generation failed"); exit(1); }
+y = []; for (i = 0; i < 15; i = i + 1) { y = concat(y, [5 * x[i] / (1.5 + x[i]) + e.result.value[i]]); }
+fit = rcli.fit_nls({response: "y", rhs: "v*x/(k+x)", data: {x: x, y: y}, start: {v: 4, k: 1}});
+if (fit.status != "ok") { println("nls failed", json_stringify(fit)); exit(1); }
+println(sprintf("Saturation fit: vmax %.4f, Km %.4f", fit.result.estimate[0], fit.result.estimate[1]));
+if (abs(fit.result.estimate[0]-5) > 0.2 || abs(fit.result.estimate[1]-1.5) > 0.2) { println("Curve recovery outside 0.2 tolerance"); exit(1); }

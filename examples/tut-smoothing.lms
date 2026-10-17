@@ -1,0 +1,14 @@
+// Topic: Smoothing noisy measurements (after: scipy-lectures statistics chapter)
+// What it does: Applies smoothing spline and LOESS, then checks both reproduce the observation grid.
+// Data: Seed-91 noisy samples from a smooth triangular trend.
+// Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-smoothing.lms
+import "../cli.schema.dev.json" as rcli;
+x = []; for (i = 0; i < 25; i = i + 1) { x = concat(x, [i / 4]); }
+e = rcli.rng_draw({dist: "norm", n: 25, mean: 0, sd: 0.12, seed: 91});
+if (e.status != "ok") { println("noise generation failed"); exit(1); }
+y = []; for (i = 0; i < 25; i = i + 1) { y = concat(y, [(x[i] < 3 ? x[i] : 6 - x[i]) + e.result.value[i]]); }
+a = rcli.smooth_spline({x: x, y: y, df: 8}); b = rcli.smooth_loess({x: x, y: y, span: 0.6, degree: 2});
+if (a.status != "ok" || b.status != "ok") { println("smoothing failed"); exit(1); }
+err_a = 0; err_b = 0; for (i = 0; i < 25; i = i + 1) { err_a = err_a + abs(a.result.fitted[i]-y[i]); err_b = err_b + abs(b.result.fitted[i]-y[i]); }
+println(sprintf("Mean absolute residual: spline %.4f, LOESS %.4f", err_a/25, err_b/25));
+if (len(a.result.fitted) != 25 || len(b.result.fitted) != 25 || err_a/25 > 0.3 || err_b/25 > 0.3) { println("Smoother shape/error check failed"); exit(1); }

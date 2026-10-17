@@ -1,0 +1,15 @@
+// Topic: Seasonal time-series diagnostics and forecasting (after: R ?arima help page)
+// What it does: Simulates an AR series, fits ARIMA, forecasts, and computes ACF/PACF and STL.
+// Data: Seed-73 AR(1) noise plus a fixed 12-month seasonal cycle, mimicking a seasonal passenger series.
+// Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-timeseries.lms
+import "../cli.schema.dev.json" as rcli;
+sim = rcli.rng_arima_sim({n: 72, seed: 73, order: [1,0,0], ar: [0.55], sd: 0.7});
+if (sim.status != "ok") { println("simulation failed", json_stringify(sim)); exit(1); }
+pattern = [-2,-1,1,3,4,2,-1,-3,-4,-2,1,2]; x = [];
+for (i = 0; i < 72; i = i + 1) { x = concat(x, [sim.result.value[i] + pattern[i - floor(i / 12) * 12]]); }
+fit = rcli.ts_arima({x: x, order: [1,0,0], n_ahead: 4, residuals: true});
+ac = rcli.ts_acf({x: x, lag_max: 12}); pc = rcli.ts_pacf({x: x, lag_max: 12});
+st = rcli.ts_stl({x: x, period: 12, periodic: true});
+if (fit.status != "ok" || ac.status != "ok" || pc.status != "ok" || st.status != "ok") { println("time-series analysis failed"); exit(1); }
+println(sprintf("AR(1) estimate %.4f; 4-step forecast starts %.4f; ACF(1) %.4f; STL trend length %d", fit.result.estimate[0], fit.result.forecast[0], ac.result.value[1], len(st.result.trend)));
+if (len(fit.result.forecast) != 4 || len(st.result.trend) != 72) { println("Time-series shape check failed"); exit(1); }

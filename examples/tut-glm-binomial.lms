@@ -1,0 +1,13 @@
+// Topic: Logistic dose response (after: R ?glm help page)
+// What it does: Builds a seeded synthetic binary response and fits a binomial GLM.
+// Data: 80 generated uniform draws against a smooth dose-response probability.
+// Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-glm-binomial.lms
+import "../cli.schema.dev.json" as rcli;
+u = rcli.rng_draw({dist: "unif", n: 80, min: 0, max: 1, seed: 818});
+if (u.status != "ok") { println("RNG failed", json_stringify(u)); exit(1); }
+x = []; y = [];
+for (i = 0; i < 80; i = i + 1) { dose = (i - 39.5) / 12; x = concat(x, [dose]); p = 0.1 + 0.8 * i / 79; y = concat(y, [u.result.value[i] < p ? 1 : 0]); }
+fit = rcli.fit_glm({response: "y", predictors: ["dose"], data: {y: y, dose: x}, family: "binomial"});
+if (fit.status != "ok") { println("binomial GLM failed", json_stringify(fit)); exit(1); }
+println(sprintf("Logistic dose slope %.4f (expected positive)", fit.result.estimate[1]));
+if (fit.result.estimate[1] <= 0) { println("Slope sign check failed"); exit(1); }

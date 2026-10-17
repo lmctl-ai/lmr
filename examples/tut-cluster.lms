@@ -1,0 +1,11 @@
+// Topic: Partitioning and hierarchical clustering (after: scikit-learn clustering user guide)
+// What it does: Clusters three compact synthetic iris-like groups and compares two methods.
+// Data: Three seeded compact numeric clusters; fixed coordinates keep the example reproducible.
+// Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-cluster.lms
+import "../cli.schema.dev.json" as rcli;
+data = {sepal: [1,1.1,0.9,1.2,5,5.1,4.9,5.2,9,9.1,8.9,9.2], petal: [1,0.9,1.2,1.1,5,5.2,4.8,5.1,2,2.1,1.9,2.2]};
+k = rcli.cluster_kmeans({data: data, k: 3, seed: 44, nstart: 5});
+h = rcli.cluster_hclust({data: data, method: "complete", cut_k: 3});
+if (k.status != "ok" || h.status != "ok") { println("clustering failed"); exit(1); }
+println(sprintf("K-means found %d groups (within SS %.4f); hierarchical cut has %d labels", len(unique(k.result.cluster)), k.result.tot_withinss, len(unique(h.result.cluster))));
+if (len(unique(k.result.cluster)) != 3 || len(unique(h.result.cluster)) != 3) { println("Expected three clusters"); exit(1); }

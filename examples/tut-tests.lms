@@ -1,0 +1,14 @@
+// Topic: Classical tests for two small groups (after: R ?t.test and ?wilcox.test)
+// What it does: Generates seeded samples, runs parametric and rank tests, then checks direction.
+// Data: Two seeded normal samples mimicking a small PlantGrowth-style experiment.
+// Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-tests.lms
+import "../cli.schema.dev.json" as rcli;
+a = rcli.rng_draw({dist: "norm", n: 18, mean: 5, sd: 0.7, seed: 701});
+b = rcli.rng_draw({dist: "norm", n: 18, mean: 5.8, sd: 0.7, seed: 702});
+if (a.status != "ok" || b.status != "ok") { println("sample generation failed"); exit(1); }
+t = rcli.test_htest({test: "t", x: a.result.value, y: b.result.value, var_equal: true});
+w = rcli.test_htest({test: "wilcox", x: a.result.value, y: b.result.value});
+s = rcli.test_htest({test: "shapiro", x: a.result.value});
+if (t.status != "ok" || w.status != "ok" || s.status != "ok") { println("test failed", json_stringify(t), json_stringify(w), json_stringify(s)); exit(1); }
+println(sprintf("Group means differ by %.3f; t p=%.5f, Wilcoxon p=%.5f, Shapiro p=%.5f", avg(a.result.value)-avg(b.result.value), t.result.p_value, w.result.p_value, s.result.p_value));
+if (t.result.p_value >= 0.05 || w.result.p_value >= 0.05) { println("Seeded group-separation check failed"); exit(1); }

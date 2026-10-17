@@ -1,0 +1,15 @@
+// Topic: Distribution tables and seeded simulation (after: scipy-lectures statistics chapter)
+// What it does: Inverts and evaluates the normal distribution, then checks a seeded sample summary.
+// Data: Seed-42 standard-normal simulation; no downloaded observations.
+// Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-distributions.lms
+import "../cli.schema.dev.json" as rcli;
+q = rcli.dist_quantile({dist: "norm", p: [0.025, 0.5, 0.975]});
+d = rcli.dist_density({dist: "norm", x: q.result.value});
+s = rcli.rng_draw({dist: "norm", n: 1000, seed: 42});
+if (q.status != "ok" || d.status != "ok" || s.status != "ok") { println("distribution call failed"); exit(1); }
+summary = rcli.summary_quantile({x: s.result.value, probs: [0.25, 0.5, 0.75]});
+if (summary.status != "ok") { println("sample summary failed"); exit(1); }
+println(sprintf("Normal q(.025/.5/.975) %.4f / %.4f / %.4f; density at median %.6f; seeded sample median %.4f", q.result.value[0], q.result.value[1], q.result.value[2], d.result.value[1], summary.result.value[1]));
+if (q.result.value[1] != 0) { println("Median quantile check failed"); exit(1); }
+if (abs(d.result.value[1]-0.3989422804014327) > 0.000000000001) { println("Density check failed"); exit(1); }
+if (abs(summary.result.value[1]) > 0.15) { println("Seeded sample median check failed"); exit(1); }

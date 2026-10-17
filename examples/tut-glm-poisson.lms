@@ -1,0 +1,12 @@
+// Topic: Count regression (after: R ?glm help page, Dobson counts style)
+// What it does: Fits a Poisson log-link model to a small synthetic dose/count table.
+// Data: Seed-2718 generated counts resembling a modest exposure trend, in tut-counts.csv.
+// Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-glm-poisson.lms
+import "../cli.schema.dev.json" as rcli;
+rows = read_csv("examples/data/tut-counts.csv");
+fit = rcli.fit_glm({response: "count", predictors: ["dose"], data: {count: pluck(rows, "count"), dose: pluck(rows, "dose")}, family: "poisson"});
+if (fit.status != "ok") { println("Poisson GLM failed", json_stringify(fit)); exit(1); }
+q = rcli.dist_quantile({dist: "pois", p: [0.5], lambda: 4});
+if (q.status != "ok") { println("count prediction failed", json_stringify(q)); exit(1); }
+println(sprintf("Poisson slope %.4f; predicted median count at dose 2 is %.0f", fit.result.estimate[1], q.result.value[0]));
+if (fit.result.estimate[1] <= 0 || q.result.value[0] < 1) { println("Count trend check failed"); exit(1); }
