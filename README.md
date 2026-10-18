@@ -52,7 +52,7 @@ docker build -f docker/Dockerfile --target runtime -t rcli:runtime .
 docker build -f docker/Dockerfile --target test -t rcli:test .
 ```
 
-Use `build/bin/rcli` for a native host binary, or put the absolute path to `bin` on `PATH` to run the isolated container shim. The shim requires a working directory below `$HOME`; it mounts only that directory read-write, disables network access, and starts a fresh container for each call. Build `rcli:runtime` first; `bin/rcli --schema` runs offline from that local image and can regenerate `cli.schema.dev.json`. lmscript recipes import that schema and work when `bin` is on `PATH`; see [examples/README.md](examples/README.md) for the ten tutorial conversions and their synthetic fixtures. The shim passes `RCLI_TIMEOUT_S` when set; its value can lower the 50-second call timeout.
+Use `build/bin/rcli` for a native host binary, or put the absolute path to `bin` on `PATH` to run the isolated container shim. The shim requires a working directory below `$HOME`; it mounts only that directory read-write, disables network access, and starts a fresh container for each call. Build `rcli:runtime` first; `bin/rcli --schema` runs offline from that local image and can regenerate `cli.schema.dev.json`. lmscript recipes import that schema and work when `bin` is on `PATH`; see [examples/README.md](examples/README.md) for the fourteen tutorial conversions and their synthetic fixtures. The shim passes `RCLI_TIMEOUT_S` when set; its value can lower the 50-second call timeout.
 
 Array flags take one item per occurrence (`--p 0.975`; repeat `--p` for additional values). A JSON array passed as one flag value is not accepted.
 

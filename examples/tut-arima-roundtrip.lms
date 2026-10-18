@@ -25,13 +25,16 @@ for (i = 0; i < len(r.coefficients); i = i + 1) {
   name = r.coefficients[i]; j = index_of(css.result.coefficients, name);
   zdev = abs(r.estimate[i] - truth[name]) / r.std_error[i];
   println(sprintf("%-12s %9.4f %9.4f %7.2f  %5.2f   %9.4f", name, r.estimate[i], r.std_error[i], truth[name], zdev, css.result.estimate[j]));
-  // Self-check 1: each estimate within 3 SE of the generating value; CSS-ML agrees with ML to 0.02.
-  if (zdev > 3) { println(name, "more than 3 SE from truth"); exit(1); }
+  // Self-check 1: each estimate within 2.5 SE of the generating value (on this fixture ar1, ma1 and the intercept sit 0.90, 1.63
+  // and 1.33 SE away, while ma1 is 2.66 SE from 0, so a generating ma1 of 0 fails); CSS-ML agrees with ML to 0.02.
+  if (zdev > 2.5) { println(name, "more than 2.5 SE from truth"); exit(1); }
   if (abs(r.estimate[i] - css.result.estimate[j]) > 0.02) { println("CSS-ML and ML disagree on", name); exit(1); }
 }
 // Self-check 2: innovation variance within 20% of 2.25 (its SE is about sigma2 sqrt(2/n) = 0.14).
 if (abs(r.sigma2 - sd * sd) > 0.2 * sd * sd) { println("sigma2 far from 2.25"); exit(1); }
-// Self-check 3: residuals are white: ACF at lags 1-10 inside 1.96/sqrt(n) + 0.03, and their variance matches sigma2.
+// Self-check 3: residuals are white: the largest of the ten residual autocorrelations at lags 1-10 is inside 1.96/sqrt(n) + 0.05
+// (the maximum of ten null draws exceeds the single-lag band about 40% of the time; on this fixture it is 0.115 against 0.088),
+// and their variance matches sigma2.
 res = r.residuals;
 racf = rcli.ts_acf({x: res, lag_max: 10});
 if (racf.status != "ok") { println(json_stringify(racf)); exit(1); }
@@ -46,9 +49,10 @@ println("  h  forecast  se");
 for (h = 0; h < 6; h = h + 1) { println(sprintf("%3d  %8.4f  %.4f", h + 1, r.forecast[h], r.forecast_se[h])); }
 if (abs(r.forecast_se[0] - sqrt(r.sigma2)) > 0.000001) { println("one-step forecast SE is not sqrt(sigma2)"); exit(1); }
 for (h = 1; h < 6; h = h + 1) { if (r.forecast_se[h] < r.forecast_se[h - 1] - 0.000001) { println("forecast SE shrinks at h =", h + 1); exit(1); } }
-// The two-step SE for ARMA(1,1) is sigma sqrt(1 + (phi - theta)^2) with R's sign convention (theta = ma1).
+// The two-step SE for ARMA(1,1) is sigma sqrt(1 + psi1^2) with psi1 = phi + theta in R's sign convention (theta = ma1 enters
+// the MA polynomial with a plus sign).
 psi1 = r.estimate[index_of(r.coefficients, "ar1")] + r.estimate[index_of(r.coefficients, "ma1")];
 if (abs(r.forecast_se[1] - sqrt(r.sigma2 * (1 + psi1 * psi1))) > 0.000001) { println("two-step forecast SE differs from the psi-weight formula"); exit(1); }
 // Self-check 5: seeded reproducibility.
 if (json_stringify(slice(x, 0, 10)) != json_stringify(slice(again.result.value, 0, 10))) { println("seed 314 did not reproduce the series"); exit(1); }
-println(sprintf("Checks passed: ar1=%.3f ma1=%.3f within 3 SE of (0.7, -0.4); sigma2=%.3f; residual ACF max %.3f; forecast SEs follow the psi weights; seed reproducible.", r.estimate[index_of(r.coefficients, "ar1")], r.estimate[index_of(r.coefficients, "ma1")], r.sigma2, worst));
+println(sprintf("Checks passed: ar1=%.3f ma1=%.3f within 2.5 SE of (%.1f, %.1f); sigma2=%.3f; residual ACF max %.3f; forecast SEs follow the psi weights; seed reproducible.", r.estimate[index_of(r.coefficients, "ar1")], r.estimate[index_of(r.coefficients, "ma1")], ar, ma, r.sigma2, worst));

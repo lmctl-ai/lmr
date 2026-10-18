@@ -49,7 +49,8 @@ if (pacf.status != "ok") { println(json_stringify(pacf)); exit(1); }
 
 // Self-checks.
 if (acf.result.value[12] <= acf.result.value[6] || acf.result.value[12] <= 0.3) { println("no seasonal peak at lag 12"); exit(1); }
-// STL with a periodic window recovers the centred cycle to within the noise of a 20-cycle average (sd 0.7 / sqrt(20) ~ 0.16).
+// STL with a periodic window recovers the centred cycle to within the noise of a 20-cycle average of AR(1) values: the stationary
+// sd is 0.7 / sqrt(1 - 0.36) = 0.875, so 0.875 / sqrt(20) = 0.196 per month; 0.5 is about 2.5 of those.
 if (worst > 0.5) { println("STL seasonal pattern off by", worst); exit(1); }
 if (abs(phi_hat - phi) > 3 * se_phi) { println("ar1 more than 3 SE from 0.6"); exit(1); }
 if (abs(mu_hat) > 3 * r.std_error[i_c]) { println("intercept more than 3 SE from 0"); exit(1); }

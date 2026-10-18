@@ -55,6 +55,6 @@ ed50 = -b0 / b1;
 p_hat = 1 / (1 + pow(E, -(r.estimate[0] + r.estimate[1] * ed50)));
 println(sprintf("fitted P(y=1) at the true ED50 %.4f: %.3f (truth 0.5); fitted ED50 %.4f", ed50, p_hat, -r.estimate[0] / r.estimate[1]));
 if (abs(p_hat - 0.5) > 0.1) { println("fitted probability at ED50 far from 0.5"); exit(1); }
-// Self-check 4: the residual deviance is below the null deviance by at least the LR statistic's own value (consistency).
+// Self-check 4: the residual deviance is below the null deviance (consistency: the slope model improves on the null).
 if (r.deviance >= r.null_deviance) { println("model does not improve on the null"); exit(1); }
 println(sprintf("Checks passed: truth inside both Wald intervals; LR p=%s; P(ED50)=%.3f; odds ratio per unit dose %.3f (true %.3f).", sci(pr.result.value[0]), p_hat, pow(E, r.estimate[1]), pow(E, b1)));

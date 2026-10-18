@@ -2,7 +2,7 @@
 // Topic: identifying the AR order from the PACF and from AIC (after: R ?pacf, ?ar, the Box-Jenkins identification step)
 // What it does: simulates an AR(2) process with rng_arima_sim, prints the ACF and PACF with the 1.96/sqrt(n) band
 //   (ts_acf, ts_pacf), fits AR(1), AR(2) and AR(3) by maximum likelihood (ts_arima) and prints their AIC, then checks that
-//   the PACF is outside the band at lags 1-2 and inside at lags 3-8, that AIC picks order 2, that the AR(2) coefficients
+//   the PACF is outside the band at lags 1-2 and inside the plain 1.96/sqrt(n) band at lags 3-8, that AIC picks order 2, that the AR(2) coefficients
 //   are within 3 SE of the generating values, and that the theoretical lag-1 ACF phi1/(1-phi2) matches the sample ACF.
 // Data: 400 values of x_t = 0.5 x_{t-1} + 0.3 x_{t-2} + N(0, 1), rng_arima_sim seed 2024.
 // Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-pacf-order.lms
@@ -36,7 +36,7 @@ for (p = 1; p <= 3; p = p + 1) {
 
 // Self-checks.
 for (k = 1; k <= 2; k = k + 1) { if (abs(pacf.result.value[k - 1]) <= band) { println("PACF inside the band at lag", k); exit(1); } }
-for (k = 3; k <= 8; k = k + 1) { if (abs(pacf.result.value[k - 1]) > band + 0.05) { println("PACF outside the band at lag", k); exit(1); } }
+for (k = 3; k <= 8; k = k + 1) { if (abs(pacf.result.value[k - 1]) > band) { println("PACF outside the band at lag", k); exit(1); } }
 if (!(aics[1] < aics[0] && aics[1] < aics[2])) { println("AIC does not select AR(2):", json_stringify(aics)); exit(1); }
 ar2 = fits[1];
 for (j = 0; j < 2; j = j + 1) { if (abs(ar2.estimate[j] - phi[j]) > 3 * ar2.std_error[j]) { println("AR(2) coefficient", j + 1, "more than 3 SE from truth"); exit(1); } }

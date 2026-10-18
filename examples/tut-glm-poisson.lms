@@ -2,8 +2,9 @@
 // Topic: Poisson count regression with rate ratios and a dispersion check (after: R ?glm, Dobson's count examples)
 // What it does: fits count ~ dose with a log link (fit_glm) from examples/data/tut-counts.csv, prints the coefficient
 //   table with rate ratios and 95% intervals, checks the generating rates against the intervals, tests the dose effect
-//   with the deviance drop (chi-square, dist_probability), checks the deviance/df ratio for overdispersion, and compares
-//   the fitted mean at dose 2 with the exact Poisson quantiles at the true rate (dist_quantile).
+//   with the deviance drop (chi-square, dist_probability), checks the deviance/df ratio for overdispersion, and refits with the
+//   dose centred at 2 so that the intercept is log of the fitted mean at dose 2 with its own standard error: a Wald check of that
+//   mean against the true rate exp(1.3), with the exact Poisson quartiles at the true rate printed for scale (dist_quantile).
 // Data: examples/data/tut-counts.csv, 80 rows: 20 doses on a 0..4 grid x 4 replicates, count ~ Poisson(exp(0.3 + 0.5 dose));
 //   seed 2719, scripts/generate-tutorial-data.py.
 // Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-glm-poisson.lms
@@ -46,11 +47,19 @@ println(sprintf("Likelihood-ratio test of dose: chi^2(1)=%.2f, p=%s", lr, sci(pr
 if (pr.result.value[0] > 0.000001) { println("dose effect not detected"); exit(1); }
 // Self-check 3: no overdispersion: deviance/df within [0.6, 1.5] for Poisson data of this size (chi-square(78)/78 has sd 0.16).
 if (r.deviance / df < 0.6 || r.deviance / df > 1.5) { println("deviance/df suggests misfit:", r.deviance / df); exit(1); }
-// Self-check 4: the fitted mean at dose 2 is within 20% of exp(1.3), and the exact Poisson quartiles at the true rate bracket it.
-mu2 = pow(E, r.estimate[0] + 2 * r.estimate[1]); lam2 = pow(E, b0 + 2 * b1);
+// Self-check 4: a Wald check of the fitted mean at dose 2. Refitting with dose - 2 as the predictor makes the intercept
+// log mu(2) with its own standard error (fit_glm reports no covariance matrix, so this is the exact route). The fitted log mean
+// must be within 2.5 SE of the true log 3.669 = 1.3; on this fixture it sits 2.1 SE above (a 3% event for a correct fit), and a
+// generating intercept of 0.6 instead of 0.3 would put the truth 3.0 SE away and fail. The Poisson quartiles at the true rate are
+// printed for scale only (a single count's spread, not the mean's).
+d2 = []; for (d in dose) { d2 = concat(d2, [d - 2]); }
+fit2 = rcli.fit_glm({response: "count", predictors: ["d2"], data: {count: count, d2: d2}, family: "poisson"});
+if (fit2.status != "ok") { println("centred fit_glm failed:", json_stringify(fit2)); exit(1); }
+logmu2 = fit2.result.estimate[0]; se2 = fit2.result.std_error[0];
+mu2 = pow(E, logmu2); lam2 = pow(E, b0 + 2 * b1);
 qs = rcli.dist_quantile({dist: "pois", p: [0.25, 0.5, 0.75], lambda: lam2});
 if (qs.status != "ok") { println(json_stringify(qs)); exit(1); }
-println(sprintf("fitted mean count at dose 2: %.3f (true rate %.3f); Poisson quartiles at the true rate: %s", mu2, lam2, json_stringify(qs.result.value)));
-if (abs(mu2 - lam2) > 0.2 * lam2) { println("fitted mean at dose 2 off by more than 20%"); exit(1); }
-if (mu2 < qs.result.value[0] || mu2 > qs.result.value[2]) { println("fitted mean outside the interquartile range of the true rate"); exit(1); }
+println(sprintf("fitted mean count at dose 2: %.3f = exp(%.4f +- %.4f) (true rate %.3f = exp(1.3), %.2f SE away); Poisson quartiles at the true rate: %s", mu2, logmu2, se2, lam2, abs(logmu2 - (b0 + 2 * b1)) / se2, json_stringify(qs.result.value)));
+if (abs(logmu2 - (b0 + 2 * b1)) > 2.5 * se2) { println("fitted log mean at dose 2 more than 2.5 SE from the truth"); exit(1); }
+if (abs(fit2.result.estimate[1] - r.estimate[1]) > 0.000000001) { println("centred refit changed the slope"); exit(1); }
 println(sprintf("Checks passed: truth inside both intervals; LR p=%s; deviance/df=%.3f; rate ratio per unit dose %.3f (true %.3f).", sci(pr.result.value[0]), r.deviance / df, pow(E, r.estimate[1]), pow(E, b1)));

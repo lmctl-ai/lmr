@@ -1,9 +1,10 @@
 // access: read
 // Topic: special functions and the discrete Fourier transform checked against identities (after: R ?Special, ?besselJ, ?fft)
 // What it does: evaluates gamma, lgamma, beta, choose, digamma and Bessel functions with math_special and checks the
-//   classical identities (n! recursion, beta = gamma ratio, Pascal's rule, Euler's constant, J0(0) = 1 and the Bessel
-//   Wronskian), then transforms an impulse, a constant and a pure cosine with num_fft, verifies linearity by inspection
-//   of the spectra, Parseval's identity and the unnormalised inverse transform round trip (divide by n, as with R's fft).
+//   classical identities (n! recursion, lgamma against log n!, beta = gamma ratio, Pascal's rule with C(11,4) from the tool,
+//   Euler's constant, J0(0) = 1 and the Bessel Wronskian), then transforms an impulse, a constant and a pure cosine with
+//   num_fft and checks the spectra, linearity (fft(2 impulse + 3 cosine) = 2 fft(impulse) + 3 fft(cosine) bin by bin),
+//   Parseval's identity and the unnormalised inverse transform round trip (divide by n, as with R's fft).
 // Data: analytic inputs and a 32-point cosine of frequency 4 cycles per record; no random input.
 // Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-special-fft.lms
 import "../cli.schema.dev.json" as rcli;
@@ -13,7 +14,7 @@ g = rcli.math_special({"fn": "gamma", x: [1, 2, 3, 4, 5, 6, 0.5, 2.5]});
 if (g.status == "simulated") { println("special functions simulated."); exit(0); }
 lg = rcli.math_special({"fn": "lgamma", x: [10, 100, 1000]});
 be = rcli.math_special({"fn": "beta", x: [2, 0.5, 3], y: [3, 0.5, 4]});
-ch = rcli.math_special({"fn": "choose", x: [10, 10, 10, 52], y: [3, 4, 5, 5]});
+ch = rcli.math_special({"fn": "choose", x: [10, 10, 10, 52, 11], y: [3, 4, 5, 5, 4]});
 dg = rcli.math_special({"fn": "digamma", x: [1, 2, 0.5]});
 j0 = rcli.math_special({"fn": "besselJ", x: [0, 2.404825557695773, 1], nu: 0});
 j1 = rcli.math_special({"fn": "besselJ", x: [1], nu: 1});
@@ -23,7 +24,7 @@ println("gamma(1..6)  = " + json_stringify(slice(g.result.value, 0, 6)) + "   (0
 println(sprintf("gamma(1/2)   = %.15f  sqrt(pi) = %.15f;  gamma(2.5) = %.15f  (3/4 sqrt(pi) = %.15f)", g.result.value[6], sqrt(PI), g.result.value[7], 0.75 * sqrt(PI)));
 println(sprintf("lgamma(10)   = %.12f (log 9! = log 362880);  lgamma(100) = %.6f;  lgamma(1000) = %.6f", lg.result.value[0], lg.result.value[1], lg.result.value[2]));
 println(sprintf("beta(2,3)    = %.15f (1/12);  beta(1/2,1/2) = %.15f (pi);  beta(3,4) = %.15f (1/60)", be.result.value[0], be.result.value[1], be.result.value[2]));
-println("choose       = " + json_stringify(ch.result.value) + "   (C(10,3), C(10,4), C(10,5), C(52,5))");
+println("choose       = " + json_stringify(ch.result.value) + "   (C(10,3), C(10,4), C(10,5), C(52,5), C(11,4))");
 println(sprintf("digamma(1)   = %.15f (-gamma_E = %.15f);  digamma(2) = %.15f (1 - gamma_E)", dg.result.value[0], -EULER, dg.result.value[1]));
 println(sprintf("J0(0) = %.15f;  J0(first zero) = %s;  J0(1) Y1(1) - J1(1) Y0(1) = %.15f  (-2/pi = %.15f)", j0.result.value[0], str(j0.result.value[1]), j0.result.value[2] * y1.result.value[0] - j1.result.value[0] * y0.result.value[0], -2 / PI));
 
@@ -33,12 +34,15 @@ for (k = 1; k <= 6; k = k + 1) { if (abs(g.result.value[k - 1] - fact) > 0.00000
 if (abs(g.result.value[6] - sqrt(PI)) > 0.000000000000001 || abs(g.result.value[7] - 0.75 * sqrt(PI)) > 0.000000000000001) { println("half-integer gamma wrong"); exit(1); }
 if (abs(be.result.value[0] - 1 / 12) > 0.000000000000001 || abs(be.result.value[1] - PI) > 0.000000000000005 || abs(be.result.value[2] - 1 / 60) > 0.000000000000001) { println("beta values wrong"); exit(1); }
 if (ch.result.value[0] != 120 || ch.result.value[1] != 210 || ch.result.value[2] != 252 || ch.result.value[3] != 2598960) { println("binomial coefficients wrong"); exit(1); }
-if (ch.result.value[0] + ch.result.value[1] != 330) { println("Pascal's rule C(10,3) + C(10,4) = C(11,4) fails"); exit(1); }
+if (ch.result.value[4] != 330 || ch.result.value[0] + ch.result.value[1] != ch.result.value[4]) { println("Pascal's rule C(10,3) + C(10,4) = C(11,4) fails"); exit(1); }
 if (abs(dg.result.value[0] + EULER) > 0.000000000000005 || abs(dg.result.value[1] - (1 - EULER)) > 0.000000000000005) { println("digamma values wrong"); exit(1); }
 if (abs(dg.result.value[2] + EULER + 2 * 0.6931471805599453) > 0.00000000000001) { println("digamma(1/2) = -gamma_E - 2 log 2 fails"); exit(1); }
 if (j0.result.value[0] != 1 || abs(j0.result.value[1]) > 0.000000000001) { println("J0 values wrong"); exit(1); }
 if (abs(j0.result.value[2] * y1.result.value[0] - j1.result.value[0] * y0.result.value[0] + 2 / PI) > 0.00000000000001) { println("Bessel Wronskian fails"); exit(1); }
-// lgamma(10) = log(362880): compare through exp-free arithmetic, exp(lgamma) = gamma via math_special gamma(10).
+// lgamma against reference values (log 9! = log 362880 = 12.801827480081469; lgamma(100) = 359.1342053695754 = log 99!;
+// lgamma(1000) = 5905.220423209181), relative 1e-12, and gamma(10) = 9! exactly.
+lg_ref = [12.801827480081469, 359.1342053695754, 5905.220423209181];
+for (k = 0; k < 3; k = k + 1) { if (abs(lg.result.value[k] - lg_ref[k]) > 0.000000000001 * lg_ref[k]) { println("lgamma differs from the reference at index", k, lg.result.value[k], lg_ref[k]); exit(1); } }
 g10 = rcli.math_special({"fn": "gamma", x: [10]});
 if (g10.status != "ok" || abs(g10.result.value[0] - 362880) > 0.000001) { println("gamma(10) wrong"); exit(1); }
 
@@ -57,6 +61,13 @@ for (k = 0; k < n; k = k + 1) {
   if (k != 4 && k != 28 && power(f_cos, k) > 0.000000000000001) { println("cosine has energy at bin", k); exit(1); }
 }
 if (abs(f_con.result.re[0] - 3 * n) > 0.000000000001 || abs(sqrt(power(f_cos, 4)) - n / 2) > 0.000000000001 || abs(sqrt(power(f_cos, 28)) - n / 2) > 0.000000000001) { println("DC or cosine bin height wrong"); exit(1); }
+// Linearity: fft(2 impulse + 3 cosine) equals 2 fft(impulse) + 3 fft(cosine) in every bin (real and imaginary parts).
+combo = []; for (i = 0; i < n; i = i + 1) { combo = concat(combo, [2 * impulse[i] + 3 * cosine[i]]); }
+f_combo = rcli.num_fft({x: combo});
+if (f_combo.status != "ok") { println(json_stringify(f_combo)); exit(1); }
+for (k = 0; k < n; k = k + 1) {
+  if (abs(f_combo.result.re[k] - (2 * f_imp.result.re[k] + 3 * f_cos.result.re[k])) > 0.000000001 || abs(f_combo.result.im[k] - (2 * f_imp.result.im[k] + 3 * f_cos.result.im[k])) > 0.000000001) { println("FFT is not linear at bin", k); exit(1); }
+}
 // Parseval: sum |X_k|^2 = n sum x_i^2 (= n * 16 for the cosine).
 pe = 0; for (k = 0; k < n; k = k + 1) { pe = pe + power(f_cos, k); }
 if (abs(pe - n * 16) > 0.000000001) { println("Parseval fails:", pe, n * 16); exit(1); }
@@ -65,4 +76,4 @@ if (abs(pe - n * 16) > 0.000000001) { println("Parseval fails:", pe, n * 16); ex
 inv = rcli.num_fft({x: f_cos.result.re, inverse: true});
 if (inv.status != "ok") { println(json_stringify(inv)); exit(1); }
 for (i = 0; i < n; i = i + 1) { if (abs(inv.result.re[i] / n - cosine[i]) > 0.000000000001 || abs(inv.result.im[i]) > 0.000000001) { println("inverse FFT / n does not return the cosine at", i, inv.result.re[i] / n, cosine[i]); exit(1); } }
-println(sprintf("Checks passed: factorials, gamma(1/2)=sqrt(pi), beta ratios, C(52,5)=2598960, digamma(1)=-gamma_E, Bessel Wronskian; FFT impulse/constant/cosine spectra, Parseval (%.6f), inverse round trip.", pe));
+println(sprintf("Checks passed: factorials, lgamma(10/100/1000) to 1e-12, gamma(1/2)=sqrt(pi), beta ratios, C(52,5)=2598960, Pascal with C(11,4) from the tool, digamma(1)=-gamma_E, Bessel Wronskian; FFT impulse/constant/cosine spectra, linearity, Parseval (%.6f), inverse round trip.", pe));

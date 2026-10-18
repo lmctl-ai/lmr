@@ -6,7 +6,7 @@ recipes check against.
 
 | File | Rows | Model | Seed | Used by |
 |---|---|---|---|---|
-| `tut-cars.csv` | 60 | `mpg = 42 - 5.0 weight - 0.015 power + N(0, 1.2²)`, `weight ~ U(1.5, 4.5)`, `power = 60 + 40 weight + N(0, 15²)` (correlated predictors) | 2718 | `tut-lm.lms` |
+| `tut-vehicles.csv` | 60 | `mpg = 42 - 5.0 weight - 0.015 power + N(0, 1.2²)`, `weight ~ U(1.5, 4.5)`, `power = 60 + 40 weight + N(0, 15²)` (correlated predictors) | 2718 | `tut-lm.lms` |
 | `tut-counts.csv` | 80 | 20 doses on a 0..4 grid × 4 replicates, `count ~ Poisson(exp(0.3 + 0.5 dose))` (inverse-CDF sampling) | 2719 | `tut-glm-poisson.lms` |
 | `oracle-lm.csv` | 4 | the fixed `y ~ x` fixture of the R oracle check | – | `oracle-lm.lms`, tests |
 

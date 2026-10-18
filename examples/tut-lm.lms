@@ -1,11 +1,13 @@
 // access: read
 // Topic: multiple regression with a coefficient table and residual diagnostics (after: R ?lm, ?summary.lm, ?confint)
-// What it does: fits mpg ~ weight + power from examples/data/tut-cars.csv with fit_lm, prints the coefficient table with
+// What it does: fits mpg ~ weight + power from examples/data/tut-vehicles.csv with fit_lm, prints the coefficient table with
 //   95% intervals built from the t quantile (dist_quantile), then checks that the generating parameters lie inside the
 //   intervals, that the residuals sum to zero and reproduce sigma and R^2, that the residuals pass Shapiro-Wilk, and that
 //   a collinear copy of weight is reported as aliased with the rank unchanged.
-// Data: examples/data/tut-cars.csv, 60 rows of mpg = 42 - 5.0 weight - 0.015 power + N(0, 1.2^2), weight ~ U(1.5, 4.5),
-//   power = 60 + 40 weight + N(0, 15^2); seed 2718, scripts/generate-tutorial-data.py.
+// Data: examples/data/tut-vehicles.csv, 60 rows of mpg = 42 - 5.0 weight - 0.015 power + N(0, 1.2^2), weight ~ U(1.5, 4.5),
+//   power = 60 + 40 weight + N(0, 15^2); seed 2718, scripts/generate-tutorial-data.py. Because power is almost a linear function of
+//   weight (correlation about 0.92), the power coefficient is not identifiable at n = 60: its 95% interval also contains 0, so the
+//   "truth inside the interval" check has power only for the intercept and the weight slope (a known limitation of this fixture).
 // Usage: export PATH="$PWD/bin:$PATH"; lmscript examples/tut-lm.lms   (cwd = repository root, below HOME)
 import "../cli.schema.dev.json" as rcli;
 // sci(v): "m.mme-k" for small p-values, since sprintf has no %e.
@@ -19,7 +21,7 @@ function sci(v) {
 
 truth = {"(Intercept)": 42, weight: -5.0, power: -0.015};
 sigma_true = 1.2;
-rows = read_csv("examples/data/tut-cars.csv");
+rows = read_csv("examples/data/tut-vehicles.csv");
 mpg = pluck(rows, "mpg"); weight = pluck(rows, "weight"); power = pluck(rows, "power");
 n = len(mpg);
 

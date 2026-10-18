@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Regenerate the tutorial CSV fixtures under examples/data (seeded, original synthetic data).
 
-tut-cars.csv   : 60 rows, mpg = 42 - 5.0*weight - 0.015*power + N(0, 1.2^2); weight ~ U(1.5, 4.5) tonnes,
+tut-vehicles.csv   : 60 rows, mpg = 42 - 5.0*weight - 0.015*power + N(0, 1.2^2); weight ~ U(1.5, 4.5) tonnes,
                  power = 60 + 40*weight + N(0, 15^2) hp (correlated predictors). Seed 2718.
 tut-counts.csv : 80 rows, dose on a 0..4 grid (20 doses, 4 replicates), count ~ Poisson(exp(0.3 + 0.5*dose)).
                  Seed 2719 (inverse-CDF sampling, so only random.random is used).
@@ -48,6 +48,12 @@ def counts(seed=2719):
 
 
 if __name__ == "__main__":
-    (ROOT / "tut-cars.csv").write_text(cars())
-    (ROOT / "tut-counts.csv").write_text(counts())
-    print("wrote", ROOT / "tut-cars.csv", "and", ROOT / "tut-counts.csv")
+    import sys
+    tables = {"tut-vehicles.csv": cars(), "tut-counts.csv": counts()}
+    if "--check" in sys.argv:   # regenerate and fail when a committed file differs (the recipes' truth depends on these bytes)
+        drift = [name for name, text in tables.items() if not (ROOT / name).exists() or (ROOT / name).read_text() != text]
+        print("DRIFT" if drift else "tutorial data reproducible from their seeds", drift)
+        sys.exit(1 if drift else 0)
+    for name, text in tables.items():
+        (ROOT / name).write_text(text)
+    print("wrote", ROOT / "tut-vehicles.csv", "and", ROOT / "tut-counts.csv")

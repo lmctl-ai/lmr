@@ -1,7 +1,7 @@
 // access: read
 // Topic: classical hypothesis tests on data built to have known outcomes (after: R ?t.test, ?wilcox.test, ?chisq.test,
 //   ?fisher.test, ?binom.test, ?shapiro.test, ?cor.test, ?var.test)
-// What it does: runs nine tests with test_htest and checks each against what the construction guarantees: a shifted
+// What it does: makes ten test_htest calls covering eight test types and checks each against what the construction guarantees: a shifted
 //   normal sample is detected by t and Wilcoxon and the true shift sits in the t interval; equal variances are not
 //   rejected; a balanced 2x2 table gives chi^2 = 0, p = 1 exactly; a diagonal table is rejected by chi-square and Fisher;
 //   60/100 successes give the exact two-sided binomial p = 0.05689; a correlated pair is detected with the estimate

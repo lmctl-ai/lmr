@@ -75,6 +75,11 @@ jobs:
         run: |
           build/bin/rcli --schema > published.json
           python3 -c 'import json,sys; a=json.load(open("published.json")); b=json.load(open("cli.schema.dev.json")); sys.exit(0 if a==b else "cli.schema.dev.json is stale: regenerate with build/bin/rcli --schema")'
+      - name: Tutorial datasets are reproducible from their seeds
+        id: tutdata
+        if: ${{ !cancelled() }}
+        working-directory: rcli
+        run: python3 scripts/generate-tutorial-data.py --check
       - name: Set up Bun
         if: ${{ !cancelled() }}
         uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76
@@ -91,4 +96,4 @@ jobs:
         run: |
           { echo "## Gates (${{ matrix.runner }})"; echo "| gate | outcome |"; echo "|---|---|";
             echo "| build | ${{ steps.build.outcome }} |"; echo "| CTest | ${{ steps.ctest.outcome }} |"; echo "| no libR | ${{ steps.nolibr.outcome }} |";
-            echo "| schema | ${{ steps.schema.outcome }} |"; echo "| lmts parse | ${{ steps.lmts.outcome }} |"; } | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "| schema | ${{ steps.schema.outcome }} |"; echo "| tutorial data | ${{ steps.tutdata.outcome }} |"; echo "| lmts parse | ${{ steps.lmts.outcome }} |"; } | tee -a "$GITHUB_STEP_SUMMARY"
