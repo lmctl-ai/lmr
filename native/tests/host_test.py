@@ -728,10 +728,10 @@ case("cli: garbage bytecode", None, args=["--dsl", "junk.dslb"], code=3, out=('"
 # ---------------------------------------------------------------- runner
 def compile_chunk(lmscript, body, path):
     src = path + ".lms"
-    with open(src, "w") as f:
+    with open(src, "w", encoding="utf-8") as f:
         # Forward slashes: a Windows path's backslashes would be escapes inside the lmscript string literals.
         f.write('p = _dsl_ schema="%s";\n%s\nend _dsl_\nsavedsl(p, "%s");\n' % (SCHEMA.replace("\\", "/"), body, path.replace("\\", "/")))
-    r = subprocess.run([lmscript, src], capture_output=True, text=True, timeout=120)
+    r = subprocess.run([lmscript, src], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
     if r.returncode != 0:
         raise RuntimeError("compile failed:\n" + r.stdout + r.stderr)
 
@@ -742,7 +742,7 @@ def run_case(binary, lmscript, c, root):
         for name, text in c.files.items():
             full = os.path.join(work, name)
             os.makedirs(os.path.dirname(full), exist_ok=True)
-            with open(full, "w", newline="") as f:
+            with open(full, "w", newline="", encoding="utf-8") as f:
                 f.write(text)
         if c.args is not None:
             argv = [binary] + c.args
@@ -754,7 +754,7 @@ def run_case(binary, lmscript, c, root):
                 compile_chunk(lmscript, b, p)
                 paths.append(os.path.basename(p))
             argv = [binary, "--dsl"] + paths
-        r = subprocess.run(argv, capture_output=True, text=True, cwd=work, timeout=120)
+        r = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=work, timeout=120)
         problems = []
         if r.returncode != c.code:
             problems.append("exit %d, expected %d" % (r.returncode, c.code))

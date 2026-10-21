@@ -1,5 +1,13 @@
 #include "host.hpp"
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+
+#include <filesystem>
+#endif
+
 #include <cerrno>
 #include <cctype>
 #include <cmath>
@@ -28,6 +36,16 @@ void Frame::set(const std::string& name, Column c) {
   int i = find(name);
   if (i >= 0) cols[static_cast<size_t>(i)] = std::move(c);
   else { names.push_back(name); cols.push_back(std::move(c)); }
+}
+
+// Atomic rename over an existing file. Windows' rename() refuses to replace one.
+static bool replace_file(const std::string& from, const std::string& to) {
+#ifdef _WIN32
+  const auto wide = [](const std::string& s) { return std::filesystem::u8path(s).wstring(); };
+  return MoveFileExW(wide(from).c_str(), wide(to).c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
+#else
+  return std::rename(from.c_str(), to.c_str()) == 0;
+#endif
 }
 
 bool parse_number(const char* b, const char* e, double& out) {
@@ -183,7 +201,7 @@ void write_csv(const Frame& f, const std::string& path) {
     }
     if (!o) throw dslvm::Error("write_csv: write failed for " + path);
   }
-  if (std::rename(tmp.c_str(), path.c_str()) != 0) {
+  if (!replace_file(tmp, path)) {
     std::remove(tmp.c_str());
     throw dslvm::Error("write_csv: cannot replace " + path);
   }
