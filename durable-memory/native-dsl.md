@@ -25,12 +25,27 @@ tolerance tiers still apply.
   `lmscript --dsl-signatures` against `rcli-dsl --dsl-signatures`.
 - **Build**: `cmake -S native -B build-native -G Ninja && cmake --build build-native`. The binary is one executable at
   `build-native/bin/rcli-dsl`: libstdc++ and libgcc are linked statically, glibc dynamically (the owner's choice,
-  2026-10-20; `ldd` shows only libc, libm and the loader). It needs glibc >= the build host's (2.38 on the Ubuntu 24.04
-  dev box: `__isoc23_strtoul`, `fmod`); build on an older distro for wider reach. `-DRCLI_DSL_FULL_STATIC=ON` restores
+  2026-10-20; `ldd` shows only libc, libm and the loader). It needs glibc >= the build host's: release binaries are built on
+  Ubuntu 22.04, so glibc 2.35+ (a 24.04 build needs 2.38).  Windows (MinGW) links fully static; macOS uses only system
+  libraries. `-DRCLI_DSL_FULL_STATIC=ON` restores
   a fully static binary. With dynamic libm, last-ulp results of exp/log/pow etc. can follow the target's glibc. The flag `-ffp-contract=off` is required (aarch64 GCC
   otherwise fuses multiply-adds, which changes roundoff and some optimiser counts).
 - **Examples**: `examples/dsl/*.lms`, sharing `examples/dsl/lib/rclidsl.lms` (save, exec and check). Run them with
   `native/scripts/run-examples.sh build-native/bin/rcli-dsl` from the repo root.
+
+## Repository, CI and releases
+
+- **Home**: public at https://github.com/lmctl-ai/lmr since 2026-10-20 (moved from private `lmctlhq/rcli` and renamed).
+- **`.github/workflows/native.yml`**: modelled on lmctl-ai/lmhtml. It builds and runs ctest on linux-x64/arm64
+  (ubuntu-22.04), macos-arm64/x64 and windows-x64 (MinGW), with lmscript from npm `@lmctl-ai/lmctl@0.2.347`, and checks
+  linkage. A `v*` tag attaches `rcli-dsl-<platform>`, the schema, LICENSE, notices and SHA256SUMS to the release.
+  To release: bump `project(... VERSION)` in `native/CMakeLists.txt`, commit, then tag `vX.Y.Z` and push the tag.
+  v0.1.0 was published on 2026-10-20. `ci.yml` is the older R-backed lmapi tool's workflow.
+- **Portability rules** (learnt from the first 5-OS run):
+  - Never use `long double`: its width differs by platform. Use `rcli/dd.hpp` (double-double).
+  - No floating-point `std::from_chars`: Apple's libc++ lacks it. Use `parse_number`.
+  - Windows: stdout is binary, file replaces go through `replace_file` (MoveFileExW), shell checks run via bash in
+    ctest, `.gitattributes` forces LF, and the Python tests use UTF-8 and forward slashes.
 
 ## Decisions (and why)
 
@@ -111,4 +126,4 @@ R is GPL. The rules:
 - The lmapi JSON ops (`rcli fit_lm {...}`) still run R in Docker. Re-pointing them at `rcli_num` would give a static
   `rcli` with the old interface. Everything they need exists in the core, except the expression-string evaluator.
 - The `oracle-*` recipes need `statsrust` and were not ported.
-- No CI leg builds `native/` yet.
+- Rename the binary to `lmr` to match the repo? Not done; releases ship `rcli-dsl-<platform>`.
