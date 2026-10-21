@@ -19,7 +19,9 @@ lmscript examples/dsl/tut-lm.lms
 
 Prebuilt binaries for Linux (x64, arm64; glibc 2.35 or newer), macOS (arm64, x64) and Windows (x64) are attached to
 each [release](https://github.com/lmctl-ai/lmr/releases). Put `lmr` on `PATH` (or set `LMR_BIN`) and install
-the compiler with `npm i -g @lmctl-ai/lmctl`.
+the compiler with `npm i -g @lmctl-ai/lmctl`. Or let lmscript fetch it: `_dsl_ cli="lmr"
+install="github:lmctl-ai/lmr@v0.3.0"` downloads the release binary when `lmr` is not on PATH (see
+[examples/dsl/install-and-run.lms](examples/dsl/install-and-run.lms)).
 
 The API is in [docs/dsl-api.md](docs/dsl-api.md), and the examples, including multi-step flows, are in
 [examples/dsl/](examples/dsl/README.md). R is used only as an oracle process for the unit tests' expected values.

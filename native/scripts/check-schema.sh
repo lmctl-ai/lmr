@@ -9,7 +9,7 @@ WORK="$(mktemp -d "${TMPDIR:-/tmp}/rcli-schema-XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 "$BIN" --generate-schema > "$WORK/generated.json"
 cmp "$SCHEMA" "$WORK/generated.json" || { echo "schema/lmr.dsl.json is stale: run scripts/update-schema.sh" >&2; exit 1; }
-"$BIN" --schema --json > "$WORK/embedded.json"
+"$BIN" --dsl-schema --json > "$WORK/embedded.json"
 cmp "$SCHEMA" "$WORK/embedded.json" || { echo "the binary embeds an older schema: rebuild" >&2; exit 1; }
 LMSCRIPT="${LMSCRIPT_BIN:-$(command -v lmscript || true)}"
 if [[ -n "$LMSCRIPT" ]]; then

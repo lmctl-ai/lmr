@@ -1,7 +1,8 @@
 // lmr: runs lmscript `_dsl_` bytecode against the native statistics core (no R, no Python, no Docker).
 //
-//   lmr --schema               compact summary of the API (context, functions, types)
-//   lmr --schema --json        the embedded schema bytes (the compiler's input, `_dsl_ schema="..."`)
+//   lmr --dsl-schema           compact summary of the API (context, functions, types)
+//   lmr --dsl-schema --json    the embedded schema bytes: what lmscript's `_dsl_ cli="lmr"` reads and compiles against
+//                              (or save them for `_dsl_ schema="..."`); --schema is an older alias
 //   lmr --dsl-signatures       canonical registry signatures (diffed against `lmscript --dsl-signatures`)
 //   lmr --generate-schema      the schema JSON derived from the registry (maintenance: scripts/update-schema.sh)
 //   lmr --dsl A.dslb [B.dslb]  load and verify every file, then run them in order with shared host state
@@ -22,7 +23,7 @@
 #include "schema_embedded.hpp"
 
 #ifndef LMR_VERSION
-#define LMR_VERSION "0.2.0"
+#define LMR_VERSION "0.3.0"
 #endif
 
 namespace {
@@ -155,13 +156,13 @@ int main(int argc, char** argv) {
     return 3;
   }
   const std::string usage =
-      "usage: lmr --schema [--json] | --dsl-signatures | --generate-schema | --version | --dsl FILE [FILE ...]\n";
+      "usage: lmr --dsl-schema [--json] | --dsl-signatures | --generate-schema | --version | --dsl FILE [FILE ...]\n";
   std::vector<std::string> args(argv + 1, argv + argc);
   if (args.size() == 1 && args[0] == "--version") {
     std::cout << "lmr " << LMR_VERSION << " (dslvm bytecode v" << dslvm::VERSION << ", native core, no R runtime)\n";
     return 0;
   }
-  if (!args.empty() && args[0] == "--schema") {
+  if (!args.empty() && (args[0] == "--dsl-schema" || args[0] == "--schema")) {
     if (args.size() == 1) { print_summary(reg); return std::cout ? 0 : 4; }
     if (args.size() == 2 && args[1] == "--json") {
       std::cout.write(reinterpret_cast<const char*>(rcli::embedded_schema), static_cast<std::streamsize>(rcli::embedded_schema_size));

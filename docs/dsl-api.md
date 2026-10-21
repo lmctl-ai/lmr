@@ -6,15 +6,15 @@ object API. A script describes a whole multi-step analysis in one typed chunk; l
 the host runs it in one process.
 
 ```
-lmscript examples/dsl/tut-lm.lms                     # compiles the chunk to build/dsl/tut-lm.dslb, runs lmr, checks
-lmr --dsl build/dsl/a.dslb build/dsl/b.dslb      # several chunks, one process, shared host state
-lmr --schema                                     # every signature, grouped by type
-lmr --schema --json > lmr.dsl.json              # the schema the compiler needs (byte-identical to native/schema/)
+lmscript examples/dsl/tut-lm.lms             # compiles the chunk to build/dsl/tut-lm.dslb, runs lmr, checks
+lmr --dsl build/dsl/a.dslb build/dsl/b.dslb  # several chunks, one process, shared host state
+lmr --dsl-schema                             # every signature, grouped by type
+lmr --dsl-schema --json > lmr.dsl.json       # the schema the compiler needs (byte-identical to native/schema/)
 ```
 
 The machine-checked list of all signatures is `native/schema/lmr.dsl.json`. The test `schema_matches_registry` checks
 it against the host registry and against `lmscript --dsl-signatures`. This page explains the design and each type;
-`lmr --schema` prints the full list.
+`lmr --dsl-schema` prints the full list (`--schema` is an older alias).
 
 ## Why a DSL rather than one process per call
 

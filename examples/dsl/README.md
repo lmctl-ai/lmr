@@ -5,9 +5,32 @@ the single-executable `lmr` host. No R, Docker or Python is involved. The API is
 
 ```sh
 cmake -S native -B build-native -G Ninja && cmake --build build-native   # once
-lmscript examples/dsl/tut-lm.lms                                          # cwd = repository root
-native/scripts/run-examples.sh build-native/bin/lmr                  # all of them, as ctest does
+lmscript examples/dsl/tut-lm.lms                                         # cwd = repository root
+native/scripts/run-examples.sh build-native/bin/lmr                      # all of them, as ctest does
 ```
+
+## Zero setup: `cli=` and `install=`
+
+[`install-and-run.lms`](install-and-run.lms) needs only Node.js and lmscript (`npm i -g @lmctl-ai/lmctl`, 0.2.359 or
+newer). No checkout, build or schema file:
+
+```
+p = _dsl_ cli="lmr" install="github:lmctl-ai/lmr@v0.3.0";
+...
+end _dsl_
+savedsl(p, "job.dslb");
+r = system ${dsl_cli(p)} --dsl job.dslb;
+```
+
+- `cli="lmr"`: lmscript compiles against the bytes `lmr --dsl-schema --json` prints, so the bytecode is bound to the
+  binary that will run it.
+- `install="github:lmctl-ai/lmr@v0.3.0"`: only when `lmr` is not on PATH, lmscript downloads that release's
+  `lmr-OS-ARCH[.exe]` once into its tool cache and checks it against the SHA-256 digest GitHub reports. Nothing is
+  installed without this line.
+- `dsl_cli(p)`: the argv prefix of that exact binary.
+
+The other recipes use `schema="../../native/schema/lmr.dsl.json"` and `lib/lmr.lms`, so they test the checkout's own
+build.
 
 `lib/lmr.lms` finds the binary: `$LMR_BIN`, then `lmr` on PATH, then `build-native/bin/lmr`. It writes
 the bytecode to `build/dsl/NAME.dslb`. You can also run a saved chunk directly with

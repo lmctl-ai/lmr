@@ -37,10 +37,14 @@ tolerance tiers still apply.
 
 - **Home**: public at https://github.com/lmctl-ai/lmr since 2026-10-20 (moved from private `lmctlhq/rcli` and renamed).
 - **`.github/workflows/native.yml`**: modelled on lmctl-ai/lmhtml. It builds and runs ctest on linux-x64/arm64
-  (ubuntu-22.04), macos-arm64/x64 and windows-x64 (MinGW), with lmscript from npm `@lmctl-ai/lmctl@0.2.347`, and checks
+  (ubuntu-22.04), macos-arm64/x64 and windows-x64 (MinGW), with lmscript from npm `@lmctl-ai/lmctl@0.2.359`, and checks
   linkage. A `v*` tag attaches `lmr-<platform>`, the schema, LICENSE, notices and SHA256SUMS to the release.
   To release: bump `project(... VERSION)` in `native/CMakeLists.txt`, commit, then tag `vX.Y.Z` and push the tag.
   v0.1.0 was published on 2026-10-20. `ci.yml` is the older R-backed lmapi tool's workflow.
+- **`cli=` / `install=`**: lmscript's `_dsl_ cli="lmr" install="github:lmctl-ai/lmr@vX.Y.Z"` reads the schema from
+  `lmr --dsl-schema --json` (the host flag; `--schema` is an alias) and, when `lmr` is not on PATH, downloads the
+  release asset `lmr-OS-ARCH[.exe]`, so asset names must stay exactly that. `examples/dsl/install-and-run.lms` is the
+  example; run-examples.sh puts the tested build first on PATH so it binds to that build. Bump its tag with each release.
 - **Portability rules** (learnt from the first 5-OS run):
   - Never use `long double`: its width differs by platform. Use `rcli/dd.hpp` (double-double).
   - No floating-point `std::from_chars`: Apple's libc++ lacks it. Use `parse_number`.
