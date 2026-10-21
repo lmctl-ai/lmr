@@ -17,6 +17,10 @@ cmake -S native -B build-native -G Ninja && cmake --build build-native && (cd bu
 lmscript examples/dsl/tut-lm.lms
 ```
 
+Prebuilt binaries for Linux (x64, arm64; glibc 2.35 or newer), macOS (arm64, x64) and Windows (x64) are attached to
+each [release](https://github.com/lmctl-ai/lmr/releases). Put `rcli-dsl` on `PATH` (or set `RCLI_DSL`) and install
+the compiler with `npm i -g @lmctl-ai/lmctl`.
+
 The API is in [docs/dsl-api.md](docs/dsl-api.md), and the examples, including multi-step flows, are in
 [examples/dsl/](examples/dsl/README.md). R is used only as an oracle process for the unit tests' expected values.
 

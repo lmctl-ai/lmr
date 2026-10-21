@@ -11,13 +11,13 @@ files=("$@")
 [[ ${#files[@]} -gt 0 ]] || files=(examples/dsl/*.lms)
 pass=0; fail=0; failed=()
 for f in "${files[@]}"; do
-  start=$(date +%s.%N)
+  start=$SECONDS
   if out="$("$LMSCRIPT" "$f" 2>&1)"; then
     pass=$((pass + 1)); status=ok
   else
     fail=$((fail + 1)); status=FAIL; failed+=("$f")
   fi
-  printf '%-4s %6.2fs  %s\n' "$status" "$(echo "$(date +%s.%N) - $start" | bc)" "$f"
+  printf '%-4s %4ds  %s\n' "$status" "$((SECONDS - start))" "$f"
   [[ $status == ok ]] || printf '%s\n' "$out" | tail -15 | sed 's/^/     | /'
 done
 echo "examples: $pass passed, $fail failed"

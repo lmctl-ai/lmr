@@ -1,0 +1,158 @@
+name: native
+
+# Builds and tests the R-free rcli-dsl host (native/) on every OS, and on a v* tag attaches the binaries to a GitHub
+# release. The R-backed lmapi tool keeps its own workflow (ci.yml).
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Run a single matrix job (or 'all')"
+        required: true
+        default: "all"
+        type: choice
+        options: [all, linux-x64, linux-arm64, macos-arm64, macos-x64, windows-x64]
+  push:
+    branches: [main]
+    tags: ["v*"]
+    # Docs-only pushes do not need the 5-OS matrix (macOS bills 10x). Path filters are not evaluated for tag pushes,
+    # so releases always build.
+    paths-ignore: ["durable-memory/**", "**.md"]
+  pull_request:
+    paths-ignore: ["durable-memory/**", "**.md"]
+
+# Least privilege: build jobs (which run npm install scripts) only read; the release job alone gets contents: write.
+permissions:
+  contents: read
+
+concurrency:
+  group: native-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux links glibc dynamically: building on 22.04 makes the binaries run on glibc 2.35 and newer.
+          - { os: ubuntu-22.04,     name: linux-x64 }
+          - { os: ubuntu-22.04-arm, name: linux-arm64 }
+          - { os: macos-15,         name: macos-arm64 }
+          - { os: macos-15-intel,   name: macos-x64 }
+          - { os: windows-2022,     name: windows-x64 }
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.name }}
+    # A job-level `if` is evaluated before matrix expansion, so the 'only' filter lives on the steps.
+    env:
+      ONLY_OK: ${{ github.event_name != 'workflow_dispatch' || inputs.only == 'all' || matrix.name == inputs.only }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        if: env.ONLY_OK == 'true'
+        with:
+          persist-credentials: false # no token in .git/config for npm scripts
+
+      - name: verify the vendored sdk header (sdk.lock)
+        if: env.ONLY_OK == 'true'
+        run: native/scripts/sync-sdk.sh --verify
+
+      - name: toolchain (linux)
+        if: runner.os == 'Linux' && env.ONLY_OK == 'true'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ninja-build
+
+      - name: toolchain (macos)
+        if: runner.os == 'macOS' && env.ONLY_OK == 'true'
+        run: brew install ninja coreutils
+
+      - name: toolchain (windows)
+        if: runner.os == 'Windows' && env.ONLY_OK == 'true'
+        run: |
+          if ! command -v g++ >/dev/null 2>&1 || ! command -v ninja >/dev/null 2>&1; then
+            for i in 1 2 3; do
+              choco install -y mingw ninja && break
+              echo "choco attempt $i failed; retrying"; sleep 20
+            done
+          fi
+          command -v g++ >/dev/null 2>&1 || { echo "no mingw g++ on PATH"; exit 1; }
+          g++ --version | head -1
+          echo "CXX=g++" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        if: env.ONLY_OK == 'true'
+        with:
+          node-version: 24
+
+      - name: lmscript compiler (npm @lmctl-ai/lmctl, DSL v5)
+        if: env.ONLY_OK == 'true'
+        run: |
+          npm i -g @lmctl-ai/lmctl@0.2.347
+          # The DSL tests skip themselves without a compiler; CI must not.
+          lmscript --version
+          lmscript --dsl-signatures native/schema/rcli.dsl.json > /dev/null
+
+      - name: build
+        if: env.ONLY_OK == 'true'
+        run: |
+          cmake -S native -B build-native -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-native --parallel 4
+
+      - name: test
+        if: env.ONLY_OK == 'true'
+        run: ctest --test-dir build-native --output-on-failure --timeout 900
+
+      - name: linkage
+        if: env.ONLY_OK == 'true'
+        run: |
+          case "$RUNNER_OS" in
+            Linux)   ldd build-native/bin/rcli-dsl
+                     ! ldd build-native/bin/rcli-dsl | grep -vE 'linux-vdso|ld-linux|libc\.so|libm\.so' ;;
+            macOS)   otool -L build-native/bin/rcli-dsl
+                     ! otool -L build-native/bin/rcli-dsl | tail -n +2 | grep -v '/usr/lib/' ;;
+            Windows) objdump -p build-native/bin/rcli-dsl.exe | grep 'DLL Name' || true
+                     ! objdump -p build-native/bin/rcli-dsl.exe | grep -iE 'DLL Name: (libstdc|libgcc|libwinpthread)' ;;
+          esac
+
+      - name: package
+        if: env.ONLY_OK == 'true'
+        run: |
+          mkdir -p dist
+          ext=""; [ "$RUNNER_OS" = "Windows" ] && ext=".exe"
+          cp "build-native/bin/rcli-dsl$ext" "dist/rcli-dsl-${{ matrix.name }}$ext"
+          cp LICENSE THIRD_PARTY_NOTICES.md native/schema/rcli.dsl.json dist/
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: env.ONLY_OK == 'true'
+        with:
+          name: rcli-dsl-${{ matrix.name }}
+          path: dist/
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write # gh release create
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: rcli-dsl-*
+          path: dist
+          merge-multiple: true
+
+      - name: checksums
+        run: cd dist && sha256sum -- * > SHA256SUMS && cat SHA256SUMS
+
+      - name: attach binaries to the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Idempotent: re-running a tag's workflow overwrites the assets.
+          if gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --clobber dist/*
+          else
+            gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes dist/*
+          fi

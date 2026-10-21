@@ -1,15 +1,21 @@
 cmake_minimum_required(VERSION 3.22)
 project(rcli_dsl VERSION 0.1.0 LANGUAGES CXX)
 # The native rcli: a C++17 statistics core (standard library only) and the `_dsl_` bytecode host rcli-dsl.
-# No R, no Python, no Docker, no third-party libraries. The default build is one executable that links libstdc++ and
-# libgcc statically and glibc (libc, libm) dynamically; -DRCLI_DSL_FULL_STATIC=ON links glibc statically too.
+# No R, no Python, no Docker, no third-party libraries. The build is one executable: on Linux it links libstdc++ and
+# libgcc statically and glibc (libc, libm) dynamically (-DRCLI_DSL_FULL_STATIC=ON links glibc too); on Windows (MinGW)
+# it links fully static by default, so no MinGW DLLs are needed; macOS links only its system libraries.
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
-option(RCLI_DSL_FULL_STATIC "Link rcli-dsl fully statically, glibc included (Linux)" OFF)
+if(WIN32)
+  set(RCLI_DSL_FULL_STATIC_DEFAULT ON)
+else()
+  set(RCLI_DSL_FULL_STATIC_DEFAULT OFF)
+endif()
+option(RCLI_DSL_FULL_STATIC "Link rcli-dsl fully statically (the C library included)" ${RCLI_DSL_FULL_STATIC_DEFAULT})
 # Sanitizer builds for tests: -DRCLI_SANITIZE=address,undefined or -DRCLI_SANITIZE=thread (implies a dynamic link).
 set(RCLI_SANITIZE "" CACHE STRING "Comma-separated -fsanitize= list for every target (empty: none)")
 if(RCLI_SANITIZE)
@@ -33,6 +39,8 @@ file(COPY_FILE "${CMAKE_CURRENT_BINARY_DIR}/generated/schema_embedded.hpp.tmp"
 set(RCLI_WARNINGS -Wall -Wextra -Wpedantic)
 # No fused multiply-add contraction: results must not depend on the target CPU (the DSL spec requires the same).
 add_compile_options(-ffp-contract=off)
+# M_PI and friends are not ISO C++; MinGW hides them under -std=c++17 without this.
+add_compile_definitions(_USE_MATH_DEFINES)
 file(GLOB RCLI_NUM_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/num/*.cpp")
 add_library(rcli_num STATIC ${RCLI_NUM_SOURCES})
 target_include_directories(rcli_num PUBLIC include)
@@ -46,6 +54,7 @@ target_compile_options(rcli-dsl PRIVATE ${RCLI_WARNINGS})
 target_compile_definitions(rcli-dsl PRIVATE RCLI_DSL_VERSION="${PROJECT_VERSION}")
 target_link_libraries(rcli-dsl PRIVATE rcli_num)
 set_target_properties(rcli-dsl PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+# "Clang" also matches AppleClang; macOS has no -static or -static-libstdc++.
 if((CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang") AND NOT APPLE AND NOT RCLI_SANITIZE)
   target_link_options(rcli-dsl PRIVATE -static-libstdc++ -static-libgcc)
   if(RCLI_DSL_FULL_STATIC)
@@ -64,8 +73,10 @@ if(BUILD_TESTING)
     target_link_libraries(${test_name} PRIVATE rcli_num)
     add_test(NAME unit_${test_name} COMMAND ${test_name})
   endforeach()
+  # Through bash explicitly: Windows cannot execute a .sh file directly.
+  find_program(RCLI_BASH bash REQUIRED)
   add_test(NAME schema_matches_registry
-    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-schema.sh" $<TARGET_FILE:rcli-dsl>)
+    COMMAND "${RCLI_BASH}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-schema.sh" $<TARGET_FILE:rcli-dsl>)
   find_package(Python3 COMPONENTS Interpreter)
   if(Python3_FOUND)
     add_test(NAME host_bindings
@@ -73,6 +84,6 @@ if(BUILD_TESTING)
     set_tests_properties(host_bindings PROPERTIES TIMEOUT 900)
   endif()
   add_test(NAME dsl_examples
-    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/scripts/run-examples.sh" $<TARGET_FILE:rcli-dsl>)
+    COMMAND "${RCLI_BASH}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/run-examples.sh" $<TARGET_FILE:rcli-dsl>)
   set_tests_properties(dsl_examples PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/.." TIMEOUT 600)
 endif()
