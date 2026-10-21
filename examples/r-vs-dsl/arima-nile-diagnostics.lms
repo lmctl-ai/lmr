@@ -1,0 +1,39 @@
+// R vs lmr: model and check. ARIMA(1,1,1) for the annual Nile flow, the Ljung-Box test on its residuals, and the same
+// model estimated by exact ML and by conditional sum of squares.
+// R:   fit <- arima(Nile, order = c(1, 1, 1)); Box.test(residuals(fit), lag = 10, type = "Ljung-Box", fitdf = 2);
+//      arima(Nile, c(1, 1, 1), method = "ML"); arima(Nile, c(1, 1, 1), method = "CSS"); predict(fit, n.ahead = 5)
+// lmr: has no Box.test, so the chunk computes it from its definition: Q = n (n + 2) sum_k r_k^2 / (n - k) over lags
+//   1..10 of the residual ACF, referred to chi-square with 10 - 2 df.
+// Usage: lmscript examples/r-vs-dsl/arima-nile-diagnostics.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let x = read_csv("examples/r-vs-dsl/data/Nile.csv").col("value");
+let fit = arima(1, 1, 1).fit(x);
+let ml = arima(1, 1, 1).method("ML").fit(x);
+let css = arima(1, 1, 1).method("CSS").fit(x);
+let r = fit.residuals();
+let n = float(r.len());
+let ac = r.acf(10);
+let q = 0.0;
+for (k in range(1, 11)) {
+  q = q + ac.at(k) * ac.at(k) / (n - float(k));
+}
+q = n * (n + 2.0) * q;
+let qp = chisq(8.0).p_upper(q);
+out.print(fmt("ar1 %.4f", fit.estimate(0)) + fmt(", ma1 %.4f", fit.estimate(1)) + fmt("; Ljung-Box Q(10) = %.4f", q) + fmt(", p = %.4f", qp));
+out.set("coef", vec().push(fit.estimate(0)).push(fit.estimate(1)));
+out.set("se", vec().push(fit.se(0)).push(fit.se(1)));
+out.set("sigma2", fit.sigma2());
+out.set("aic", fit.aic());
+out.set("ljung_box_q", q);
+out.set("ljung_box_p", qp);
+out.set("ml_coef", vec().push(ml.estimate(0)).push(ml.estimate(1)));
+out.set("css_coef", vec().push(css.estimate(0)).push(css.estimate(1)));
+out.set("css_sigma2", css.sigma2());
+out.set("forecast", fit.forecast(5).mean());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-arima-nile-diagnostics"));
+compare.finish("arima-nile-diagnostics", compare.report("arima-nile-diagnostics", got, "examples/r-vs-dsl/expected/arima-nile-diagnostics.json", 0.000000001, {}));

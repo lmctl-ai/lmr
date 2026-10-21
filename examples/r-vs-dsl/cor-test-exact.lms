@@ -1,0 +1,30 @@
+// R vs lmr: exact rank-correlation tests, the Hollander & Wolfe example of ?cor.test (n = 9, no ties).
+// R:   cor.test(x, y, method = "kendall", alternative = "greater"); cor.test(x, y, method = "spearman", alternative =
+//      "greater"); cor.test(x, y, method = "spearman"); cor.test(x, y, alternative = "greater")
+// Compared: Kendall's tau, T and exact p; Spearman's rho, S and exact one- and two-sided p; the one-sided Pearson
+//   p and interval.
+// Usage: lmscript examples/r-vs-dsl/cor-test-exact.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let x = parse_vec("44.4 45.9 41.9 53.3 44.7 44.1 50.7 45.2 60.1");
+let y = parse_vec("2.6 3.1 2.5 5.0 3.6 4.0 5.2 2.8 3.8");
+let k = test("cor").x(x).y(y).method("kendall").alt("greater").run();
+let s = test("cor").x(x).y(y).method("spearman").alt("greater").run();
+let s2 = test("cor").x(x).y(y).method("spearman").run();
+let pe = test("cor").x(x).y(y).alt("greater").run();
+out.print(k.summary());
+out.set("kendall_tau", k.estimate());
+out.set("kendall_t", k.statistic());
+out.set("kendall_p", k.p_value());
+out.set("spearman_rho", s.estimate());
+out.set("spearman_s", s.statistic());
+out.set("spearman_p", s.p_value());
+out.set("spearman_two_sided_p", s2.p_value());
+out.set("pearson_p", pe.p_value());
+out.set("pearson_ci", vec().push(pe.conf_low()).push(pe.conf_high()));
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-cor-test-exact"));
+compare.finish("cor-test-exact", compare.report("cor-test-exact", got, "examples/r-vs-dsl/expected/cor-test-exact.json", 0.000000000001, {}));

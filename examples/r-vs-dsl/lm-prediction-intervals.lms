@@ -1,0 +1,39 @@
+// R vs lmr: confidence and prediction intervals for new observations, stopping distance at five speeds (cars).
+// R:   fit <- lm(dist ~ speed, cars); predict(fit, new, interval = "confidence");
+//      predict(fit, new, interval = "prediction", level = 0.9)
+// lmr: the intervals are built from their definitions: fit +- t(df) * se for the mean, and
+//   fit +- t(df) * sqrt(se^2 + sigma^2) for a new observation.
+// Usage: lmscript examples/r-vs-dsl/lm-prediction-intervals.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let fit = lm(read_csv("examples/r-vs-dsl/data/cars.csv"), "dist ~ speed");
+let nd = frame().set("speed", parse_vec("5 10 15 20 25"));
+let f = fit.predict(nd);
+let se = fit.predict_se(nd);
+let df = float(fit.df_residual());
+let t95 = t_dist(df).q(0.975);
+let t90 = t_dist(df).q(0.95);
+let s2 = fit.sigma() * fit.sigma();
+let cl = vec();
+let cu = vec();
+let pl = vec();
+let pu = vec();
+for (i in range(0, f.len())) {
+  cl.push(f.at(i) - t95 * se.at(i));
+  cu.push(f.at(i) + t95 * se.at(i));
+  let w = t90 * sqrt(se.at(i) * se.at(i) + s2);
+  pl.push(f.at(i) - w);
+  pu.push(f.at(i) + w);
+  out.print(fmt("speed %2.0f", nd.col("speed").at(i)) + fmt("  fit %6.2f", f.at(i)) + fmt("  95%% CI [%6.2f,", cl.at(i)) + fmt(" %6.2f]", cu.at(i)) + fmt("  90%% PI [%6.2f,", pl.at(i)) + fmt(" %6.2f]", pu.at(i)));
+}
+out.set("fit", f);
+out.set("conf_lower", cl);
+out.set("conf_upper", cu);
+out.set("pred90_lower", pl);
+out.set("pred90_upper", pu);
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-lm-prediction-intervals"));
+compare.finish("lm-prediction-intervals", compare.report("lm-prediction-intervals", got, "examples/r-vs-dsl/expected/lm-prediction-intervals.json", 0.000000000001, {}));

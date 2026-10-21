@@ -1,0 +1,16 @@
+{
+  "recipe": "contingency-mtcars",
+  "r_version": "R version 4.3.3 (2024-02-29)",
+  "values": {
+    "cyl_gear_counts": [1, 2, 12, 8, 4, 0, 2, 1, 2],
+    "cyl_gear_x2": 18.036363636363635,
+    "cyl_gear_df": 4,
+    "cyl_gear_p": 0.0012140660337851576,
+    "am_vs_counts": [12, 6, 7, 7],
+    "fisher_p": 0.47269744160177968,
+    "fisher_odds_ratio": 1.9560553993728869,
+    "fisher_ci": [0.38253417984464028, 10.591608672988254],
+    "yates_x2": 0.34753550543024225,
+    "yates_p": 0.55551154701314953
+  }
+}

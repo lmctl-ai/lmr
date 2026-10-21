@@ -1,0 +1,33 @@
+// R vs lmr: one binary outcome with three links (transmission type on weight, mtcars: logit, probit, complementary
+// log-log, compared by AIC), and a dose-response fit to grouped binomial data with the trials as weights.
+// R:   glm(am ~ wt, family = binomial(link = "probit"), data = mtcars) (and logit, cloglog);
+//      glm(dead / total ~ ldose, family = binomial, weights = total); LD50 = -b0 / b1
+// Usage: lmscript examples/r-vs-dsl/glm-binomial-links.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let m = read_csv("examples/r-vs-dsl/data/mtcars.csv");
+let lg = glm(m, "am ~ wt", "binomial", "logit");
+let pr = glm(m, "am ~ wt", "binomial", "probit");
+let cl = glm(m, "am ~ wt", "binomial", "cloglog");
+let total = rep(20.0, 6);
+let g = frame().set("ldose", seq(0.0, 5.0, 1.0)).set("prop", parse_vec("1 4 9 13 18 20").div(total));
+let gr = glm(g, "prop ~ ldose", "binomial", "logit", total);
+out.print(fmt("AIC: logit %.4f", lg.aic()) + fmt(", probit %.4f", pr.aic()) + fmt(", cloglog %.4f", cl.aic()));
+out.set("logit_coef", lg.estimates());
+out.set("logit_aic", lg.aic());
+out.set("probit_coef", pr.estimates());
+out.set("probit_se", vec().push(pr.se(0)).push(pr.se(1)));
+out.set("probit_aic", pr.aic());
+out.set("cloglog_coef", cl.estimates());
+out.set("cloglog_aic", cl.aic());
+out.set("cloglog_iter", cl.iter());
+out.set("grouped_coef", gr.estimates());
+out.set("grouped_se", vec().push(gr.se(0)).push(gr.se(1)));
+out.set("grouped_deviance", gr.deviance());
+out.set("grouped_ld50", -gr.estimate(0) / gr.estimate(1));
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-glm-binomial-links"));
+compare.finish("glm-binomial-links", compare.report("glm-binomial-links", got, "examples/r-vs-dsl/expected/glm-binomial-links.json", 0.000000000001, {}));

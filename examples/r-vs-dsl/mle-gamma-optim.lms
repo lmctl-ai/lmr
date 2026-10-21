@@ -1,0 +1,40 @@
+// R vs lmr: maximum likelihood by hand. A gamma distribution fitted to the 272 Old Faithful waiting times by
+// minimising the negative log-likelihood with BFGS over (log shape, log rate), with standard errors from the
+// numerically differentiated Hessian.
+// R:   nll <- function(th) -sum(dgamma(x, shape = exp(th[1]), rate = exp(th[2]), log = TRUE));
+//      o <- optim(c(log(10), log(0.1)), nll, method = "BFGS", hessian = TRUE); sqrt(diag(solve(o$hessian)))
+// lmr: the log-likelihood is log(d_vec(x)).sum(); the 2 x 2 Hessian is inverted in the chunk.
+// Tolerance: the log-densities agree with R's to the last few bits, and BFGS works from finite-difference gradients,
+//   so the optimum agrees to about 1e-12 and the standard errors (second differences) to about 4e-11.
+// Usage: lmscript examples/r-vs-dsl/mle-gamma-optim.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let x = read_csv("examples/r-vs-dsl/data/faithful.csv").col("waiting");
+let o = minimize(vec().push(log(10.0)).push(log(0.1)), "BFGS").hessian(true);
+while (o.next()) {
+  let shape = exp(o.x(0));
+  let rate = exp(o.x(1));
+  if (is_finite(shape) && is_finite(rate) && rate > 0.0) {
+    # Vec.sum accumulates in double-double, as R's sum() accumulates in long double.
+    o.tell(-gamma_dist(shape, rate).d_vec(x).log().sum());
+  } else {
+    # A line-search step can overflow exp(); R's dgamma gives density 0 there, so -log L is +Inf and BFGS backs off.
+    o.tell(inf());
+  }
+}
+let a = o.hessian(0, 0);
+let b = o.hessian(0, 1);
+let c = o.hessian(1, 1);
+let det = a * c - b * b;
+out.print(fmt("shape %.4f", exp(o.par(0))) + fmt(", rate %.5f", exp(o.par(1))) + fmt(", -log L %.4f", o.value()));
+out.set("shape_rate", vec().push(exp(o.par(0))).push(exp(o.par(1))));
+out.set("log_par", o.pars());
+out.set("log_par_se", vec().push(sqrt(c / det)).push(sqrt(a / det)));
+out.set("min_nll", o.value());
+out.set("convergence", o.convergence());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-mle-gamma-optim"));
+compare.finish("mle-gamma-optim", compare.report("mle-gamma-optim", got, "examples/r-vs-dsl/expected/mle-gamma-optim.json", 0.0000000001, {log_par_se: 0.000000001}));

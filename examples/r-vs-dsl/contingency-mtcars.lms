@@ -1,0 +1,54 @@
+// R vs lmr: contingency tables built from a data frame. Cylinders by gears (chi-squared with small expected counts)
+// and transmission by engine shape (Fisher's exact test and Yates' chi-squared), mtcars.
+// R:   chisq.test(table(mtcars$cyl, mtcars$gear)); fisher.test(table(mtcars$am, mtcars$vs));
+//      chisq.test(table(mtcars$am, mtcars$vs))
+// lmr: the chunk counts the cells itself, column by column as R stores a table.
+// Usage: lmscript examples/r-vs-dsl/contingency-mtcars.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let m = read_csv("examples/r-vs-dsl/data/mtcars.csv");
+fn count(a: Vec, va: float, b: Vec, vb: float) -> float {
+  let n = 0.0;
+  for (i in range(0, a.len())) {
+    if (a.at(i) == va && b.at(i) == vb) { n = n + 1.0; }
+  }
+  return n;
+}
+let cyl = m.col("cyl");
+let gear = m.col("gear");
+let am = m.col("am");
+let vs = m.col("vs");
+let t1 = vec();
+let cyls = parse_vec("4 6 8");
+let gears = parse_vec("3 4 5");
+for (j in range(0, 3)) {
+  for (i in range(0, 3)) {
+    t1.push(count(cyl, cyls.at(i), gear, gears.at(j)));
+  }
+}
+let t2 = vec();
+for (j in range(0, 2)) {
+  for (i in range(0, 2)) {
+    t2.push(count(am, float(i), vs, float(j)));
+  }
+}
+let c1 = test("chisq").table(t1, 3, false).run();
+let f2 = test("fisher").table(t2, 2, false).run();
+let c2 = test("chisq").table(t2, 2, false).run();
+out.print("cyl x gear counts (by column): " + t1.str());
+out.set("cyl_gear_counts", t1);
+out.set("cyl_gear_x2", c1.statistic());
+out.set("cyl_gear_df", c1.df());
+out.set("cyl_gear_p", c1.p_value());
+out.set("am_vs_counts", t2);
+out.set("fisher_p", f2.p_value());
+out.set("fisher_odds_ratio", f2.estimate());
+out.set("fisher_ci", vec().push(f2.conf_low()).push(f2.conf_high()));
+out.set("yates_x2", c2.statistic());
+out.set("yates_p", c2.p_value());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-contingency-mtcars"));
+compare.finish("contingency-mtcars", compare.report("contingency-mtcars", got, "examples/r-vs-dsl/expected/contingency-mtcars.json", 0.000000000001, {}));

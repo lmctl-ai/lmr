@@ -1,0 +1,64 @@
+// R vs lmr: two-way ANOVA with interaction, tooth length by supplement and dose (ToothGrowth).
+// R:   tg$dose <- factor(tg$dose); summary(aov(len ~ supp * dose, data = tg))
+// lmr: R's treatment dummies (suppVC; dose1, dose2 for doses 1 and 2 against 0.5) and their products, then the
+//   sequential (type I) sums of squares as the drops in RSS along supp, + dose, + supp:dose, each F test against the
+//   full model's residual mean square.
+// Compared: df, sums of squares, mean squares, F and p for supp, dose and supp:dose, and the six cell means.
+// Usage: lmscript examples/r-vs-dsl/anova-twoway-toothgrowth.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let d = read_csv("examples/r-vs-dsl/data/ToothGrowth.csv");
+let supp = d.text("supp");
+let dose = d.col("dose");
+let vc = vec();
+let d1 = vec();
+let d2 = vec();
+for (i in range(0, supp.len())) {
+  if (supp.at(i) == "VC") { vc.push(1.0); } else { vc.push(0.0); }
+  if (dose.at(i) == 1.0) { d1.push(1.0); } else { d1.push(0.0); }
+  if (dose.at(i) == 2.0) { d2.push(1.0); } else { d2.push(0.0); }
+}
+d.set("suppVC", vc).set("dose1", d1).set("dose2", d2);
+let y = d.col("len");
+let tss = y.var() * float(y.len() - 1);
+let r1 = lm(d, "len ~ suppVC").rss();
+let r2 = lm(d, "len ~ suppVC + dose1 + dose2").rss();
+let full = lm(d, "len ~ suppVC + dose1 + dose2 + suppVC:dose1 + suppVC:dose2");
+let r3 = full.rss();
+let dfr = float(full.df_residual());
+let ss = vec().push(tss - r1).push(r1 - r2).push(r2 - r3).push(r3);
+let dfs = vec().push(1.0).push(2.0).push(2.0).push(dfr);
+let ms = ss.div(dfs);
+let fv = vec();
+let pv = vec();
+for (i in range(0, 3)) {
+  fv.push(ms.at(i) / ms.at(3));
+  pv.push(f_dist(dfs.at(i), dfr).p_upper(fv.at(i)));
+}
+let names = split("supp,dose,supp:dose", ",");
+for (i in range(0, 3)) {
+  out.print(rpad(names.at(i), 10) + fmt(" Df %1.0f", dfs.at(i)) + fmt("  Sum Sq %8.2f", ss.at(i)) + fmt("  F %7.3f", fv.at(i)) + fmt("  p %.3g", pv.at(i)));
+}
+let cells = vec();
+let doses = parse_vec("0.5 1 2");
+for (j in range(0, 3)) {
+  for (s in range(0, 2)) {
+    let mask = vec();
+    for (i in range(0, y.len())) {
+      if (dose.at(i) == doses.at(j) && vc.at(i) == float(s)) { mask.push(1.0); } else { mask.push(0.0); }
+    }
+    cells.push(y.where(mask).mean());
+  }
+}
+out.set("df", dfs);
+out.set("sum_sq", ss);
+out.set("mean_sq", ms);
+out.set("f_value", fv);
+out.set("p_value", pv);
+out.set("cell_means", cells);
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-anova-twoway-toothgrowth"));
+compare.finish("anova-twoway-toothgrowth", compare.report("anova-twoway-toothgrowth", got, "examples/r-vs-dsl/expected/anova-twoway-toothgrowth.json", 0.000000000001, {}));

@@ -1,0 +1,32 @@
+// R vs lmr: three more lm idioms. An interaction (mpg ~ wt * hp), a log-log model (log(dist) ~ log(speed), cars) and
+// weighted least squares (mpg ~ wt with weights 1 / disp).
+// R:   lm(mpg ~ wt * hp, mtcars); lm(log(dist) ~ log(speed), cars); lm(mpg ~ wt, mtcars, weights = 1 / disp)
+// Usage: lmscript examples/r-vs-dsl/lm-interaction-weights.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let m = read_csv("examples/r-vs-dsl/data/mtcars.csv");
+let cars = read_csv("examples/r-vs-dsl/data/cars.csv");
+let ia = lm(m, "mpg ~ wt * hp");
+let ll = lm(cars, "log(dist) ~ log(speed)");
+let wl = lm(m, "mpg ~ wt", m.col("disp").rdiv(1.0));
+out.print(ia.coef_table());
+let ip = vec();
+for (i in range(0, ia.n_coef())) {
+  ip.push(ia.p_value(i));
+}
+out.set("interaction_coef", ia.estimates());
+out.set("interaction_p", ip);
+out.set("interaction_r2", ia.r_squared());
+out.set("loglog_coef", ll.estimates());
+out.set("loglog_sigma", ll.sigma());
+out.set("loglog_r2", ll.r_squared());
+out.set("weighted_coef", wl.estimates());
+out.set("weighted_se", vec().push(wl.se(0)).push(wl.se(1)));
+out.set("weighted_sigma", wl.sigma());
+out.set("weighted_r2", wl.r_squared());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-lm-interaction-weights"));
+compare.finish("lm-interaction-weights", compare.report("lm-interaction-weights", got, "examples/r-vs-dsl/expected/lm-interaction-weights.json", 0.000000000001, {}));

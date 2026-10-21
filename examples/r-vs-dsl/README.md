@@ -37,7 +37,8 @@ lm-mtcars: lmr agrees with R.
 
 ## Recipes
 
-Results are from R 4.3.3 and lmr 0.3.0. "Numbers" counts every compared element; "worst" is the largest `diff`.
+Results are from R 4.3.3 and lmr 0.3.0, grouped by topic. "Numbers" counts every compared element; "worst" is the
+largest `diff`.
 
 | Recipe | R | Numbers | Worst |
 |---|---|---:|---:|
@@ -46,12 +47,22 @@ Results are from R 4.3.3 and lmr 0.3.0. "Numbers" counts every compared element;
 | [anova-plantgrowth](anova-plantgrowth.lms) | `aov(weight ~ group, PlantGrowth)` (dummies built in the chunk) | 17 | 1.3e-15 |
 | [glm-logistic-mtcars](glm-logistic-mtcars.lms) | `glm(am ~ wt + hp, binomial, mtcars)` | 50 | 3.0e-15 |
 | [glm-poisson-warpbreaks](glm-poisson-warpbreaks.lms) | `glm(breaks ~ wool + tension, poisson, warpbreaks)` | 16 | 4.2e-15 |
+| [lm-interaction-weights](lm-interaction-weights.lms) | `lm(mpg ~ wt * hp)`, `lm(log(dist) ~ log(speed))`, weighted `lm` | 19 | 2.6e-15 |
+| [lm-prediction-intervals](lm-prediction-intervals.lms) | `predict(interval = "confidence"/"prediction")` | 25 | 3.9e-15 |
+| [anova-twoway-toothgrowth](anova-twoway-toothgrowth.lms) | `aov(len ~ supp * dose, ToothGrowth)`, sequential sums of squares | 24 | 3.9e-15 |
+| [pairwise-t-plantgrowth](pairwise-t-plantgrowth.lms) | `pairwise.t.test`: pooled SD, Holm, Bonferroni | 9 | 3.9e-16 |
+| [glm-dobson-poisson](glm-dobson-poisson.lms) | the Poisson example of `?glm` (Dobson 1990) | 41 | 7.3e-15 |
+| [glm-gamma-clotting](glm-gamma-clotting.lms) | the Gamma example of `?glm` (McCullagh & Nelder, clotting) | 13 | 2.1e-14 |
+| [glm-binomial-links](glm-binomial-links.lms) | logit/probit/cloglog by AIC; grouped binomial with weights, LD50 | 18 | 3.1e-15 |
+| [logistic-odds-ratios](logistic-odds-ratios.lms) | `exp(coef)`, `exp(confint.default())`, likelihood-ratio test | 11 | 1.5e-15 |
 | [nls-puromycin](nls-puromycin.lms) | `nls(rate ~ Vm * conc / (K + conc), Puromycin)` (treated) | 20 | 8.3e-9 |
 | [t-test-sleep](t-test-sleep.lms) | `t.test` on `sleep`: Welch, pooled, paired | 16 | 6.0e-16 |
 | [wilcox-tests](wilcox-tests.lms) | `wilcox.test`: exact paired, ties with correction, Hodges-Lehmann interval | 9 | 5.0e-16 |
 | [chisq-tests](chisq-tests.lms) | `chisq.test`: 2 × 3 independence, goodness of fit, Yates 2 × 2 | 13 | 6.9e-18 |
 | [fisher-binom-prop](fisher-binom-prop.lms) | `fisher.test(TeaTasting)`, `binom.test(682, 925)`, `prop.test(smokers, patients)` | 20 | 4.4e-16 |
 | [cor-test-mtcars](cor-test-mtcars.lms) | `cor.test(mpg, wt)`: Pearson, Spearman, Kendall | 11 | 7.4e-16 |
+| [cor-test-exact](cor-test-exact.lms) | exact Kendall and Spearman tests (Hollander & Wolfe, `?cor.test`) | 10 | 1.1e-16 |
+| [contingency-mtcars](contingency-mtcars.lms) | `chisq.test(table(cyl, gear))`, `fisher.test(table(am, vs))` | 22 | 2.3e-16 |
 | [normality-variance](normality-variance.lms) | `shapiro.test`, `var.test(mpg ~ am)`, `ks.test(mpg, "pnorm", 20, 6)` | 10 | 1.3e-10 * |
 | [summary-quantiles](summary-quantiles.lms) | `summary`, `quantile(type = 1..9)`, `sd`, `IQR`, `mad`, `cor` | 54 | 1.1e-16 |
 | [distributions](distributions.lms) | `dnorm`, `pt`, `qt`, `qchisq`, `qf`, `dbinom`, `dpois`, `qgamma`, `pbeta`, ... | 47 | 4.3e-16 |
@@ -59,14 +70,20 @@ Results are from R 4.3.3 and lmr 0.3.0. "Numbers" counts every compared element;
 | [hclust-usarrests](hclust-usarrests.lms) | `hclust(dist(scale(USArrests)))`, complete and average, `cutree(4)` | 252 | 1.9e-16 |
 | [arima-lh](arima-lh.lms) | `arima(lh, c(1,0,0))`, `c(3,0,0)`, `c(1,0,1)`, `predict(n.ahead = 12)` | 44 | 4.0e-8 |
 | [arima-airline](arima-airline.lms) | airline model on `log(AirPassengers)` with a 12-month forecast | 43 | 4.4e-7 |
+| [arima-nile-diagnostics](arima-nile-diagnostics.lms) | `arima(Nile, c(1,1,1))` by CSS-ML, ML, CSS; Ljung-Box on residuals | 18 | 2.3e-10 |
 | [acf-pacf](acf-pacf.lms) | `acf`, `pacf` of `lh` and `Nile` | 74 | 3.5e-16 |
 | [stl-decomposition](stl-decomposition.lms) | `stl(nottem, "periodic")`, `stl(log(co2), s.window = 21)` | 1656 | 5.8e-13 |
 | [optim-rosenbrock](optim-rosenbrock.lms) | `optim` on Rosenbrock: Nelder-Mead, BFGS, L-BFGS-B | 11 | see below * |
+| [mle-gamma-optim](mle-gamma-optim.lms) | gamma MLE with `optim(BFGS, hessian = TRUE)`, standard errors | 8 | 3.6e-11 |
 | [integrate-roots](integrate-roots.lms) | `integrate` (incl. infinite bounds), `uniroot`, `optimize` | 8 | 1.4e-16 |
 | [smoothing-cars](smoothing-cars.lms) | `smooth.spline(df = 5)`, `loess`, `splinefun`, `approx` | 118 | 9.9e-6 * |
 | [fft-spectrum](fft-spectrum.lms) | `fft(1:8)`, amplitude spectrum, inverse transform | 113 | 1.4e-15 |
 
-In total, 2744 numbers are compared.
+In total, 36 recipes compare 2962 numbers.
+
+Several recipes also show how to do in a few DSL lines what R does with a helper lmr does not have: R's treatment
+dummies for factors, sequential ANOVA sums of squares, Holm's adjustment, `Box.test`, prediction intervals, Wald odds
+ratios, and the contingency table itself.
 
 ## Known differences (*)
 
@@ -92,7 +109,7 @@ Each one is explained in the recipe's header and compared with its own tolerance
 ## Files
 
 - `r/NAME.R`, the R recipe. `r/_emit.R` writes the JSON with 17 significant digits. `r/export-data.R` writes `data/`.
-- `data/*.csv`: the R datasets used (mtcars, cars, sleep, PlantGrowth, warpbreaks, iris, USArrests, faithful,
-  Puromycin, lh, AirPassengers, nottem, co2, Nile), exported from R's `datasets` package by `r/export-data.R`.
+- `data/*.csv`: the R datasets used (mtcars, cars, sleep, PlantGrowth, ToothGrowth, warpbreaks, iris, USArrests,
+  faithful, Puromycin, lh, AirPassengers, nottem, co2, Nile), exported from R's `datasets` package by `r/export-data.R`.
 - `expected/NAME.json`: R's results (R 4.3.3).
 - `NAME.lms`: the lmr version and the comparison. `lib/compare.lms` prints the table and applies the tolerances.

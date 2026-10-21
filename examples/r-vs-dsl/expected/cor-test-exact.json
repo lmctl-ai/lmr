@@ -1,0 +1,15 @@
+{
+  "recipe": "cor-test-exact",
+  "r_version": "R version 4.3.3 (2024-02-29)",
+  "values": {
+    "kendall_tau": 0.44444444444444453,
+    "kendall_t": 26,
+    "kendall_p": 0.0597194664902998,
+    "spearman_rho": 0.59999999999999998,
+    "spearman_s": 48,
+    "spearman_p": 0.048398919753086418,
+    "spearman_two_sided_p": 0.096797839506172836,
+    "pearson_p": 0.054086527174746893,
+    "pearson_ci": [-0.022230227504511643, 1]
+  }
+}

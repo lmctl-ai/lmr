@@ -1,0 +1,29 @@
+// R vs lmr: reporting a logistic regression as odds ratios (mtcars, engine shape vs on mpg and transmission).
+// R:   fit <- glm(vs ~ mpg + am, binomial, mtcars); exp(cbind(OR = coef(fit), confint.default(fit)));
+//      likelihood-ratio test: null deviance - deviance on df.null - df.residual degrees of freedom
+// lmr: conf_low/conf_high of a binomial glm are Wald intervals, as confint.default; exp() turns them into odds ratios.
+// Usage: lmscript examples/r-vs-dsl/logistic-odds-ratios.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let fit = glm(read_csv("examples/r-vs-dsl/data/mtcars.csv"), "vs ~ mpg + am", "binomial");
+let orv = vec();
+let lo = vec();
+let hi = vec();
+for (i in range(0, fit.n_coef())) {
+  orv.push(exp(fit.estimate(i)));
+  lo.push(exp(fit.conf_low(i, 0.95)));
+  hi.push(exp(fit.conf_high(i, 0.95)));
+  out.print(rpad(fit.name(i), 12) + fmt(" OR %8.4f", orv.at(i)) + fmt("  [%8.4f,", lo.at(i)) + fmt(" %10.4f]", hi.at(i)));
+}
+let lr = fit.null_deviance() - fit.deviance();
+out.set("odds_ratio", orv);
+out.set("or_lower", lo);
+out.set("or_upper", hi);
+out.set("lr_statistic", lr);
+out.set("lr_p", chisq(float(fit.df_null() - fit.df_residual())).p_upper(lr));
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-logistic-odds-ratios"));
+compare.finish("logistic-odds-ratios", compare.report("logistic-odds-ratios", got, "examples/r-vs-dsl/expected/logistic-odds-ratios.json", 0.000000000001, {}));
