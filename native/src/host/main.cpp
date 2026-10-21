@@ -23,7 +23,7 @@
 #include "schema_embedded.hpp"
 
 #ifndef LMR_VERSION
-#define LMR_VERSION "0.3.0"
+#define LMR_VERSION "0.4.0"
 #endif
 
 namespace {
