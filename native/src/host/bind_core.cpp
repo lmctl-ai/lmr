@@ -1,11 +1,11 @@
 // Out (the context object), Vec, StrList, Frame, math and formatting functions, keep/kept across chunks.
 #include <algorithm>
-#include <charconv>
 #include <cstdio>
 #include <iostream>
 #include <numeric>
 
 #include "host.hpp"
+#include "rcli/dd.hpp"
 #include "rcli/summary.hpp"
 
 namespace rcli::host {
@@ -61,8 +61,7 @@ Vec parse_numbers(const std::string& text) {
       double v;
       const char* b = tok.data();
       if (*b == '+') ++b;
-      auto r = std::from_chars(b, tok.data() + tok.size(), v);
-      if (r.ec != std::errc() || r.ptr != tok.data() + tok.size()) throw dslvm::Error("parse_vec: not a number: '" + tok + "'");
+      if (!parse_number(b, tok.data() + tok.size(), v)) throw dslvm::Error("parse_vec: not a number: '" + tok + "'");
       out.push_back(v);
     }
     i = j;
@@ -315,8 +314,8 @@ void bind_core(Binder& b) {
   b.m("Vec", "cov", {"Vec"}, "float", [](void* s, A& a) { return Value::real(summary::cov(self<Vec>(s), V(a[0]))); });
   b.m("Vec", "dot", {"Vec"}, "float", [](void* s, A& a) {
     same_length(self<Vec>(s), V(a[0]), "Vec.dot");
-    long double acc = 0;
-    for (size_t i = 0; i < V(a[0]).size(); ++i) acc += static_cast<long double>(self<Vec>(s)[i]) * V(a[0])[i];
+    DD acc;  // double-double: the same bits on every platform
+    for (size_t i = 0; i < V(a[0]).size(); ++i) acc += DD(self<Vec>(s)[i]) * DD(V(a[0])[i]);
     return Value::real(static_cast<double>(acc));
   });
 

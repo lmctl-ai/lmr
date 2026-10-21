@@ -729,7 +729,8 @@ case("cli: garbage bytecode", None, args=["--dsl", "junk.dslb"], code=3, out=('"
 def compile_chunk(lmscript, body, path):
     src = path + ".lms"
     with open(src, "w") as f:
-        f.write('p = _dsl_ schema="%s";\n%s\nend _dsl_\nsavedsl(p, "%s");\n' % (SCHEMA, body, path))
+        # Forward slashes: a Windows path's backslashes would be escapes inside the lmscript string literals.
+        f.write('p = _dsl_ schema="%s";\n%s\nend _dsl_\nsavedsl(p, "%s");\n' % (SCHEMA.replace("\\", "/"), body, path.replace("\\", "/")))
     r = subprocess.run([lmscript, src], capture_output=True, text=True, timeout=120)
     if r.returncode != 0:
         raise RuntimeError("compile failed:\n" + r.stdout + r.stderr)

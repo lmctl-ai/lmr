@@ -6,22 +6,35 @@
 //   * Bluestein's chirp-z algorithm (Bluestein 1970; Rabiner, Schafer & Rader 1969) when n has a prime factor > 100:
 //     X_k = conj(w_k) * sum_j (z_j conj(w_j)) w_{k-j}, w_m = exp(i*pi*m^2/n), evaluated as a circular convolution with
 //     a power-of-two FFT.
-// Twiddle factors are computed directly from long double sin/cos of an exactly reduced angle (index mod n), so the
-// error grows like O(eps log n).
+// Twiddle factors are computed directly from sin/cos of an exactly reduced angle (index mod n, then reflected into the
+// first octant with integer arithmetic), so the error grows like O(eps log n).
 #include "rcli/fft.hpp"
 
 #include <cstdint>
+#include <utility>
 
 namespace rcli {
 namespace {
 
 using cd = std::complex<double>;
-constexpr long double kPiL = 3.141592653589793238462643383279502884L;
+constexpr double kPi4 = 0.785398163397448309615660845819875721;  // pi/4
 
-// exp(sign * 2*pi*i * k / n) for 0 <= k < n, computed in long double with octant symmetry left to libm.
+// exp(sign * 2*pi*i * k / n) for 0 <= k < n. The angle is (pi/4) * t/n with t = 8k: reflecting t -> 2n - t and
+// rotating by quadrants is exact in integers, so sin/cos only see angles in [0, pi/4].
 cd unit_root(std::uint64_t k, std::uint64_t n, int sign) {
-  const long double a = 2.0L * kPiL * static_cast<long double>(k) / static_cast<long double>(n);
-  return cd(static_cast<double>(std::cos(a)), static_cast<double>(sign * std::sin(a)));
+  const std::uint64_t t = 8 * k, q = t / (2 * n), r = t - 2 * n * q;
+  const bool reflect = r > n;
+  const double a = kPi4 * (static_cast<double>(reflect ? 2 * n - r : r) / static_cast<double>(n));
+  double c = std::cos(a), s = std::sin(a);
+  if (reflect) std::swap(c, s);
+  double re = c, im = s;
+  switch (q) {
+    case 1: re = -s; im = c; break;
+    case 2: re = -c; im = -s; break;
+    case 3: re = s; im = -c; break;
+    default: break;
+  }
+  return cd(re, sign * im);
 }
 
 class Plan {

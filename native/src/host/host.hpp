@@ -133,6 +133,9 @@ inline int64_t as_index(int64_t i, size_t n, const char* what) {
     throw dslvm::Error(std::string(what) + ": index " + std::to_string(i) + " out of range 0.." + std::to_string(static_cast<int64_t>(n) - 1));
   return i;
 }
+// Parses all of [b, e) as a decimal number (also inf/infinity/nan, any case) like std::from_chars, which Apple's
+// libc++ lacks for floating point. No leading '+', whitespace or hex. Overflow and underflow to zero are rejected.
+bool parse_number(const char* b, const char* e, double& out);
 std::string json_number(double v);
 std::string json_vec(const Vec& v);
 std::string format_number(const std::string& spec, double v);         // one printf conversion, validated

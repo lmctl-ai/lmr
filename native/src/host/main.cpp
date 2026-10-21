@@ -13,6 +13,11 @@
 #include <map>
 #include <set>
 
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
+
 #include "host.hpp"
 #include "schema_embedded.hpp"
 
@@ -134,6 +139,11 @@ std::string result_json(const Out& out) {
 }  // namespace
 
 int main(int argc, char** argv) {
+#ifdef _WIN32
+  // Byte-exact output: the schema is compared and hashed, and the JSON line must not gain a CR.
+  _setmode(_fileno(stdout), _O_BINARY);
+  _setmode(_fileno(stderr), _O_BINARY);
+#endif
   Host host;
   dslvm::Registry reg;
   OperatorTable ops;

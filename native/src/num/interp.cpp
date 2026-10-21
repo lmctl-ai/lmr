@@ -10,6 +10,8 @@
 // stored for the last knot describe the extrapolation to the right.
 #include "rcli/interp.hpp"
 
+#include "rcli/dd.hpp"
+
 #include <algorithm>
 #include <numeric>
 
@@ -28,13 +30,14 @@ void collapse_ties(const Vec& x, const Vec& y, Vec& ux, Vec& uy, const char* fn)
   uy.clear();
   for (size_t i = 0; i < idx.size();) {
     size_t j = i;
-    long double s = 0.0L;
+    DD s;  // double-double where R's mean() uses long double (same bits on every platform)
     while (j < idx.size() && x[idx[j]] == x[idx[i]]) s += y[idx[j++]];
-    long double m = s / static_cast<long double>(j - i);
+    const DD cnt = static_cast<double>(j - i);
+    DD m = s / cnt;
     if (j - i > 1) {  // second pass as R's mean()
-      long double t = 0.0L;
-      for (size_t k = i; k < j; ++k) t += y[idx[k]] - m;
-      m += t / static_cast<long double>(j - i);
+      DD t;
+      for (size_t k = i; k < j; ++k) t += DD(y[idx[k]]) - m;
+      m += t / cnt;
     }
     ux.push_back(x[idx[i]]);
     uy.push_back(static_cast<double>(m));

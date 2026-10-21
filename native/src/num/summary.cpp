@@ -6,6 +6,8 @@
 //   Knight, W. R. (1966) A computer method for calculating Kendall's tau with ungrouped data. JASA 61, 436-439.
 #include "rcli/summary.hpp"
 
+#include "rcli/dd.hpp"
+
 #include <algorithm>
 #include <cstdint>
 #include <numeric>
@@ -18,25 +20,21 @@ void require_finite_input(const Vec& x, const char* fn) {
     if (std::isnan(v)) throw Error(std::string(fn) + ": missing values (NaN) are not allowed");
 }
 
-// Neumaier compensated summation carried in long double (extended precision on x86-64, as R accumulates).
-long double ksum(const Vec& x) {
-  long double s = 0.0L, c = 0.0L;
-  for (double v : x) {
-    long double t = s + v;
-    if (std::fabs(s) >= std::fabs(static_cast<long double>(v))) c += (s - t) + v;
-    else c += (v - t) + s;
-    s = t;
-  }
-  return s + c;
+// Sums in double-double (rcli/dd.hpp), where R accumulates in long double: the same result on every platform, and at
+// least as accurate as R's 80-bit x86-64 accumulator.
+DD ksum(const Vec& x) {
+  DD s;
+  for (double v : x) s += v;
+  return s;
 }
 
-// Two-pass mean in extended precision: m = sum/n, then m += sum(x - m)/n.
-long double mean_ld(const Vec& x) {
-  const long double n = static_cast<long double>(x.size());
-  long double m = ksum(x) / n;
-  if (std::isfinite(static_cast<double>(m))) {
-    long double t = 0.0L;
-    for (double v : x) t += v - m;
+// Two-pass mean as R's: m = sum/n, then m += sum(x - m)/n.
+DD mean_dd(const Vec& x) {
+  const DD n = static_cast<double>(x.size());
+  DD m = ksum(x) / n;
+  if (std::isfinite(m.hi)) {
+    DD t;
+    for (double v : x) t += DD(v) - m;
     m += t / n;
   }
   return m;
@@ -45,16 +43,16 @@ long double mean_ld(const Vec& x) {
 double pearson(const Vec& x, const Vec& y) {
   const size_t n = x.size();
   if (n < 2) return kNaN;
-  const long double mx = mean_ld(x), my = mean_ld(y);
-  long double sxx = 0.0L, syy = 0.0L, sxy = 0.0L;
+  const DD mx = mean_dd(x), my = mean_dd(y);
+  DD sxx, syy, sxy;
   for (size_t i = 0; i < n; ++i) {
-    const long double dx = x[i] - mx, dy = y[i] - my;
+    const DD dx = DD(x[i]) - mx, dy = DD(y[i]) - my;
     sxx += dx * dx;
     syy += dy * dy;
     sxy += dx * dy;
   }
-  if (sxx == 0.0L || syy == 0.0L) return kNaN;  // R: "the standard deviation is zero" -> NA
-  double r = static_cast<double>(sxy / (std::sqrt(sxx) * std::sqrt(syy)));
+  if (sxx.hi == 0.0 || syy.hi == 0.0) return kNaN;  // R: "the standard deviation is zero" -> NA
+  double r = static_cast<double>(sxy / (sqrt(sxx) * sqrt(syy)));
   return std::clamp(r, -1.0, 1.0);
 }
 
@@ -111,9 +109,10 @@ double kendall(const Vec& x, const Vec& y) {
     i = j;
   }
   const std::int64_t s = n0 - n1 - n2 + n3 - 2 * swaps;
-  const long double den = std::sqrt(static_cast<long double>(n0 - n1)) * std::sqrt(static_cast<long double>(n0 - n2));
-  if (den == 0.0L) return kNaN;
-  return std::clamp(static_cast<double>(static_cast<long double>(s) / den), -1.0, 1.0);
+  // The pair counts are exact in double up to 2^53; the square roots and quotient go through double-double.
+  const DD den = sqrt(DD(static_cast<double>(n0 - n1))) * sqrt(DD(static_cast<double>(n0 - n2)));
+  if (den.hi == 0.0) return kNaN;
+  return std::clamp(static_cast<double>(DD(static_cast<double>(s)) / den), -1.0, 1.0);
 }
 
 double quantile_sorted(const Vec& s, double p, int type) {
@@ -181,17 +180,20 @@ double sum(const Vec& x) {
 double mean(const Vec& x) {
   require_finite_input(x, "mean");
   if (x.empty()) return kNaN;
-  return static_cast<double>(mean_ld(x));
+  return static_cast<double>(mean_dd(x));
 }
 
 double var(const Vec& x) {
   require_finite_input(x, "var");
   const size_t n = x.size();
   if (n < 2) return kNaN;
-  const long double m = mean_ld(x);
-  long double ss = 0.0L;
-  for (double v : x) ss += (v - m) * (v - m);
-  return static_cast<double>(ss / static_cast<long double>(n - 1));
+  const DD m = mean_dd(x);
+  DD ss;
+  for (double v : x) {
+    const DD d = DD(v) - m;
+    ss += d * d;
+  }
+  return static_cast<double>(ss / DD(static_cast<double>(n - 1)));
 }
 
 double sd(const Vec& x) { return std::sqrt(var(x)); }
@@ -206,7 +208,7 @@ double median(const Vec& x) {
   const double a = s[half - 1];
   if (n % 2 == 1) return a;
   const double b = *std::min_element(s.begin() + half, s.end());
-  return static_cast<double>((static_cast<long double>(a) + b) / 2.0L);
+  return static_cast<double>((DD(a) + DD(b)) / DD(2.0));
 }
 
 double mad(const Vec& x, double constant) {
@@ -224,10 +226,10 @@ double cov(const Vec& x, const Vec& y) {
   require_finite_input(y, "cov");
   const size_t n = x.size();
   if (n < 2) return kNaN;
-  const long double mx = mean_ld(x), my = mean_ld(y);
-  long double s = 0.0L;
-  for (size_t i = 0; i < n; ++i) s += (x[i] - mx) * (y[i] - my);
-  return static_cast<double>(s / static_cast<long double>(n - 1));
+  const DD mx = mean_dd(x), my = mean_dd(y);
+  DD s;
+  for (size_t i = 0; i < n; ++i) s += (DD(x[i]) - mx) * (DD(y[i]) - my);
+  return static_cast<double>(s / DD(static_cast<double>(n - 1)));
 }
 
 double cor(const Vec& x, const Vec& y, const std::string& method) {

@@ -1,7 +1,9 @@
 #include "host.hpp"
 
 #include <cerrno>
-#include <charconv>
+#include <cctype>
+#include <cmath>
+#include <cstdlib>
 #include <cstdio>
 #include <fstream>
 #include <sstream>
@@ -28,13 +30,27 @@ void Frame::set(const std::string& name, Column c) {
   else { names.push_back(name); cols.push_back(std::move(c)); }
 }
 
+bool parse_number(const char* b, const char* e, double& out) {
+  const char* p = b;
+  if (p < e && *p == '-') ++p;
+  if (p == e || !(std::isdigit(static_cast<unsigned char>(*p)) || *p == '.' || *p == 'i' || *p == 'I' || *p == 'n' || *p == 'N'))
+    return false;
+  if (e - p > 1 && p[0] == '0' && (p[1] == 'x' || p[1] == 'X')) return false;
+  const std::string s(b, e);  // strtod needs a terminator; the C locale is never changed
+  char* end = nullptr;
+  errno = 0;
+  const double v = std::strtod(s.c_str(), &end);
+  if (end != s.c_str() + s.size()) return false;
+  if (errno == ERANGE && (std::isinf(v) || v == 0.0)) return false;
+  out = v;
+  return true;
+}
+
 static bool parse_double(const std::string& s, double& out) {
   if (s.empty()) return false;
   const char* b = s.data();
-  const char* e = b + s.size();
   if (*b == '+') ++b;
-  auto r = std::from_chars(b, e, out);
-  return r.ec == std::errc() && r.ptr == e;
+  return parse_number(b, s.data() + s.size(), out);
 }
 
 static bool is_na(const std::string& s) { return s.empty() || s == "NA" || s == "NaN"; }
