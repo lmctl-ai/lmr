@@ -1,0 +1,26 @@
+// R vs lmr: chi-squared tests from ?chisq.test. Independence in a 2 x 3 table of gender by party (with the expected
+// counts), goodness of fit of five counts to given probabilities, and a 2 x 2 table with Yates' correction.
+// R:   chisq.test(as.table(rbind(c(762, 327, 468), c(484, 239, 477)))); chisq.test(x, p = p);
+//      chisq.test(matrix(c(12, 5, 7, 7), 2))
+// Usage: lmscript examples/r-vs-dsl/chisq-tests.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let a = test("chisq").table(parse_vec("762 327 468 484 239 477"), 2, true).run();
+let g = test("chisq").counts(parse_vec("89 37 30 28 2")).probs(parse_vec("0.40 0.20 0.20 0.15 0.05")).run();
+let k = test("chisq").table(parse_vec("12 5 7 7"), 2, false).run();
+out.print(a.summary());
+out.set("independence_x2", a.statistic());
+out.set("independence_df", a.df());
+out.set("independence_p", a.p_value());
+# expected() is row-major; R stores the matrix by column, so reorder 2 x 3 to R's layout.
+out.set("expected", a.expected().take(parse_vec("0 3 1 4 2 5")));
+out.set("gof_x2", g.statistic());
+out.set("gof_p", g.p_value());
+out.set("yates_x2", k.statistic());
+out.set("yates_p", k.p_value());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-chisq-tests"));
+compare.finish("chisq-tests", compare.report("chisq-tests", got, "examples/r-vs-dsl/expected/chisq-tests.json", 0.000000000001, {}));

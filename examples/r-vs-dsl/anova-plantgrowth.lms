@@ -1,0 +1,48 @@
+// R vs lmr: one-way ANOVA of plant weight by treatment group (PlantGrowth).
+// R:   fit <- aov(weight ~ group, data = PlantGrowth); summary(fit); coef(lm(weight ~ group, data = PlantGrowth))
+// lmr: has no factor type, so the chunk builds the treatment dummies trt1 and trt2 from the text column (R's default
+//   treatment contrasts with ctrl as the baseline) and reads the ANOVA table off the regression: the model sum of
+//   squares is TSS - RSS, and the overall F test is the ANOVA F test.
+// Compared: degrees of freedom, sums of squares, mean squares, F, p, group means, coefficients and their p values.
+// Usage: lmscript examples/r-vs-dsl/anova-plantgrowth.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let d = read_csv("examples/r-vs-dsl/data/PlantGrowth.csv");
+let g = d.text("group");
+let t1 = vec();
+let t2 = vec();
+for (i in range(0, g.len())) {
+  if (g.at(i) == "trt1") { t1.push(1.0); } else { t1.push(0.0); }
+  if (g.at(i) == "trt2") { t2.push(1.0); } else { t2.push(0.0); }
+}
+d.set("trt1", t1).set("trt2", t2);
+let fit = lm(d, "weight ~ trt1 + trt2");
+let y = d.col("weight");
+let tss = y.var() * float(y.len() - 1);
+let rss = fit.rss();
+let df1 = float(fit.n() - fit.df_residual() - 1);
+let df2 = float(fit.df_residual());
+out.print(fmt("group      Df %2.0f", df1) + fmt("  Sum Sq %.4f", tss - rss) + fmt("  F %.4f", fit.f_statistic()) + fmt("  p %.6f", fit.f_p_value()));
+out.print(fmt("Residuals  Df %2.0f", df2) + fmt("  Sum Sq %.4f", rss));
+let ctrl = vec();
+for (i in range(0, g.len())) {
+  if (g.at(i) == "ctrl") { ctrl.push(1.0); } else { ctrl.push(0.0); }
+}
+let pv = vec();
+for (i in range(0, fit.n_coef())) {
+  pv.push(fit.p_value(i));
+}
+out.set("df", vec().push(df1).push(df2));
+out.set("sum_sq", vec().push(tss - rss).push(rss));
+out.set("mean_sq", vec().push((tss - rss) / df1).push(rss / df2));
+out.set("f_value", fit.f_statistic());
+out.set("p_value", fit.f_p_value());
+out.set("group_means", vec().push(y.where(ctrl).mean()).push(y.where(t1).mean()).push(y.where(t2).mean()));
+out.set("coefficients", fit.estimates());
+out.set("coef_p_values", pv);
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-anova-plantgrowth"));
+compare.finish("anova-plantgrowth", compare.report("anova-plantgrowth", got, "examples/r-vs-dsl/expected/anova-plantgrowth.json", 0.000000000001, {}));

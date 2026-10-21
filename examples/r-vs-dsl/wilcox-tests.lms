@@ -1,0 +1,32 @@
+// R vs lmr: Wilcoxon tests. The exact paired test from ?wilcox.test (depression scores, alternative "greater"), the
+// normal approximation with ties and continuity correction for mpg by transmission (mtcars), and a two-sample test
+// with the Hodges-Lehmann location shift and its interval.
+// R:   wilcox.test(x, y, paired = TRUE, alternative = "greater"); wilcox.test(mpg ~ am, data = mtcars);
+//      wilcox.test(x, y, conf.int = TRUE)
+// Usage: lmscript examples/r-vs-dsl/wilcox-tests.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let x = parse_vec("1.83 0.50 1.62 2.48 1.68 1.88 1.55 3.06 1.30");
+let y = parse_vec("0.878 0.647 0.598 2.05 1.06 1.29 1.06 3.14 1.29");
+let a = test("wilcox").x(x).y(y).paired(true).alt("greater").run();
+let m = read_csv("examples/r-vs-dsl/data/mtcars.csv");
+let am = m.col("am");
+let mpg = m.col("mpg");
+let b = test("wilcox").x(mpg.where(1.0 - am)).y(mpg.where(am)).run();
+let c = test("wilcox").x(x).y(y).conf_int(true).run();
+out.print(a.summary());
+out.print(b.summary());
+out.set("paired_v", a.statistic());
+out.set("paired_p", a.p_value());
+out.set("mtcars_w", b.statistic());
+out.set("mtcars_p", b.p_value());
+out.set("two_sample_w", c.statistic());
+out.set("two_sample_p", c.p_value());
+out.set("two_sample_ci", vec().push(c.conf_low()).push(c.conf_high()));
+out.set("two_sample_location_shift", c.estimate());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-wilcox-tests"));
+compare.finish("wilcox-tests", compare.report("wilcox-tests", got, "examples/r-vs-dsl/expected/wilcox-tests.json", 0.000000000001, {}));

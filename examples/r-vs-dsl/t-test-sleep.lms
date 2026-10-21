@@ -1,0 +1,36 @@
+// R vs lmr: Student's sleep data with Welch, pooled-variance and paired t tests (as in ?sleep and ?t.test).
+// R:   t.test(extra ~ group, data = sleep); t.test(extra ~ group, data = sleep, var.equal = TRUE);
+//      t.test(x, y, paired = TRUE)
+// Compared: t, df, p and the 95% interval of each test, and the mean paired difference.
+// Usage: lmscript examples/r-vs-dsl/t-test-sleep.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let d = read_csv("examples/r-vs-dsl/data/sleep.csv");
+let extra = d.col("extra");
+let group = d.col("group");
+let x = extra.where(2.0 - group);
+let y = extra.where(group - 1.0);
+let w = test("t").x(x).y(y).run();
+let v = test("t").x(x).y(y).var_equal(true).run();
+let pr = test("t").x(x).y(y).paired(true).run();
+out.print(w.summary());
+out.print(pr.summary());
+out.set("welch_t", w.statistic());
+out.set("welch_df", w.df());
+out.set("welch_p", w.p_value());
+out.set("welch_ci", vec().push(w.conf_low()).push(w.conf_high()));
+out.set("pooled_t", v.statistic());
+out.set("pooled_df", v.df());
+out.set("pooled_p", v.p_value());
+out.set("pooled_ci", vec().push(v.conf_low()).push(v.conf_high()));
+out.set("paired_t", pr.statistic());
+out.set("paired_df", pr.df());
+out.set("paired_p", pr.p_value());
+out.set("paired_ci", vec().push(pr.conf_low()).push(pr.conf_high()));
+out.set("paired_mean_diff", pr.estimate());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-t-test-sleep"));
+compare.finish("t-test-sleep", compare.report("t-test-sleep", got, "examples/r-vs-dsl/expected/t-test-sleep.json", 0.000000000001, {}));

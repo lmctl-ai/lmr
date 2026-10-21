@@ -1,0 +1,42 @@
+// R vs lmr: Poisson regression of yarn breaks on wool type and tension (warpbreaks).
+// R:   fit <- glm(breaks ~ wool + tension, family = poisson, data = warpbreaks); summary(fit)
+// lmr: builds R's treatment dummies (woolB, tensionM, tensionH; baselines wool A and tension L) from the text columns.
+// Compared: coefficients, standard errors, p values, residual and null deviance, AIC and the Pearson dispersion
+//   (sum of squared Pearson residuals / residual df, the usual overdispersion check).
+// Usage: lmscript examples/r-vs-dsl/glm-poisson-warpbreaks.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let d = read_csv("examples/r-vs-dsl/data/warpbreaks.csv");
+let wool = d.text("wool");
+let tension = d.text("tension");
+let wb = vec();
+let tm = vec();
+let th = vec();
+for (i in range(0, wool.len())) {
+  if (wool.at(i) == "B") { wb.push(1.0); } else { wb.push(0.0); }
+  if (tension.at(i) == "M") { tm.push(1.0); } else { tm.push(0.0); }
+  if (tension.at(i) == "H") { th.push(1.0); } else { th.push(0.0); }
+}
+d.set("woolB", wb).set("tensionM", tm).set("tensionH", th);
+let fit = glm(d, "breaks ~ woolB + tensionM + tensionH", "poisson");
+out.print(fit.coef_table());
+let se = vec();
+let pv = vec();
+for (i in range(0, fit.n_coef())) {
+  se.push(fit.se(i));
+  pv.push(fit.p_value(i));
+}
+let pr = fit.residuals("pearson");
+out.set("estimate", fit.estimates());
+out.set("std_error", se);
+out.set("p_value", pv);
+out.set("deviance", fit.deviance());
+out.set("null_deviance", fit.null_deviance());
+out.set("aic", fit.aic());
+out.set("dispersion_pearson", pr.dot(pr) / float(fit.df_residual()));
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-glm-poisson-warpbreaks"));
+compare.finish("glm-poisson-warpbreaks", compare.report("glm-poisson-warpbreaks", got, "examples/r-vs-dsl/expected/glm-poisson-warpbreaks.json", 0.0000000001, {}));

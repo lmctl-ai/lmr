@@ -1,0 +1,44 @@
+// R vs lmr: Rosenbrock's banana function from ?optim, minimised from (-1.2, 1) with Nelder-Mead, BFGS and L-BFGS-B
+// using numerical gradients (no gradient function supplied).
+// R:   fr <- function(x) 100 * (x[2] - x[1]^2)^2 + (1 - x[1])^2; optim(c(-1.2, 1), fr);
+//      optim(c(-1.2, 1), fr, method = "BFGS"); optim(c(-1.2, 1), fr, method = "L-BFGS-B")
+// Compared: the minimisers, minimum values and evaluation counts.
+// Known differences:
+// - BFGS: the iterates, minimum and gradient count agree, but R reports 120 function evaluations and lmr 118, so the
+//   count is compared at 2%.
+// - L-BFGS-B: a different implementation of the same algorithm. Both stop when the relative reduction of f falls
+//   below factr * epsilon, short of the exact minimum (1, 1): R at 0.99980, lmr at 0.99991. Compared at 1e-3.
+// Usage: lmscript examples/r-vs-dsl/optim-rosenbrock.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+fn rosen(a: float, b: float) -> float {
+  return 100.0 * pow(b - a * a, 2.0) + pow(1.0 - a, 2.0);
+}
+let nm = minimize(parse_vec("-1.2 1"), "Nelder-Mead");
+while (nm.next()) {
+  nm.tell(rosen(nm.x(0), nm.x(1)));
+}
+let bf = minimize(parse_vec("-1.2 1"), "BFGS");
+while (bf.next()) {
+  bf.tell(rosen(bf.x(0), bf.x(1)));
+}
+let lb = minimize(parse_vec("-1.2 1"), "L-BFGS-B");
+while (lb.next()) {
+  lb.tell(rosen(lb.x(0), lb.x(1)));
+}
+out.print("Nelder-Mead " + nm.pars().format("%.6f", ", ") + fmt("  f=%.3e", nm.value()) + fmt("  fn %d", float(nm.fn_count())));
+out.print("BFGS        " + bf.pars().format("%.6f", ", ") + fmt("  f=%.3e", bf.value()) + fmt("  fn %d", float(bf.fn_count())));
+out.set("nm_par", nm.pars());
+out.set("nm_value", nm.value());
+out.set("nm_fn_count", nm.fn_count());
+out.set("bfgs_par", bf.pars());
+out.set("bfgs_value", bf.value());
+out.set("bfgs_fn_count", bf.fn_count());
+out.set("bfgs_gr_count", bf.gr_count());
+out.set("lbfgsb_par", lb.pars());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-optim-rosenbrock"));
+compare.finish("optim-rosenbrock", compare.report("optim-rosenbrock", got, "examples/r-vs-dsl/expected/optim-rosenbrock.json", 0.000000000001, {bfgs_fn_count: 0.02, lbfgsb_par: 0.001}));

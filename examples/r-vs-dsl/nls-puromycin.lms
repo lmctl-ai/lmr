@@ -1,0 +1,42 @@
+// R vs lmr: Michaelis-Menten fit of reaction velocity on substrate concentration for the Puromycin-treated cells.
+// R:   treated <- subset(Puromycin, state == "treated");
+//      nls(rate ~ Vm * conc / (K + conc), data = treated, start = c(Vm = 200, K = 0.05))
+// lmr: the model is DSL code driven by reverse communication: lmr asks for the model at the current parameters and
+//   the chunk answers for each observation.
+// Compared: Vm and K, their standard errors and p values, the residual standard error, the RSS and the fitted values.
+// Usage: lmscript examples/r-vs-dsl/nls-puromycin.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let d = read_csv("examples/r-vs-dsl/data/Puromycin.csv");
+let state = d.text("state");
+let mask = vec();
+for (i in range(0, state.len())) {
+  if (state.at(i) == "treated") { mask.push(1.0); } else { mask.push(0.0); }
+}
+let conc = d.col("conc").where(mask);
+let rate = d.col("rate").where(mask);
+let m = nls(rate).param("Vm", 200.0).param("K", 0.05);
+while (m.next()) {
+  for (i in range(0, conc.len())) {
+    m.tell(i, m.par("Vm") * conc.at(i) / (m.par("K") + conc.at(i)));
+  }
+}
+out.print(m.coef_table());
+let se = vec();
+let pv = vec();
+for (i in range(0, m.n_coef())) {
+  se.push(m.se(i));
+  pv.push(m.p_value(i));
+}
+out.set("estimate", m.estimates());
+out.set("std_error", se);
+out.set("p_value", pv);
+out.set("sigma", m.sigma());
+out.set("rss", m.rss());
+out.set("fitted", m.fitted());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-nls-puromycin"));
+compare.finish("nls-puromycin", compare.report("nls-puromycin", got, "examples/r-vs-dsl/expected/nls-puromycin.json", 0.000001, {}));

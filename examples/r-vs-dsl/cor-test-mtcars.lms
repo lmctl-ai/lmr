@@ -1,0 +1,30 @@
+// R vs lmr: correlation tests of fuel economy against weight (mtcars): Pearson, Spearman and Kendall (the last two
+// with the normal approximation, as R uses when there are ties).
+// R:   cor.test(mpg, wt); cor.test(mpg, wt, method = "spearman", exact = FALSE);
+//      cor.test(mpg, wt, method = "kendall", exact = FALSE)
+// Usage: lmscript examples/r-vs-dsl/cor-test-mtcars.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let m = read_csv("examples/r-vs-dsl/data/mtcars.csv");
+let mpg = m.col("mpg");
+let wt = m.col("wt");
+let pe = test("cor").x(mpg).y(wt).run();
+let sp = test("cor").x(mpg).y(wt).method("spearman").exact(false).run();
+let ke = test("cor").x(mpg).y(wt).method("kendall").exact(false).run();
+out.print(pe.summary());
+out.set("pearson_r", pe.estimate());
+out.set("pearson_t", pe.statistic());
+out.set("pearson_p", pe.p_value());
+out.set("pearson_ci", vec().push(pe.conf_low()).push(pe.conf_high()));
+out.set("spearman_rho", sp.estimate());
+out.set("spearman_s", sp.statistic());
+out.set("spearman_p", sp.p_value());
+out.set("kendall_tau", ke.estimate());
+out.set("kendall_z", ke.statistic());
+out.set("kendall_p", ke.p_value());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-cor-test-mtcars"));
+compare.finish("cor-test-mtcars", compare.report("cor-test-mtcars", got, "examples/r-vs-dsl/expected/cor-test-mtcars.json", 0.000000000001, {}));

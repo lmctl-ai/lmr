@@ -1,0 +1,40 @@
+// R vs lmr: tests for counts from the R help pages. Fisher's Tea Tasting (one- and two-sided, with the conditional
+// maximum-likelihood odds ratio and its interval), binom.test(682, 925, p = 0.75) and prop.test on smokers among
+// four patient groups, plus a one-sample proportion test.
+// R:   fisher.test(TeaTasting, alternative = "greater"); fisher.test(TeaTasting); binom.test(682, 925, p = 0.75);
+//      prop.test(smokers, patients); prop.test(15, 50, p = 0.4)
+// Usage: lmscript examples/r-vs-dsl/fisher-binom-prop.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let tea = parse_vec("3 1 1 3");
+let f = test("fisher").table(tea, 2, false).alt("greater").run();
+let f2 = test("fisher").table(tea, 2, false).run();
+let b = test("binom").successes(682.0).trials(925.0).p(0.75).run();
+let pt = test("prop").successes(parse_vec("83 90 129 70")).trials(parse_vec("86 93 136 82")).run();
+let p2 = test("prop").successes(15.0).trials(50.0).p(0.4).run();
+out.print(f2.summary());
+out.print(b.summary());
+let est = vec();
+for (i in range(0, pt.n_estimates())) {
+  est.push(pt.estimate(i));
+}
+out.set("fisher_greater_p", f.p_value());
+out.set("fisher_p", f2.p_value());
+out.set("fisher_odds_ratio", f2.estimate());
+out.set("fisher_ci", vec().push(f2.conf_low()).push(f2.conf_high()));
+out.set("binom_p", b.p_value());
+out.set("binom_ci", vec().push(b.conf_low()).push(b.conf_high()));
+out.set("binom_estimate", b.estimate());
+out.set("prop_x2", pt.statistic());
+out.set("prop_df", pt.df());
+out.set("prop_p", pt.p_value());
+out.set("prop_estimates", est);
+out.set("one_prop_x2", p2.statistic());
+out.set("one_prop_p", p2.p_value());
+out.set("one_prop_ci", vec().push(p2.conf_low()).push(p2.conf_high()));
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-fisher-binom-prop"));
+compare.finish("fisher-binom-prop", compare.report("fisher-binom-prop", got, "examples/r-vs-dsl/expected/fisher-binom-prop.json", 0.000000000001, {}));

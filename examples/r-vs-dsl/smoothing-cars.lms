@@ -1,0 +1,40 @@
+// R vs lmr: smoothing and interpolation. A smoothing spline with 5 degrees of freedom and loess (span 0.75, degree 2)
+// of stopping distance on speed (cars), and interpolating splines and linear interpolation of sin(1:10) from
+// ?splinefun.
+// R:   smooth.spline(speed, dist, df = 5); loess(dist ~ speed, cars, control = loess.control(surface = "direct"));
+//      loess(dist ~ speed, cars); splinefun(x, y, "fmm"/"natural")(xx); approx(x, y, xout = xx)
+// Known differences:
+// - smooth.spline(df = 5) searches its smoothing parameter only until the df is close, and stops at df 5.000553381;
+//   lmr hits a requested df exactly. The chunk therefore asks for R's achieved df, and the fitted curves then agree to
+//   about 1e-5 (relative), the level at which the two penalised-spline solvers agree on tied x values.
+// - lmr's loess always fits exactly at each point, which is R's surface = "direct". R's default
+//   surface = "interpolate" approximates the fit by interpolating a kd-tree of vertex fits, so it is compared
+//   separately with a loose tolerance to show the size of that approximation.
+// Usage: lmscript examples/r-vs-dsl/smoothing-cars.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let cars = read_csv("examples/r-vs-dsl/data/cars.csv");
+let speed = cars.col("speed");
+let stop = cars.col("dist");
+let ss = smooth_spline_df(speed, stop, 5.000553381);
+let lo = loess(speed, stop);
+let x = seq(1.0, 10.0, 1.0);
+let y = vec();
+for (i in range(0, x.len())) {
+  y.push(sin(x.at(i)));
+}
+let xx = parse_vec("1.5 2.25 5.5 9.9");
+out.print(fmt("smoothing spline df %.4f", ss.df()) + fmt(", lambda %.6g", ss.lambda()));
+out.set("ss_fit_at", ss.eval(parse_vec("5 10 15 20 25")));
+out.set("ss_df", ss.df());
+out.set("loess_direct_fitted", lo.fitted());
+out.set("loess_default_fitted", lo.fitted());
+out.set("spline_fmm", spline_fun(x, y, "fmm").eval(xx));
+out.set("spline_natural", spline_fun(x, y, "natural").eval(xx));
+out.set("approx_linear", approx_fun(x, y).eval(xx));
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-smoothing-cars"));
+compare.finish("smoothing-cars", compare.report("smoothing-cars", got, "examples/r-vs-dsl/expected/smoothing-cars.json", 0.000000000001, {ss_fit_at: 0.0001, ss_df: 0.000000001, loess_default_fitted: 0.05}));

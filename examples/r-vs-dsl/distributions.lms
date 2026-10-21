@@ -1,0 +1,45 @@
+// R vs lmr: the distribution-function table of a typical introductory R course. Densities, probabilities and
+// quantiles for the normal, t, chi-square, F, binomial, Poisson, exponential, gamma, beta, log-normal and uniform laws.
+// R:   dnorm(0); pnorm(1.96); qnorm(c(0.025, 0.975)); qt(0.975, c(5, 10, 30)); qchisq(0.95, 1:5); dbinom(0:10, 10, 0.5);
+//      ... (see r/distributions.R)
+// Usage: lmscript examples/r-vs-dsl/distributions.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let qt = vec();
+let dfs = parse_vec("5 10 30");
+for (i in range(0, 3)) {
+  qt.push(t_dist(dfs.at(i)).q(0.975));
+}
+let qc = vec();
+for (k in range(1, 6)) {
+  qc.push(chisq(float(k)).q(0.95));
+}
+out.print("qt(0.975, c(5, 10, 30)) = " + qt.format("%.6f", ", "));
+out.set("dnorm_0", norm().d(0.0));
+out.set("pnorm_196", norm().p(1.96));
+out.set("qnorm_tails", norm().q_vec(parse_vec("0.025 0.975")));
+out.set("pnorm_upper_5", norm().p_upper(5.0));
+out.set("pt_21_15", t_dist(15.0).p(2.1));
+out.set("qt_975", qt);
+out.set("pchisq_384", chisq(1.0).p(3.84));
+out.set("qchisq_95", qc);
+out.set("qf_95_3_20", f_dist(3.0, 20.0).q(0.95));
+out.set("pf_3_2_20", f_dist(2.0, 20.0).p_upper(3.0));
+out.set("dbinom_10", binom(10, 0.5).d_vec(seq(0.0, 10.0, 1.0)));
+out.set("pbinom_3", binom(10, 0.5).p(3.0));
+out.set("qbinom", binom(20, 0.3).q_vec(parse_vec("0.1 0.5 0.9")));
+out.set("dpois_2", pois(2.0).d_vec(seq(0.0, 5.0, 1.0)));
+out.set("ppois_4", pois(2.0).p(4.0));
+out.set("qpois", pois(4.0).q_vec(parse_vec("0.05 0.95")));
+out.set("pexp_1", exp_dist(2.0).p(1.0));
+out.set("qexp_half", exp_dist(0.1).q(0.5));
+out.set("qgamma_half", gamma_dist(2.0, 1.0).q(0.5));
+out.set("pbeta_03", beta_dist(2.0, 5.0).p(0.3));
+out.set("dlnorm_1", lnorm(0.0, 1.0).d(1.5));
+out.set("punif", unif(-1.0, 1.0).p(0.3));
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-distributions"));
+compare.finish("distributions", compare.report("distributions", got, "examples/r-vs-dsl/expected/distributions.json", 0.000000000000001, {}));

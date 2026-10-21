@@ -1,0 +1,35 @@
+// R vs lmr: k-means on the four iris measurements with k = 3 and 25 random starts, the standard clustering tutorial.
+// R:   set.seed(42); km <- kmeans(iris[, 1:4], centers = 3, nstart = 25)
+// The random starts differ (lmr's generator is not R's), and cluster labels are arbitrary, so the comparison uses
+// label-free results: cluster sizes sorted, and the within-cluster sums of squares and Sepal.Length centres in that
+// order, plus the total, between and total-within sums of squares. With 25 starts both reach the same optimum.
+// Usage: lmscript examples/r-vs-dsl/kmeans-iris.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let d = read_csv("examples/r-vs-dsl/data/iris.csv").select("Sepal.Length,Sepal.Width,Petal.Length,Petal.Width");
+let km = kmeans(d, 3, rng(42), 25);
+let sizes = vec();
+for (j in range(1, 4)) {
+  sizes.push(float(km.size(j)));
+}
+let o = sizes.order();
+let wss = vec();
+let sl = vec();
+for (i in range(0, 3)) {
+  let label = int(o.at(i)) + 1;
+  wss.push(km.withinss(label));
+  sl.push(km.center(label, "Sepal.Length"));
+}
+out.print("sizes " + sizes.str() + fmt(", total within SS %.5f", km.tot_withinss()));
+out.set("sizes_sorted", sizes.sort());
+out.set("withinss_by_size", wss);
+out.set("tot_withinss", km.tot_withinss());
+out.set("betweenss", km.betweenss());
+out.set("totss", km.totss());
+out.set("sepal_length_centre_by_size", sl);
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-kmeans-iris"));
+compare.finish("kmeans-iris", compare.report("kmeans-iris", got, "examples/r-vs-dsl/expected/kmeans-iris.json", 0.000000000001, {}));

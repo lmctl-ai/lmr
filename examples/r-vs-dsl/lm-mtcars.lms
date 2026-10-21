@@ -1,0 +1,47 @@
+// R vs lmr: multiple regression on mtcars, the first model of most R regression tutorials.
+// R:   fit <- lm(mpg ~ wt + hp, data = mtcars); summary(fit); confint(fit); predict(fit, new, se.fit = TRUE)
+// lmr: the same model from data/mtcars.csv (exported from R's datasets by r/export-data.R).
+// Compared: coefficients, standard errors, t and p values, sigma, R^2, adjusted R^2, the F test, confidence intervals,
+//   log-likelihood, AIC, BIC, two predictions with standard errors, and all 32 residuals.
+// Usage: lmscript examples/r-vs-dsl/lm-mtcars.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let d = read_csv("examples/r-vs-dsl/data/mtcars.csv");
+let fit = lm(d, "mpg ~ wt + hp");
+out.print(fit.coef_table());
+let se = vec();
+let tv = vec();
+let pv = vec();
+let lo = vec();
+let hi = vec();
+for (i in range(0, fit.n_coef())) {
+  se.push(fit.se(i));
+  tv.push(fit.statistic(i));
+  pv.push(fit.p_value(i));
+  lo.push(fit.conf_low(i, 0.95));
+  hi.push(fit.conf_high(i, 0.95));
+}
+let nd = frame().set("wt", parse_vec("2.5 3.5")).set("hp", parse_vec("100 200"));
+out.set("estimate", fit.estimates());
+out.set("std_error", se);
+out.set("t_value", tv);
+out.set("p_value", pv);
+out.set("sigma", fit.sigma());
+out.set("r_squared", fit.r_squared());
+out.set("adj_r_squared", fit.adj_r_squared());
+out.set("f_statistic", fit.f_statistic());
+out.set("f_p_value", fit.f_p_value());
+out.set("conf_low", lo);
+out.set("conf_high", hi);
+out.set("loglik", fit.loglik());
+out.set("aic", fit.aic());
+out.set("bic", fit.bic());
+out.set("predict", fit.predict(nd));
+out.set("predict_se", fit.predict_se(nd));
+out.set("residuals", fit.residuals());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-lm-mtcars"));
+compare.finish("lm-mtcars", compare.report("lm-mtcars", got, "examples/r-vs-dsl/expected/lm-mtcars.json", 0.000000000001, {}));

@@ -1,0 +1,98 @@
+// compare: prints R's and lmr's results side by side and checks each one against a tolerance.
+//   compare.report(recipe, got, expected_path, tol, tols) -> number of mismatches (also printed)
+//     got           the values map the lmr chunk returned (out.set keys)
+//     expected_path expected/RECIPE.json, written by r/RECIPE.R with R's exact doubles
+//     tol           default tolerance; tols maps a key to its own tolerance
+//   compare.finish(recipe, bad) -> exits 1 when bad > 0, else prints the pass line
+// The difference is scaled: |lmr - R| / max(1, |R|), so it is absolute for small values and relative for large ones.
+// Arrays are compared element by element; the row shows the first element and the largest scaled difference.
+package compare;
+
+// Decimal exponent and mantissa of x != 0 with `digits` significant digits: [m, e] with 1 <= |m| < 10.
+function mant(x, digits) {
+  a = abs(x);
+  e = 0;
+  while (a >= 10) { a = a / 10; e = e + 1; }
+  while (a < 1) { a = a * 10; e = e - 1; }
+  m = round(a * pow(10, digits - 1)) / pow(10, digits - 1);
+  if (m >= 10) { m = m / 10; e = e + 1; }
+  return [x < 0 ? -m : m, e];
+}
+
+// x to `digits` significant digits, printed as the shortest decimal (no binary noise such as 0.30000000000000004).
+function sig(x, digits) {
+  if (x == null) { return "NA"; }
+  if (x == 0) { return "0"; }
+  if (abs(x) > pow(10, 300)) { return x > 0 ? "Inf" : "-Inf"; }
+  me = mant(x, digits);
+  e = me[1];
+  if (e < -4 || e >= 15) { return str(me[0]) + "e" + str(e); }
+  k = digits - 1 - e;
+  if (k >= 0) { return str(round(x * pow(10, k)) / pow(10, k)); }
+  return str(round(x / pow(10, -k)) * pow(10, -k));
+}
+
+// A difference or tolerance as "3.1e-15" (two significant digits), or "0".
+function sci(d) {
+  if (d == 0) { return "0"; }
+  if (d > pow(10, 300)) { return "Inf"; }
+  me = mant(d, 2);
+  return str(me[0]) + "e" + str(me[1]);
+}
+
+function scaled(a, b) {
+  if (a == null || b == null) { return a == b ? 0 : pow(10, 400); }
+  if (a == b) { return 0; }
+  return abs(a - b) / max(1, abs(b));
+}
+
+function row(name, r, m, d, t, ok) {
+  println(pad_end(name, 24) + pad_start(r, 20) + pad_start(m, 20) + pad_start(d, 10) + pad_start(t, 9) + (ok ? "  ok" : "  DIFF"));
+}
+
+function report(recipe, got, path, tol, tols) {
+  expected = read_json(path);
+  ev = expected.values;
+  println("");
+  println(recipe + ": R (" + expected.r_version + ") vs lmr");
+  println(pad_end("value", 24) + pad_start("R", 20) + pad_start("lmr", 20) + pad_start("diff", 10) + pad_start("tol", 9));
+  bad = 0;
+  for (k in keys(ev)) {
+    t = has_key(tols, k) ? tols[k] : tol;
+    r = ev[k];
+    if (!has_key(got, k)) {
+      row(k, is_array(r) ? "[" + str(len(r)) + "]" : sig(r, 10), "missing", "", sci(t), false);
+      bad = bad + 1;
+      continue;
+    }
+    m = got[k];
+    ok = false;
+    if (is_array(r)) {
+      if (!is_array(m) || len(m) != len(r)) {
+        row(k, "[" + str(len(r)) + "]", is_array(m) ? "[" + str(len(m)) + "]" : sig(m, 10), "length", sci(t), false);
+        bad = bad + 1;
+        continue;
+      }
+      worst = 0;
+      for (i in range(0, len(r))) { worst = max(worst, scaled(m[i], r[i])); }
+      ok = worst <= t;
+      label = len(r) > 1 ? k + "[" + str(len(r)) + "]" : k;
+      row(label, len(r) > 0 ? sig(r[0], 10) : "", len(m) > 0 ? sig(m[0], 10) : "", sci(worst), sci(t), ok);
+    } else {
+      d = scaled(m, r);
+      ok = d <= t;
+      row(k, sig(r, 10), sig(m, 10), sci(d), sci(t), ok);
+    }
+    if (!ok) { bad = bad + 1; }
+  }
+  println(str(len(keys(ev))) + " values compared, " + str(bad) + " outside tolerance");
+  return bad;
+}
+
+function finish(recipe, bad) {
+  if (bad > 0) {
+    println(recipe + ": " + str(bad) + " values differ from R beyond tolerance");
+    exit(1);
+  }
+  println(recipe + ": lmr agrees with R.");
+}

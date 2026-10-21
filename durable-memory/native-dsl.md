@@ -45,6 +45,10 @@ tolerance tiers still apply.
   `lmr --dsl-schema --json` (the host flag; `--schema` is an alias) and, when `lmr` is not on PATH, downloads the
   release asset `lmr-OS-ARCH[.exe]`, so asset names must stay exactly that. `examples/dsl/install-and-run.lms` is the
   example; run-examples.sh puts the tested build first on PATH so it binds to that build. Bump its tag with each release.
+- **`examples/r-vs-dsl/`**: 24 common R recipes, each as `r/NAME.R` (writes `expected/NAME.json` with R 4.3.3) and
+  `NAME.lms` (lmr on the same `data/*.csv`, compared by `lib/compare.lms`). Run in ctest via run-examples.sh;
+  `refresh-r.sh` regenerates the R side. Known differences (ks asymptotic p, BFGS fn count, L-BFGS-B stop point,
+  smooth.spline df search, loess default surface) are documented per recipe with their own tolerance.
 - **Portability rules** (learnt from the first 5-OS run):
   - Never use `long double`: its width differs by platform. Use `rcli/dd.hpp` (double-double).
   - No floating-point `std::from_chars`: Apple's libc++ lacks it. Use `parse_number`.

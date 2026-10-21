@@ -1,0 +1,50 @@
+// R vs lmr: ARIMA models of the luteinizing hormone series lh (48 ten-minute samples), from ?arima and ?predict.Arima.
+// R:   arima(lh, order = c(1, 0, 0)); arima(lh, order = c(3, 0, 0)); arima(lh, order = c(1, 0, 1));
+//      predict(arima(lh, order = c(3, 0, 0)), n.ahead = 12)
+// Compared: coefficients (AR terms and intercept), standard errors, innovation variance, log-likelihood, AIC and a
+//   12-step forecast with standard errors. Both fit by CSS-ML; coefficients and forecasts agree to about 1e-12 and
+//   standard errors (from a numerical Hessian) to about 5e-8.
+// Usage: lmscript examples/r-vs-dsl/arima-lh.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let x = read_csv("examples/r-vs-dsl/data/lh.csv").col("value");
+let a1 = arima(1, 0, 0).fit(x);
+let a3 = arima(3, 0, 0).fit(x);
+let a11 = arima(1, 0, 1).fit(x);
+let fc = a3.forecast(12);
+let c1 = vec();
+let s1 = vec();
+for (i in range(0, a1.n_coef())) {
+  c1.push(a1.estimate(i));
+  s1.push(a1.se(i));
+}
+let c3 = vec();
+let s3 = vec();
+for (i in range(0, a3.n_coef())) {
+  c3.push(a3.estimate(i));
+  s3.push(a3.se(i));
+}
+let c11 = vec();
+for (i in range(0, a11.n_coef())) {
+  c11.push(a11.estimate(i));
+}
+out.print("AR(1): " + c1.format("%.5f", ", ") + fmt("  aic %.4f", a1.aic()));
+out.print("AR(3): " + c3.format("%.5f", ", ") + fmt("  aic %.4f", a3.aic()));
+out.set("ar1_coef", c1);
+out.set("ar1_se", s1);
+out.set("ar1_sigma2", a1.sigma2());
+out.set("ar1_loglik", a1.loglik());
+out.set("ar1_aic", a1.aic());
+out.set("ar3_coef", c3);
+out.set("ar3_se", s3);
+out.set("ar3_aic", a3.aic());
+out.set("arma11_coef", c11);
+out.set("arma11_aic", a11.aic());
+out.set("forecast", fc.mean());
+out.set("forecast_se", fc.se());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-arima-lh"));
+compare.finish("arima-lh", compare.report("arima-lh", got, "examples/r-vs-dsl/expected/arima-lh.json", 0.0000000001, {ar1_se: 0.000001, ar3_se: 0.000001}));

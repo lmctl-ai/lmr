@@ -1,0 +1,14 @@
+{
+  "recipe": "wilcox-tests",
+  "r_version": "R version 4.3.3 (2024-02-29)",
+  "values": {
+    "paired_v": 40,
+    "paired_p": 0.01953125,
+    "mtcars_w": 42,
+    "mtcars_p": 0.0018713913331785568,
+    "two_sample_w": 58,
+    "two_sample_p": 0.13291945818531886,
+    "two_sample_ci": [-0.36997737472725384, 1.182970773687922],
+    "two_sample_location_shift": 0.5600561608358734
+  }
+}

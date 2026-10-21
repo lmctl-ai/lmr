@@ -1,0 +1,34 @@
+// R vs lmr: descriptive statistics of mpg (mtcars). summary(), the nine sample-quantile types of Hyndman and Fan,
+// spread measures and the correlations of mpg, wt and hp.
+// R:   summary(x); quantile(x, probs, type = 1..9); sd; var; IQR; mad; cor(..., method = "pearson"/"spearman");
+//      cor(mpg, wt, method = "kendall"); cov(mpg, wt)
+// Usage: lmscript examples/r-vs-dsl/summary-quantiles.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let m = read_csv("examples/r-vs-dsl/data/mtcars.csv");
+let x = m.col("mpg");
+let wt = m.col("wt");
+let hp = m.col("hp");
+let probs = parse_vec("0.1 0.25 0.5 0.9");
+let q = vec();
+for (t in range(1, 10)) {
+  q.append(x.quantiles(probs, t));
+}
+let s = vec().push(x.min()).push(x.quantile(0.25)).push(x.median()).push(x.mean()).push(x.quantile(0.75)).push(x.max());
+out.print("Min, 1st Qu., Median, Mean, 3rd Qu., Max: " + s.format("%.4f", ", "));
+out.set("summary", s);
+out.set("quantiles_types_1_to_9", q);
+out.set("sd", x.sd());
+out.set("var", x.var());
+out.set("iqr", x.quantile(0.75) - x.quantile(0.25));
+out.set("mad", x.mad());
+out.set("pearson", vec().push(x.cor(wt)).push(x.cor(hp)).push(wt.cor(hp)));
+out.set("spearman", vec().push(x.cor(wt, "spearman")).push(x.cor(hp, "spearman")).push(wt.cor(hp, "spearman")));
+out.set("kendall_mpg_wt", x.cor(wt, "kendall"));
+out.set("cov_mpg_wt", x.cov(wt));
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-summary-quantiles"));
+compare.finish("summary-quantiles", compare.report("summary-quantiles", got, "examples/r-vs-dsl/expected/summary-quantiles.json", 0.000000000001, {}));

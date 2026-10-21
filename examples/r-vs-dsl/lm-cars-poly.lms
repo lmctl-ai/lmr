@@ -1,0 +1,32 @@
+// R vs lmr: quadratic regression of stopping distance on speed (cars), the classic polynomial-term example.
+// R:   fit <- lm(dist ~ speed + I(speed^2), data = cars); summary(fit); predict(fit, new, se.fit = TRUE)
+// Compared: coefficients, standard errors, p values, sigma, R^2, F, predictions at 10/20/25 mph with standard
+//   errors, and the 50 fitted values.
+// Usage: lmscript examples/r-vs-dsl/lm-cars-poly.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let d = read_csv("examples/r-vs-dsl/data/cars.csv");
+let fit = lm(d, "dist ~ speed + I(speed^2)");
+out.print(fit.coef_table());
+let se = vec();
+let pv = vec();
+for (i in range(0, fit.n_coef())) {
+  se.push(fit.se(i));
+  pv.push(fit.p_value(i));
+}
+let nd = frame().set("speed", parse_vec("10 20 25"));
+out.set("estimate", fit.estimates());
+out.set("std_error", se);
+out.set("p_value", pv);
+out.set("sigma", fit.sigma());
+out.set("r_squared", fit.r_squared());
+out.set("f_statistic", fit.f_statistic());
+out.set("predict", fit.predict(nd));
+out.set("predict_se", fit.predict_se(nd));
+out.set("fitted", fit.fitted());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-lm-cars-poly"));
+compare.finish("lm-cars-poly", compare.report("lm-cars-poly", got, "examples/r-vs-dsl/expected/lm-cars-poly.json", 0.000000000001, {}));

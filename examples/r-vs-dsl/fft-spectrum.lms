@@ -1,0 +1,24 @@
+// R vs lmr: the discrete Fourier transform. fft(1:8), the amplitude spectrum of a two-tone signal
+// sin(2 pi 5 t / 64) + 0.5 cos(2 pi 12 t / 64), and the inverse transform back to the signal.
+// R:   fft(1:8); Mod(fft(s))[1:33]; Re(fft(fft(s), inverse = TRUE) / 64)
+// Usage: lmscript examples/r-vs-dsl/fft-spectrum.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let z = fft(seq(1.0, 8.0, 1.0));
+let s = vec();
+for (t in range(0, 64)) {
+  let tt = float(t);
+  s.push(sin(2.0 * pi() * 5.0 * tt / 64.0) + 0.5 * cos(2.0 * pi() * 12.0 * tt / 64.0));
+}
+let spec = fft(s).mod_vec().head(33);
+out.print(fmt("peaks: |X[5]| = %.6f", spec.at(5)) + fmt(", |X[12]| = %.6f", spec.at(12)));
+out.set("fft_1_8_re", z.re_vec());
+out.set("fft_1_8_im", z.im_vec());
+out.set("spectrum_mod", spec);
+out.set("inverse_roundtrip", fft(s).fft(true).scale(1.0 / 64.0).re_vec());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-fft-spectrum"));
+compare.finish("fft-spectrum", compare.report("fft-spectrum", got, "examples/r-vs-dsl/expected/fft-spectrum.json", 0.000000000001, {}));

@@ -1,0 +1,14 @@
+{
+  "recipe": "integrate-roots",
+  "r_version": "R version 4.3.3 (2024-02-29)",
+  "values": {
+    "normal_95": 0.95000420970355914,
+    "normal_all": 0.99999999979415932,
+    "improper_pi": 3.1415926530279124,
+    "improper_abs_error": 2.6514999261539884e-05,
+    "uniroot_root": 0.33333333333333331,
+    "uniroot_iter": 1,
+    "optimize_minimum": 0.33333333333333331,
+    "optimize_objective": 0
+  }
+}

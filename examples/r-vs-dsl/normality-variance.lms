@@ -1,0 +1,35 @@
+// R vs lmr: normality and variance checks. Shapiro-Wilk on the Old Faithful eruption times and on mpg, the F test
+// of equal variances for mpg by transmission, and a one-sample Kolmogorov-Smirnov test of mpg against N(20, 6).
+// R:   shapiro.test(faithful$eruptions); shapiro.test(mtcars$mpg); var.test(mpg ~ am, data = mtcars);
+//      ks.test(mtcars$mpg, "pnorm", 20, 6)
+// Known difference: mpg has ties, so both sides use the asymptotic Kolmogorov distribution for the KS p-value. lmr
+//   gives 0.74573634804, the value of the limit series summed to double precision; R stops its series early and
+//   gives 0.74573634817 (1.3e-10 higher). The KS p-value is therefore compared at 1e-9.
+// Usage: lmscript examples/r-vs-dsl/normality-variance.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let f = read_csv("examples/r-vs-dsl/data/faithful.csv");
+let m = read_csv("examples/r-vs-dsl/data/mtcars.csv");
+let mpg = m.col("mpg");
+let am = m.col("am");
+let s1 = test("shapiro").x(f.col("eruptions")).run();
+let s2 = test("shapiro").x(mpg).run();
+let v = test("var").x(mpg.where(1.0 - am)).y(mpg.where(am)).run();
+let k = test("ks").x(mpg).dist(norm(20.0, 6.0)).run();
+out.print(s1.summary());
+out.print(v.summary());
+out.set("shapiro_faithful_w", s1.statistic());
+out.set("shapiro_faithful_p", s1.p_value());
+out.set("shapiro_mpg_w", s2.statistic());
+out.set("shapiro_mpg_p", s2.p_value());
+out.set("var_f", v.statistic());
+out.set("var_p", v.p_value());
+out.set("var_ci", vec().push(v.conf_low()).push(v.conf_high()));
+out.set("ks_d", k.statistic());
+out.set("ks_p", k.p_value());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-normality-variance"));
+compare.finish("normality-variance", compare.report("normality-variance", got, "examples/r-vs-dsl/expected/normality-variance.json", 0.000000000001, {ks_p: 0.000000001}));

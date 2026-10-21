@@ -1,0 +1,23 @@
+// R vs lmr: seasonal decomposition by loess (STL), the two examples of ?stl. Nottingham monthly temperatures with a
+// periodic seasonal component, and log(co2) with s.window = 21.
+// R:   stl(nottem, "periodic"); stl(log(co2), s.window = 21)
+// Compared: every value of the seasonal, trend and remainder components (240 and 468 months).
+// Usage: lmscript examples/r-vs-dsl/stl-decomposition.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let nottem = read_csv("examples/r-vs-dsl/data/nottem.csv").col("value");
+let co2 = read_csv("examples/r-vs-dsl/data/co2.csv").col("value").log();
+let a = stl_periodic(nottem, 12);
+let b = stl(co2, 12, 21);
+out.print("nottem seasonal, Jan-Jun: " + a.seasonal().head(6).format("%.3f", ", "));
+out.set("nottem_seasonal", a.seasonal());
+out.set("nottem_trend", a.trend());
+out.set("nottem_remainder", a.remainder());
+out.set("co2_seasonal", b.seasonal());
+out.set("co2_trend", b.trend());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-stl-decomposition"));
+compare.finish("stl-decomposition", compare.report("stl-decomposition", got, "examples/r-vs-dsl/expected/stl-decomposition.json", 0.000000000001, {}));

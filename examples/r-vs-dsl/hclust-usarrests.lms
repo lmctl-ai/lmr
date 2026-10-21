@@ -1,0 +1,38 @@
+// R vs lmr: hierarchical clustering of the 50 US states on scaled USArrests (complete and average linkage, Euclidean
+// distance), cut into 4 groups.
+// R:   d <- dist(scale(USArrests)); hc <- hclust(d, "complete"); cutree(hc, 4); hclust(d, "average")
+// Compared: all 49 merge heights of both trees, the complete-linkage leaf order, and the 4-group memberships of all 50
+//   states with their sizes.
+// Usage: lmscript examples/r-vs-dsl/hclust-usarrests.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let raw = read_csv("examples/r-vs-dsl/data/USArrests.csv");
+let d = frame();
+let cols = split("Murder,Assault,UrbanPop,Rape", ",");
+for (i in range(0, cols.len())) {
+  d.set(cols.at(i), raw.col(cols.at(i)).standardize());
+}
+let hc = hclust(d, "complete");
+let ha = hclust(d, "average");
+let cut = hc.cut(4);
+let sizes = vec();
+for (k in range(1, 5)) {
+  let n = 0.0;
+  for (i in range(0, cut.len())) {
+    if (cut.at(i) == float(k)) { n = n + 1.0; }
+  }
+  sizes.push(n);
+}
+out.print("complete linkage, 4 groups of sizes " + sizes.str());
+out.set("complete_heights", hc.heights());
+out.set("complete_order", hc.order());
+out.set("complete_cut4", cut);
+out.set("complete_cut4_sizes", sizes);
+out.set("average_heights", ha.heights());
+out.set("average_cut4", ha.cut(4));
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-hclust-usarrests"));
+compare.finish("hclust-usarrests", compare.report("hclust-usarrests", got, "examples/r-vs-dsl/expected/hclust-usarrests.json", 0.000000000001, {}));

@@ -1,0 +1,35 @@
+// R vs lmr: logistic regression of transmission type on weight and horsepower (mtcars).
+// R:   fit <- glm(am ~ wt + hp, family = binomial, data = mtcars); summary(fit); predict(fit, new, type = "response")
+// Compared: coefficients, standard errors, z and p values, residual and null deviance, AIC, the number of Fisher
+//   scoring iterations, two predicted probabilities and the 32 fitted probabilities.
+// Usage: lmscript examples/r-vs-dsl/glm-logistic-mtcars.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let d = read_csv("examples/r-vs-dsl/data/mtcars.csv");
+let fit = glm(d, "am ~ wt + hp", "binomial");
+out.print(fit.coef_table());
+let se = vec();
+let zv = vec();
+let pv = vec();
+for (i in range(0, fit.n_coef())) {
+  se.push(fit.se(i));
+  zv.push(fit.statistic(i));
+  pv.push(fit.p_value(i));
+}
+let nd = frame().set("wt", parse_vec("2.5 3.5")).set("hp", parse_vec("120 120"));
+out.set("estimate", fit.estimates());
+out.set("std_error", se);
+out.set("z_value", zv);
+out.set("p_value", pv);
+out.set("deviance", fit.deviance());
+out.set("null_deviance", fit.null_deviance());
+out.set("aic", fit.aic());
+out.set("iterations", fit.iter());
+out.set("predict_response", fit.predict(nd, "response"));
+out.set("fitted", fit.fitted());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-glm-logistic-mtcars"));
+compare.finish("glm-logistic-mtcars", compare.report("glm-logistic-mtcars", got, "examples/r-vs-dsl/expected/glm-logistic-mtcars.json", 0.0000000001, {}));
