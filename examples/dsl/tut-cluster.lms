@@ -8,10 +8,10 @@
 //   examples/tut-cluster.lms.
 // Data: 3 x 40 points in the plane, centres (0,0), (6,0), (3,5), isotropic sd 0.8, drawn with the native generator
 //   from rng(441) (the original used R's streams with seeds 441..446, one per coordinate and group).
-// Usage: lmscript examples/dsl/tut-cluster.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
-import "lib/rclidsl.lms";
+// Usage: lmscript examples/dsl/tut-cluster.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
+import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
 let ca = parse_vec("0 6 3");
 let cb = parse_vec("0 0 5");
 let m = 40;
@@ -118,5 +118,5 @@ out.set("wss_per_point", km.tot_withinss() / float(n));
 out.set("gap", heights.at(nh - 2) / heights.at(nh - 3));
 end _dsl_
 
-v = rclidsl.check(rclidsl.run(p, "tut-cluster"));
+v = lmr.check(lmr.run(p, "tut-cluster"));
 println(sprintf("Checks passed: purity %.3f / %.3f; worst centre error %.3f; within-SS per point %.3f; dendrogram gap %.2fx; seeded rerun identical.", v.purity_kmeans, v.purity_hclust, v.worst_centre, v.wss_per_point, v.gap));

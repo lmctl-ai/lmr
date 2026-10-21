@@ -1,18 +1,18 @@
-# `_dsl_` examples (native rcli-dsl, no R)
+# `_dsl_` examples (native lmr, no R)
 
-Every recipe here compiles one or more lmscript `_dsl_` chunks against `native/schema/rcli.dsl.json` and runs them with
-the single-executable `rcli-dsl` host. No R, Docker or Python is involved. The API is in [docs/dsl-api.md](../../docs/dsl-api.md).
+Every recipe here compiles one or more lmscript `_dsl_` chunks against `native/schema/lmr.dsl.json` and runs them with
+the single-executable `lmr` host. No R, Docker or Python is involved. The API is in [docs/dsl-api.md](../../docs/dsl-api.md).
 
 ```sh
 cmake -S native -B build-native -G Ninja && cmake --build build-native   # once
 lmscript examples/dsl/tut-lm.lms                                          # cwd = repository root
-native/scripts/run-examples.sh build-native/bin/rcli-dsl                  # all of them, as ctest does
+native/scripts/run-examples.sh build-native/bin/lmr                  # all of them, as ctest does
 ```
 
-`lib/rclidsl.lms` finds the binary: `$RCLI_DSL`, then `rcli-dsl` on PATH, then `build-native/bin/rcli-dsl`. It writes
+`lib/lmr.lms` finds the binary: `$LMR_BIN`, then `lmr` on PATH, then `build-native/bin/lmr`. It writes
 the bytecode to `build/dsl/NAME.dslb`. You can also run a saved chunk directly with
-`build-native/bin/rcli-dsl --dsl build/dsl/tut-lm.dslb`. Each recipe exits 0 only when every self-check holds. A failed
-`out.check` makes `rcli-dsl` exit 4, and the recipe passes that code on.
+`build-native/bin/lmr --dsl build/dsl/tut-lm.dslb`. Each recipe exits 0 only when every self-check holds. A failed
+`out.check` makes `lmr` exit 4, and the recipe passes that code on.
 
 ## Ports of the tutorial recipes
 

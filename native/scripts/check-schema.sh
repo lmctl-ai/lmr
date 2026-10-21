@@ -3,12 +3,12 @@
 # DSL v5 compiler is available) the compiler's canonical signatures must equal the host registry's.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BIN="${1:?usage: check-schema.sh path/to/rcli-dsl}"
-SCHEMA="$HERE/schema/rcli.dsl.json"
+BIN="${1:?usage: check-schema.sh path/to/lmr}"
+SCHEMA="$HERE/schema/lmr.dsl.json"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/rcli-schema-XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 "$BIN" --generate-schema > "$WORK/generated.json"
-cmp "$SCHEMA" "$WORK/generated.json" || { echo "schema/rcli.dsl.json is stale: run scripts/update-schema.sh" >&2; exit 1; }
+cmp "$SCHEMA" "$WORK/generated.json" || { echo "schema/lmr.dsl.json is stale: run scripts/update-schema.sh" >&2; exit 1; }
 "$BIN" --schema --json > "$WORK/embedded.json"
 cmp "$SCHEMA" "$WORK/embedded.json" || { echo "the binary embeds an older schema: rebuild" >&2; exit 1; }
 LMSCRIPT="${LMSCRIPT_BIN:-$(command -v lmscript || true)}"

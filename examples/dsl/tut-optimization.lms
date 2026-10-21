@@ -8,10 +8,10 @@
 //   reverse communication. Same checks and tolerances as examples/tut-optimization.lms; one difference: the Gaussian
 //   integral now runs over [0, Inf) (the native integrate accepts inf() bounds), where the original cut it at 40.
 // Data: deterministic analytic functions; no random input.
-// Usage: lmscript examples/dsl/tut-optimization.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
-import "lib/rclidsl.lms";
+// Usage: lmscript examples/dsl/tut-optimization.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
+import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
 fn rosen(a: float, b: float) -> float {
   return pow(1.0 - a, 2.0) + 100.0 * pow(b - a * a, 2.0);
 }
@@ -89,5 +89,5 @@ out.set("root", rt.root());
 out.set("hessian_11", q.hessian(1, 1));
 end _dsl_
 
-values = rclidsl.check(rclidsl.run(p, "tut-optimization"));
+values = lmr.check(lmr.run(p, "tut-optimization"));
 println(sprintf("Checks passed: four optim methods reach (1,1); active bound gives a=%.6f; Hessian [[4,1],[1,%.4f]]; optimize, uniroot (root %.12f) and three integrals match closed forms.", values.bounded_a, values.hessian_11, values.root));

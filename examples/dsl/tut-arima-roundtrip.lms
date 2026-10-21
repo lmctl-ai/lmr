@@ -8,10 +8,10 @@
 //   exactly. Same checks as examples/tut-arima-roundtrip.lms.
 // Data: 500 values of x_t = 0.7 x_{t-1} + e_t - 0.4 e_{t-1}, e ~ N(0, 1.5^2), arima_sim with rng(314) (the native
 //   generator, not R's stream, so the series differs from the original's seed 314).
-// Usage: lmscript examples/dsl/tut-arima-roundtrip.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
-import "lib/rclidsl.lms";
+// Usage: lmscript examples/dsl/tut-arima-roundtrip.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
+import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
 let ar = 0.7;
 let ma = -0.4;
 let sd = 1.5;
@@ -82,5 +82,5 @@ out.set("sigma2", fit.sigma2());
 out.set("resid_acf_max", worst);
 end _dsl_
 
-v = rclidsl.check(rclidsl.run(p, "tut-arima-roundtrip"));
+v = lmr.check(lmr.run(p, "tut-arima-roundtrip"));
 println(sprintf("Checks passed: ar1=%.3f ma1=%.3f within 2.5 SE of (0.7, -0.4); sigma2=%.3f; residual ACF max %.3f; forecast SEs follow the psi weights; seed reproducible.", v.ar1, v.ma1, v.sigma2, v.resid_acf_max));

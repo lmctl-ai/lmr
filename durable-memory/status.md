@@ -9,7 +9,7 @@
   [native-dsl.md](native-dsl.md).
   - **Core**: a C++17 core using only the standard library: 12 modules with unit tests whose expectations come from R
     run as a black-box oracle.
-  - **Host**: the single-executable `_dsl_` host `rcli-dsl` (cpp-dsl-sdk bytecode v5), exposing 546 signatures.
+  - **Host**: the single-executable `_dsl_` host `lmr` (cpp-dsl-sdk bytecode v5), exposing 546 signatures.
   - **Build**: `cmake -S native -B build-native -G Ninja && cmake --build build-native && (cd build-native && ctest)`.
     All 16 ctest targets pass: 12 module unit tests, `test_edge`, the host suite `host_test.py`, schema parity with
     `lmscript --dsl-signatures`, and all 22 DSL examples. They are also clean under ASan/UBSan. Testing details and
@@ -20,7 +20,7 @@
   - Known limitation: the lm "power" parameter is unidentifiable.
   - Run them as `lmscript examples/x.lms` with the shim on PATH (never `lmscript run`).
 - `examples/dsl/` (NEW): `_dsl_` ports of all 17 non-oracle recipes, plus 5 multi-step `flow-*` recipes. The shared
-  runner is `lib/rclidsl.lms`; see its README.
+  runner is `lib/lmr.lms`; see its README.
 - Docs:
   - `docs/dsl-api.md` (NEW): the native API guide and the mapping from the 28 ops.
   - `docs/parity.md` and `docs/oracle-findings.md`.

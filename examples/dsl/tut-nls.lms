@@ -9,10 +9,10 @@
 // Data: 30 substrate levels x = 0, 0.25, ..., 7.25; y = 5 x / (1.5 + x) + N(0, 0.05^2) (rng seed 43, xoshiro256**, so
 //   the noise differs from R's); truth Vmax 5, Km 1.5. Seed 43, not the original 42: with this generator seed 42 gives
 //   a chance draw (residual sigma 0.036) whose 95% intervals both miss the truth; the checks are unchanged.
-// Usage: lmscript examples/dsl/tut-nls.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
-import "lib/rclidsl.lms";
+// Usage: lmscript examples/dsl/tut-nls.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
+import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
 let vmax = 5.0;
 let km = 1.5;
 let noise = 0.05;
@@ -83,5 +83,5 @@ out.set("worst", worst);
 out.set("port_iterations", port.iterations());
 end _dsl_
 
-values = rclidsl.check(rclidsl.run(p, "tut-nls"));
+values = lmr.check(lmr.run(p, "tut-nls"));
 println(sprintf("Checks passed: Vmax=%.4f, Km=%.4f inside their intervals; sigma=%.4f; max curve error %.4f; port agrees to 1e-6 (%d iterations).", values.vmax, values.km, values.sigma, values.worst, values.port_iterations));

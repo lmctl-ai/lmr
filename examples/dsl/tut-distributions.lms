@@ -8,10 +8,10 @@
 //   normal sample against the theoretical quantiles, checking the sample mean within 3 standard errors and seeded
 //   reproducibility. Same checks as examples/tut-distributions.lms.
 // Data: a 4000-draw N(3, 2^2) sample, rng seed 42 (xoshiro256**, so the draws differ from R's); everything else is analytic.
-// Usage: lmscript examples/dsl/tut-distributions.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
-import "lib/rclidsl.lms";
+// Usage: lmscript examples/dsl/tut-distributions.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
+import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
 let ps = parse_vec("0.005 0.025 0.05 0.5 0.95 0.975 0.995");
 let bd = binom(20, 0.3);
 let qn = norm().q_vec(ps);
@@ -69,5 +69,5 @@ out.set("xbar", xbar);
 out.set("area", area.value());
 end _dsl_
 
-values = rclidsl.check(rclidsl.run(p, "tut-distributions"));
+values = lmr.check(lmr.run(p, "tut-distributions"));
 println(sprintf("Checks passed: reference quantiles to 1e-9; chi-square(1) = normal^2; p(q(p)) round trips; density integrates to 1 (%.12f); sample mean %.4f within 3 SE; seed 42 reproducible.", values.area, values.xbar));

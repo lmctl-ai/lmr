@@ -5,10 +5,10 @@
 //   minimum (1, 1): parameters within 0.005 and objective below 1e-6, the same tolerances as
 //   examples/minimize-rosenbrock.lms (formerly an R-oracle fixture; the minimum is known analytically, so no R is needed).
 // Data: deterministic analytic function; no random input.
-// Usage: lmscript examples/dsl/minimize-rosenbrock.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
-import "lib/rclidsl.lms";
+// Usage: lmscript examples/dsl/minimize-rosenbrock.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
+import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
 fn rosen(a: float, b: float) -> float {
   return 100.0 * pow(b - a * a, 2.0) + pow(1.0 - a, 2.0);
 }
@@ -26,5 +26,5 @@ out.set("b", o.par(1));
 out.set("value", o.value());
 end _dsl_
 
-values = rclidsl.check(rclidsl.run(p, "minimize-rosenbrock"));
+values = lmr.check(lmr.run(p, "minimize-rosenbrock"));
 println(sprintf("Checks passed: Rosenbrock minimum at a=%.6f b=%.6f (within 0.005 of (1, 1)), value %.8f below 1e-6.", values.a, values.b, values.value));

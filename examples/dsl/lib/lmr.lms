@@ -1,20 +1,20 @@
-// rclidsl: compile-and-run helpers shared by the _dsl_ examples.
-//   rclidsl.binary()            -> path of rcli-dsl ($RCLI_DSL, then PATH, then build-native/bin/rcli-dsl)
-//   rclidsl.save(dsl, name)     -> writes build/dsl/NAME.dslb and returns the path
-//   rclidsl.exec(paths)         -> runs the bytecode files in ONE rcli-dsl process (shared host state);
-//                                  echoes the chunks' report text and returns {code, ok, values, message}
-//   rclidsl.run(dsl, name)      -> save + exec of one chunk
-//   rclidsl.check(res)          -> exits with the host's code when the run failed, else returns res.values
-// Effects: creates build/dsl/ below the working directory; spawns rcli-dsl with argv (no shell).
+// lmr: compile-and-run helpers shared by the _dsl_ examples.
+//   lmr.binary()            -> path of lmr ($LMR_BIN, then PATH, then build-native/bin/lmr)
+//   lmr.save(dsl, name)     -> writes build/dsl/NAME.dslb and returns the path
+//   lmr.exec(paths)         -> runs the bytecode files in ONE lmr process (shared host state);
+//                              echoes the chunks' report text and returns {code, ok, values, message}
+//   lmr.run(dsl, name)      -> save + exec of one chunk
+//   lmr.check(res)          -> exits with the host's code when the run failed, else returns res.values
+// Effects: creates build/dsl/ below the working directory; spawns lmr with argv (no shell).
 // Under --dry-run nothing is written or spawned and exec returns {code: 0, ok: true, values: {}, simulated: true}.
-package rclidsl;
+package lmr;
 
 function binary() {
-  b = env("RCLI_DSL", "");
+  b = env("LMR_BIN", "");
   if (b != "") { return b; }
-  w = which("rcli-dsl");
+  w = which("lmr");
   if (w != null) { return w; }
-  return abs_path("build-native/bin/rcli-dsl");
+  return abs_path("build-native/bin/lmr");
 }
 
 function save(dsl, name) {
@@ -31,7 +31,7 @@ function exec(paths) {
   if (r.stderr != "") { printf("%s", r.stderr); }
   last = "";
   for (line in lines(r.stdout)) { if (trim(line) != "") { last = line; } }
-  if (last == "") { return {code: r.code, ok: false, values: {}, message: "rcli-dsl printed no result line (exit " + str(r.code) + ")"}; }
+  if (last == "") { return {code: r.code, ok: false, values: {}, message: "lmr printed no result line (exit " + str(r.code) + ")"}; }
   res = json_parse(last);
   if (res.ok) { return {code: r.code, ok: true, values: res.result.values, checks: res.result.checks}; }
   where = has_key(res, "line") ? " (dsl line " + str(res.line) + ")" : "";
@@ -44,7 +44,7 @@ function run(dsl, name) {
 
 function check(res) {
   if (!res.ok) {
-    println("rcli-dsl failed:", res.message);
+    println("lmr failed:", res.message);
     exit(res.code == 0 ? 1 : res.code);
   }
   return res.values;

@@ -8,10 +8,10 @@
 //   printed for scale. Same checks as examples/tut-glm-poisson.lms; the centred refit also cross-checks Glm.predict.
 // Data: examples/data/tut-counts.csv, 80 rows: 20 doses on a 0..4 grid x 4 replicates, count ~ Poisson(exp(0.3 + 0.5 dose));
 //   seed 2719, scripts/generate-tutorial-data.py.
-// Usage: lmscript examples/dsl/tut-glm-poisson.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
-import "lib/rclidsl.lms";
+// Usage: lmscript examples/dsl/tut-glm-poisson.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
+import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
 let b0 = 0.3;
 let b1 = 0.5;
 let d = read_csv("examples/data/tut-counts.csv");
@@ -60,5 +60,5 @@ out.set("rate_ratio", exp(fit.estimate(1)));
 out.set("rate_ratio_true", exp(b1));
 end _dsl_
 
-values = rclidsl.check(rclidsl.run(p, "tut-glm-poisson"));
+values = lmr.check(lmr.run(p, "tut-glm-poisson"));
 println(sprintf("Checks passed: truth inside both intervals; LR p=%s; deviance/df=%.3f; rate ratio per unit dose %.3f (true %.3f).", values.lr_p_text, values.dev_ratio, values.rate_ratio, values.rate_ratio_true));

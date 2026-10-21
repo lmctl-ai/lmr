@@ -6,7 +6,7 @@ R is licensed under GPL. This project invokes the unmodified R program as a sepa
 
 ## Native `_dsl_` host (no R)
 
-`native/` builds `rcli-dsl`, a single executable (no R runtime; libstdc++ linked in, only glibc linked dynamically). It runs lmscript `_dsl_` bytecode against a
+`native/` builds `lmr`, a single executable (no R runtime; libstdc++ linked in, only glibc linked dynamically). It runs lmscript `_dsl_` bytecode against a
 clean-room C++17 statistics core that uses only the standard library: no R, no Docker, no Python and no third-party
 libraries. It covers the same domains as the operations below (distributions, random draws, special functions,
 quantiles, FFT, hypothesis tests, lm/glm/nls, splines, loess, ARIMA, STL, k-means, hclust, optimisation, roots and
@@ -18,7 +18,7 @@ lmscript examples/dsl/tut-lm.lms
 ```
 
 Prebuilt binaries for Linux (x64, arm64; glibc 2.35 or newer), macOS (arm64, x64) and Windows (x64) are attached to
-each [release](https://github.com/lmctl-ai/lmr/releases). Put `rcli-dsl` on `PATH` (or set `RCLI_DSL`) and install
+each [release](https://github.com/lmctl-ai/lmr/releases). Put `lmr` on `PATH` (or set `LMR_BIN`) and install
 the compiler with `npm i -g @lmctl-ai/lmctl`.
 
 The API is in [docs/dsl-api.md](docs/dsl-api.md), and the examples, including multi-step flows, are in

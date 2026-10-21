@@ -9,10 +9,10 @@
 //   checks, which are against the true f.)
 // Data: 61 points x = -2, -1.9333, ..., 2; y = f(x) + N(0, 0.3^2), drawn with the native generator from rng(91) (not R's
 //   stream, so the noise differs from the original's seed 91).
-// Usage: lmscript examples/dsl/tut-smoothing.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
-import "lib/rclidsl.lms";
+// Usage: lmscript examples/dsl/tut-smoothing.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
+import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
 fn f(x: float) -> float {
   return x * x * x - 3.0 * x;
 }
@@ -75,5 +75,5 @@ out.set("rmse_noise", noise_rmse);
 out.set("worst_new", worst_new);
 end _dsl_
 
-v = rclidsl.check(rclidsl.run(p, "tut-smoothing"));
+v = lmr.check(lmr.run(p, "tut-smoothing"));
 println(sprintf("Checks passed: spline RMSE %.4f and loess RMSE %.4f vs raw %.4f; new-x error %.4f; fmm exact on a cubic; approx exact at knots and midpoints.", v.rmse_spline, v.rmse_loess, v.rmse_noise, v.worst_new));

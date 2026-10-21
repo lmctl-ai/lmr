@@ -7,10 +7,10 @@
 //   bin), Parseval's identity and the unnormalised inverse transform round trip (divide by n, as with R's fft).
 //   Same checks and tolerances as examples/tut-special-fft.lms.
 // Data: analytic inputs and a 32-point cosine of frequency 4 cycles per record; no random input.
-// Usage: lmscript examples/dsl/tut-special-fft.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
-import "lib/rclidsl.lms";
+// Usage: lmscript examples/dsl/tut-special-fft.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
+import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
 let euler = 0.5772156649015329;
 let sp = sqrt(pi());
 let g = vec();
@@ -113,5 +113,5 @@ out.set("parseval", pe);
 out.set("c52_5", ch.at(3));
 end _dsl_
 
-values = rclidsl.check(rclidsl.run(p, "tut-special-fft"));
+values = lmr.check(lmr.run(p, "tut-special-fft"));
 println(sprintf("Checks passed: factorials, lgamma(10/100/1000) to 1e-12, gamma(1/2)=sqrt(pi), beta ratios, C(52,5)=%d, Pascal with C(11,4) from the host, digamma(1)=-gamma_E, Bessel Wronskian; FFT impulse/constant/cosine spectra, linearity, Parseval (%.6f), inverse round trip.", values.c52_5, values.parseval));

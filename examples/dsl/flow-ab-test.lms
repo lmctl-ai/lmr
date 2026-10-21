@@ -9,9 +9,9 @@
 //     of the difference in medians written as an ordinary DSL loop over Rng draws, and checks that both say the same.
 //   Step 4 (lmscript): the final report.
 // Usage: lmscript examples/dsl/flow-ab-test.lms   (cwd = repository root)
-import "lib/rclidsl.lms";
+import "lib/lmr.lms";
 
-diagnose = _dsl_ schema="../../native/schema/rcli.dsl.json";
+diagnose = _dsl_ schema="../../native/schema/lmr.dsl.json";
 let r = rng(77);
 let control = r.draw(lnorm(3.0, 0.6), 60);
 let treated = r.draw(lnorm(3.35, 0.8), 60);
@@ -25,7 +25,7 @@ out.set("shapiro_control", sw_c.p_value());
 out.set("shapiro_treated", sw_t.p_value());
 out.set("var_test", ft.p_value());
 end _dsl_
-d = rclidsl.check(rclidsl.run(diagnose, "flow-ab-1"));
+d = lmr.check(lmr.run(diagnose, "flow-ab-1"));
 if (!has_key(d, "var_test")) { println("dry run: nothing executed"); exit(0); }
 
 normal = d.shapiro_control > 0.05 && d.shapiro_treated > 0.05;
@@ -33,7 +33,7 @@ kind = normal ? "t" : "wilcox";
 equal_var = normal && d.var_test > 0.05;
 println(sprintf("decision: %s (normal: %s; equal variances: %s)", normal ? (equal_var ? "pooled t-test" : "Welch t-test") : "Wilcoxon rank-sum with Hodges-Lehmann interval", normal, d.var_test > 0.05));
 
-infer = _dsl_ schema="../../native/schema/rcli.dsl.json";
+infer = _dsl_ schema="../../native/schema/lmr.dsl.json";
 let r = rng(77);
 let control = r.draw(lnorm(3.0, 0.6), 60);
 let treated = r.draw(lnorm(3.35, 0.8), 60);
@@ -58,5 +58,5 @@ out.set("method", h.method());
 out.set("boot_low", lo);
 out.set("boot_high", hi);
 end _dsl_
-res = rclidsl.check(rclidsl.run(infer, "flow-ab-2"));
+res = lmr.check(lmr.run(infer, "flow-ab-2"));
 println(sprintf("Flow passed: %s p=%s; bootstrap median difference in [%.2f, %.2f].", res.method, str(res.p_value), res.boot_low, res.boot_high));

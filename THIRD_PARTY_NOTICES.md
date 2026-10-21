@@ -6,9 +6,9 @@ This project invokes the separately installed `Rscript` executable as a child pr
 
 The worker uses base R and the recommended `stats` and `utils` packages shipped with the R distribution. It does not install or require third-party R packages.
 
-## Native `rcli-dsl` binaries
+## Native `lmr` binaries
 
-The `rcli-dsl` release binaries contain no R code and do not use R at run time. They contain only this project's
+The `lmr` release binaries contain no R code and do not use R at run time. They contain only this project's
 code, which is Copyright (c) 2026 Lattice Systems LLC under the MIT license (see LICENSE). That includes the
 vendored `native/cpp/dslvm.hpp` runtime from the cpp-dsl-sdk project (MIT).
 

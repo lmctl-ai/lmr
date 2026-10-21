@@ -1,6 +1,6 @@
 {
   "dsl.schema": 2,
-  "name": "rcli",
+  "name": "lmr",
   "context": {"out": "Out"},
   "types": {
     "ApproxFun": {

@@ -8,10 +8,10 @@
 //   examples/tut-timeseries.lms.
 // Data: 240 values of 0.6-AR(1) noise with sd 0.7 plus the cycle [-2,-1,1,3,4,2,-1,-3,-4,-2,1,2] repeated. The noise is
 //   drawn by the native generator with rng(73) (not R's stream, so the values differ from the original's seed 73).
-// Usage: lmscript examples/dsl/tut-timeseries.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
-import "lib/rclidsl.lms";
+// Usage: lmscript examples/dsl/tut-timeseries.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
+import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
 let phi = 0.6;
 let sd = 0.7;
 let n = 240;
@@ -73,5 +73,5 @@ out.set("stl_worst", worst);
 out.set("phi_hat", phi_hat);
 end _dsl_
 
-values = rclidsl.check(rclidsl.run(p, "tut-timeseries"));
+values = lmr.check(lmr.run(p, "tut-timeseries"));
 println(sprintf("Checks passed: ACF(12)=%.3f > ACF(6); STL cycle within %.3f; ar1=%.4f within 3 SE of 0.6; PACF cut-off; forecast SEs match the AR(1) formula.", values.acf12, values.stl_worst, values.phi_hat));

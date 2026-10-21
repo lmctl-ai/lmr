@@ -8,10 +8,10 @@
 // Data: 300 doses ~ U(-3, 3) (rng seed 818); y = 1 when a second uniform draw (rng seed 819) is below
 //   p(dose) = 1 / (1 + exp(-(-0.5 + 1.2 dose))), so the truth is intercept -0.5, slope 1.2, ED50 = 0.5/1.2.
 //   The generator is xoshiro256**, not R's, so the draws differ from the original's.
-// Usage: lmscript examples/dsl/tut-glm-binomial.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
-import "lib/rclidsl.lms";
+// Usage: lmscript examples/dsl/tut-glm-binomial.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
+import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
 let b0 = -0.5;
 let b1 = 1.2;
 let n = 300;
@@ -65,5 +65,5 @@ out.set("odds_ratio", exp(fit.estimate(1)));
 out.set("odds_ratio_true", exp(b1));
 end _dsl_
 
-values = rclidsl.check(rclidsl.run(p, "tut-glm-binomial"));
+values = lmr.check(lmr.run(p, "tut-glm-binomial"));
 println(sprintf("Checks passed: truth inside both Wald intervals; LR p=%s; P(ED50)=%.3f; odds ratio per unit dose %.3f (true %.3f).", values.lr_p_text, values.p_hat, values.odds_ratio, values.odds_ratio_true));

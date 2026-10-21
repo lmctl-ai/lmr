@@ -1,5 +1,5 @@
 // access: write (build/dsl/flow-dose-*.dslb)
-// Topic: a dose-response study as three chunks run in ONE rcli-dsl process, sharing data through keep()/kept_*().
+// Topic: a dose-response study as three chunks run in ONE lmr process, sharing data through keep()/kept_*().
 // What it does:
 //   Chunk "prepare": simulates 8 dose groups x 40 animals (logistic truth, ED50 = 2.0, slope 1.5 per log-dose unit),
 //     drops a deliberately missing group, and keeps the frame.
@@ -7,12 +7,12 @@
 //     prints their AICs and keeps them.
 //   Chunk "ed50": refits the best link, finds ED50 and ED90 by uniroot on the fitted curve (reverse communication:
 //     the curve is written in the chunk), and checks ED50 against the closed form for the logit link.
-// lmscript only compiles the three chunks and starts one process: rclidsl.exec([a, b, c]). Every chunk is loaded and
+// lmscript only compiles the three chunks and starts one process: lmr.exec([a, b, c]). Every chunk is loaded and
 // verified before the first one runs.
 // Usage: lmscript examples/dsl/flow-dose-response.lms   (cwd = repository root)
-import "lib/rclidsl.lms";
+import "lib/lmr.lms";
 
-prepare = _dsl_ schema="../../native/schema/rcli.dsl.json";
+prepare = _dsl_ schema="../../native/schema/lmr.dsl.json";
 let r = rng(5150);
 let logdose = vec();
 let trials = vec();
@@ -34,7 +34,7 @@ out.print(fmt("%d dose groups after dropping the incomplete one", f.nrow()));
 keep("doses", f);
 end _dsl_
 
-compare = _dsl_ schema="../../native/schema/rcli.dsl.json";
+compare = _dsl_ schema="../../native/schema/lmr.dsl.json";
 let f = kept_frame("doses");
 let links = split("logit,probit,cloglog", ",");
 let aic = vec();
@@ -47,7 +47,7 @@ keep("aic", aic);
 out.set("aic", aic);
 end _dsl_
 
-ed50 = _dsl_ schema="../../native/schema/rcli.dsl.json";
+ed50 = _dsl_ schema="../../native/schema/lmr.dsl.json";
 let f = kept_frame("doses");
 let links = split("logit,probit,cloglog", ",");
 let best = kept_vec("aic").which_min();
@@ -85,7 +85,7 @@ out.set("ed50", ed50);
 out.set("ed90", ed90);
 end _dsl_
 
-paths = [rclidsl.save(prepare, "flow-dose-1"), rclidsl.save(compare, "flow-dose-2"), rclidsl.save(ed50, "flow-dose-3")];
-v = rclidsl.check(rclidsl.exec(paths));
+paths = [lmr.save(prepare, "flow-dose-1"), lmr.save(compare, "flow-dose-2"), lmr.save(ed50, "flow-dose-3")];
+v = lmr.check(lmr.exec(paths));
 if (!has_key(v, "link")) { println("dry run: nothing executed"); exit(0); }
 println(sprintf("Flow passed in one process: best link %s (AICs %s), ED50 %.3f, ED90 %.3f.", v.link, json_stringify(v.aic), v.ed50, v.ed90));

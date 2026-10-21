@@ -15,30 +15,30 @@ tolerance tiers still apply.
   rng, summary, fft, interp, smooth, optim, htest, models, ts, cluster. Each module has
   `native/src/num/<module>.cpp` and a unit test `native/tests/test_<module>.cpp`. The tests use `native/tests/check.hpp`,
   and their expectations come from Rscript run as a black-box oracle, with the R expression in a comment.
-- **`native/src/host/`: the DSL host `rcli-dsl`.** It follows the lmcad/lmhtml pattern.
+- **`native/src/host/`: the DSL host `lmr`.** It follows the lmcad/lmhtml pattern.
   - `host.hpp` holds the arenas, the `Binder` (type-checks arguments, maps `rcli::Error` to `dslvm::Error`) and the
     `Driver`. `bind_<domain>.cpp` registers the API. `main.cpp` holds the CLI and generates the schema.
 - **`native/cpp/dslvm.hpp`: the vendored SDK.** It is pinned by `native/sdk.lock` and refreshed with
   `native/scripts/sync-sdk.sh`. The source is `../poc/cpp-dsl-sdk` at commit ef86184, bytecode v5.
-- **`native/schema/rcli.dsl.json`: GENERATED from the registry.** Never edit it by hand. Change a `bind_*.cpp`, then run
+- **`native/schema/lmr.dsl.json`: GENERATED from the registry.** Never edit it by hand. Change a `bind_*.cpp`, then run
   `native/scripts/update-schema.sh`. The ctest `schema_matches_registry` diffs the file, the embedded bytes, and
-  `lmscript --dsl-signatures` against `rcli-dsl --dsl-signatures`.
+  `lmscript --dsl-signatures` against `lmr --dsl-signatures`.
 - **Build**: `cmake -S native -B build-native -G Ninja && cmake --build build-native`. The binary is one executable at
-  `build-native/bin/rcli-dsl`: libstdc++ and libgcc are linked statically, glibc dynamically (the owner's choice,
+  `build-native/bin/lmr`: libstdc++ and libgcc are linked statically, glibc dynamically (the owner's choice,
   2026-10-20; `ldd` shows only libc, libm and the loader). It needs glibc >= the build host's: release binaries are built on
   Ubuntu 22.04, so glibc 2.35+ (a 24.04 build needs 2.38).  Windows (MinGW) links fully static; macOS uses only system
-  libraries. `-DRCLI_DSL_FULL_STATIC=ON` restores
+  libraries. `-DLMR_FULL_STATIC=ON` restores
   a fully static binary. With dynamic libm, last-ulp results of exp/log/pow etc. can follow the target's glibc. The flag `-ffp-contract=off` is required (aarch64 GCC
   otherwise fuses multiply-adds, which changes roundoff and some optimiser counts).
-- **Examples**: `examples/dsl/*.lms`, sharing `examples/dsl/lib/rclidsl.lms` (save, exec and check). Run them with
-  `native/scripts/run-examples.sh build-native/bin/rcli-dsl` from the repo root.
+- **Examples**: `examples/dsl/*.lms`, sharing `examples/dsl/lib/lmr.lms` (save, exec and check). Run them with
+  `native/scripts/run-examples.sh build-native/bin/lmr` from the repo root.
 
 ## Repository, CI and releases
 
 - **Home**: public at https://github.com/lmctl-ai/lmr since 2026-10-20 (moved from private `lmctlhq/rcli` and renamed).
 - **`.github/workflows/native.yml`**: modelled on lmctl-ai/lmhtml. It builds and runs ctest on linux-x64/arm64
   (ubuntu-22.04), macos-arm64/x64 and windows-x64 (MinGW), with lmscript from npm `@lmctl-ai/lmctl@0.2.347`, and checks
-  linkage. A `v*` tag attaches `rcli-dsl-<platform>`, the schema, LICENSE, notices and SHA256SUMS to the release.
+  linkage. A `v*` tag attaches `lmr-<platform>`, the schema, LICENSE, notices and SHA256SUMS to the release.
   To release: bump `project(... VERSION)` in `native/CMakeLists.txt`, commit, then tag `vX.Y.Z` and push the tag.
   v0.1.0 was published on 2026-10-20. `ci.yml` is the older R-backed lmapi tool's workflow.
 - **Portability rules** (learnt from the first 5-OS run):
@@ -99,11 +99,11 @@ R is GPL. The rules:
     `rcli::Error`.
   - Degenerate data (empty, n = 1, constant, all ties, separation, more columns than rows, extreme parameters).
   - Exact R answers and messages for degenerate cases.
-- **`host_test.py`** (ctest `host_bindings`): about 160 cases that compile small `_dsl_` chunks and run `rcli-dsl`. It
+- **`host_test.py`** (ctest `host_bindings`): about 160 cases that compile small `_dsl_` chunks and run `lmr`. It
   asserts exit codes, the JSON result line, error messages and DSL line/column. It covers every binding family, CSV
   edge cases, `fmt`, keep/kept across chunks, the solver protocol and its misuse errors, nested and abandoned solvers,
   and the CLI. Filter with `-k substring`.
-- **Sanitizers**: `cmake -S native -B build-asan -DRCLI_SANITIZE=address,undefined`. The unit tests, `test_edge`,
+- **Sanitizers**: `cmake -S native -B build-asan -DLMR_SANITIZE=address,undefined`. The unit tests, `test_edge`,
   `host_test.py` and all examples run clean under ASan and UBSan.
 - **`tests/oracle/fuzz_r.py BUILD_DIR [N] [SEED]`**: optional, needs Rscript, and is not part of ctest.
   - It generates random d/p/q cases for all 16 families (both tails, log scale), quantile types, cor with ties and
@@ -126,4 +126,3 @@ R is GPL. The rules:
 - The lmapi JSON ops (`rcli fit_lm {...}`) still run R in Docker. Re-pointing them at `rcli_num` would give a static
   `rcli` with the old interface. Everything they need exists in the core, except the expression-string evaluator.
 - The `oracle-*` recipes need `statsrust` and were not ported.
-- Rename the binary to `lmr` to match the repo? Not done; releases ship `rcli-dsl-<platform>`.

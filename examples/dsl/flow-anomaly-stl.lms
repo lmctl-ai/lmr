@@ -8,7 +8,7 @@
 //   threshold would drop below 3, printing precision and recall at each step. ${tenths} is substituted as an int
 //   literal, so each round is a fresh compile of the same chunk.
 // Usage: lmscript examples/dsl/flow-anomaly-stl.lms   (cwd = repository root)
-import "lib/rclidsl.lms";
+import "lib/lmr.lms";
 
 injected = [27, 64, 101];
 tenths = 80;
@@ -17,7 +17,7 @@ round = 0;
 mkdir("build/dsl");
 while (tenths >= 30) {
   round = round + 1;
-  detect = _dsl_ schema="../../native/schema/rcli.dsl.json";
+  detect = _dsl_ schema="../../native/schema/lmr.dsl.json";
   let r = rng(1999);
   let n = 120;
   let noise = arima_sim(r, n, parse_vec("0.4"), vec(), 0.5);
@@ -44,7 +44,7 @@ while (tenths >= 30) {
   out.print(fmt("threshold %.1f MAD", threshold) + fmt(" (MAD %.3f): ", scale) + fmt("%d months flagged", flags.len()));
   out.set("flags", flags);
 end _dsl_
-  v = rclidsl.check(rclidsl.run(detect, "flow-anomaly"));
+  v = lmr.check(lmr.run(detect, "flow-anomaly"));
   if (!has_key(v, "flags")) { println("dry run: nothing executed"); exit(0); }
   found = v.flags;
   hits = 0;

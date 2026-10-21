@@ -4,10 +4,10 @@
 //   with the native nls (the model is written in the chunk and evaluated by reverse communication). Same check as
 //   examples/fit-curve.lms: the recovered parameters are within 0.2 of the generating values a = 4, b = 2.
 // Data: 17 points x = 0, 0.25, ..., 4; noise N(0, 0.01^2) from rng seed 42 (xoshiro256**, so the draws differ from R's).
-// Usage: lmscript examples/dsl/fit-curve.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
-import "lib/rclidsl.lms";
+// Usage: lmscript examples/dsl/fit-curve.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
+import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
 let n = 17;
 let noise = rng(42).draw(norm(0.0, 0.01), n);
 let x = vec();
@@ -31,5 +31,5 @@ out.set("a", m.estimate("a"));
 out.set("b", m.estimate("b"));
 end _dsl_
 
-values = rclidsl.check(rclidsl.run(p, "fit-curve"));
+values = lmr.check(lmr.run(p, "fit-curve"));
 println(sprintf("Noisy curve recovery passed: a=%.6f b=%.6f (truth 4, 2; tolerance 0.2).", values.a, values.b));

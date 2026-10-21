@@ -8,10 +8,10 @@
 //   pair is detected with the estimate near the true correlation; Shapiro-Wilk passes a normal sample and fails an
 //   exponential one. Same checks as examples/tut-tests.lms.
 // Data: seeded rng samples (seeds 701..706, xoshiro256**, so the draws differ from R's) plus fixed contingency tables.
-// Usage: lmscript examples/dsl/tut-tests.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
-import "lib/rclidsl.lms";
+// Usage: lmscript examples/dsl/tut-tests.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
+import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
 let shift = 0.8;
 let sd = 0.7;
 let n = 30;
@@ -79,5 +79,5 @@ out.set("sw_n_p", sw_n.p_value());
 out.set("sw_e_p", fmt("%.2e", sw_e.p_value()));
 end _dsl_
 
-values = rclidsl.check(rclidsl.run(p, "tut-tests"));
+values = lmr.check(lmr.run(p, "tut-tests"));
 println(sprintf("Checks passed: shift detected (t p=%s, W p=%s), -0.8 in CI; variances equal (p=%.2f); balanced table p=1; diagonal p<1e-6; exact binomial p=%.8f; r=%.3f (true %.3f); Shapiro %.3f / %s.", values.t_p, values.w_p, values.var_p, values.binom_p, values.r, values.rho_true, values.sw_n_p, values.sw_e_p));

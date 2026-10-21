@@ -494,7 +494,7 @@ void bind_core(Binder& b) {
   });
   b.m("Frame", "write_csv", {"string"}, "void", [](void* s, A& a) { write_csv(self<Frame>(s), a[0].s); return Value::none(); });
 
-  // ---- keep / kept: objects that outlive a chunk (rcli-dsl --dsl a.dslb b.dslb ...) ----
+  // ---- keep / kept: objects that outlive a chunk (lmr --dsl a.dslb b.dslb ...) ----
   auto keep = [&h](const std::string& name, const char* type, void* p) {
     h.kept[name] = h.owner(p);
     h.kept_type[name] = type;

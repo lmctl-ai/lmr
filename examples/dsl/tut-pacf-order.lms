@@ -8,10 +8,10 @@
 //   examples/tut-pacf-order.lms.
 // Data: 400 values of x_t = 0.5 x_{t-1} + 0.3 x_{t-2} + N(0, 1), arima_sim with rng(2024) (the native generator, not R's
 //   stream, so the series differs from the original's seed 2024).
-// Usage: lmscript examples/dsl/tut-pacf-order.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
-import "lib/rclidsl.lms";
+// Usage: lmscript examples/dsl/tut-pacf-order.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
+import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
 let phi = parse_vec("0.5 0.3");
 let n = 400;
 let x = arima_sim(rng(2024), n, phi, vec(), 1.0);
@@ -65,5 +65,5 @@ out.set("rho1_hat", rho1_hat);
 out.set("rho1", rho1);
 end _dsl_
 
-v = rclidsl.check(rclidsl.run(p, "tut-pacf-order"));
+v = lmr.check(lmr.run(p, "tut-pacf-order"));
 println(sprintf("Checks passed: PACF cuts off after lag 2; AIC %.2f < %.2f, %.2f; ar1=%.3f ar2=%.3f within 3 SE of (0.5, 0.3); ACF(1)=%.3f vs fitted %.3f (generating %.3f).", v.aic[1], v.aic[0], v.aic[2], v.ar1, v.ar2, v.acf1, v.rho1_hat, v.rho1));

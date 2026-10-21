@@ -4,12 +4,12 @@
 //   the coefficient table with t intervals, checks that the generating parameters lie inside the intervals, that the
 //   residuals sum to zero and reproduce sigma and R^2, that they pass Shapiro-Wilk, and that a collinear copy of weight is
 //   reported as aliased with the rank unchanged. Same checks as examples/tut-lm.lms, but every step runs inside one
-//   rcli-dsl process: no R, no per-call JSON round trip.
+//   lmr process: no R, no per-call JSON round trip.
 // Data: examples/data/tut-vehicles.csv (see examples/tut-lm.lms for the generating model; power is not identifiable).
-// Usage: lmscript examples/dsl/tut-lm.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
-import "lib/rclidsl.lms";
+// Usage: lmscript examples/dsl/tut-lm.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
+import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
 let d = read_csv("examples/data/tut-vehicles.csv");
 let fit = lm(d, "mpg ~ weight + power");
 out.print(fmt("n=%d", fit.n()) + fmt("  rank=%d", fit.rank()) + fmt("  df=%d", fit.df_residual()) + fmt("  sigma=%.4f (true 1.2)", fit.sigma()) + fmt("  R^2=%.4f", fit.r_squared()));
@@ -50,5 +50,5 @@ out.set("sigma", fit.sigma());
 out.set("r_squared", fit.r_squared());
 end _dsl_
 
-values = rclidsl.check(rclidsl.run(p, "tut-lm"));
+values = lmr.check(lmr.run(p, "tut-lm"));
 println(sprintf("Checks passed: truth inside every 95%% CI; sigma=%.4f; R^2=%.4f; aliasing detected.", values.sigma, values.r_squared));

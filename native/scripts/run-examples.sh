@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Runs every examples/dsl/*.lms against the given rcli-dsl (cwd must be the repository root) and reports each result.
+# Runs every examples/dsl/*.lms against the given lmr (cwd must be the repository root) and reports each result.
 # Needs a DSL v5 lmscript compiler on PATH or in $LMSCRIPT_BIN; without one the test is skipped (exit 0 with a notice).
 set -uo pipefail
-BIN="${1:?usage: run-examples.sh path/to/rcli-dsl [example.lms ...]}"
+BIN="${1:?usage: run-examples.sh path/to/lmr [example.lms ...]}"
 shift
 LMSCRIPT="${LMSCRIPT_BIN:-$(command -v lmscript || true)}"
 if [[ -z "$LMSCRIPT" ]]; then echo "lmscript not found: DSL examples skipped"; exit 0; fi
-export RCLI_DSL="$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")"
+export LMR_BIN="$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")"
 files=("$@")
 [[ ${#files[@]} -gt 0 ]] || files=(examples/dsl/*.lms)
 pass=0; fail=0; failed=()

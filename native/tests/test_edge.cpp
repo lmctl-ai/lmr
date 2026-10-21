@@ -1,6 +1,6 @@
 // Edge cases across modules: degenerate inputs must give a value or an rcli::Error (never a crash, hang or UB),
 // and callback-driven algorithms must terminate in bounded evaluations for hostile callbacks.
-// Run under -fsanitize=address,undefined as well (cmake -DRCLI_SANITIZE=address,undefined).
+// Run under -fsanitize=address,undefined as well (cmake -DLMR_SANITIZE=address,undefined).
 #include <functional>
 #include <string>
 

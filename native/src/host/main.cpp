@@ -1,11 +1,11 @@
-// rcli-dsl: runs lmscript `_dsl_` bytecode against the native statistics core (no R, no Python, no Docker).
+// lmr: runs lmscript `_dsl_` bytecode against the native statistics core (no R, no Python, no Docker).
 //
-//   rcli-dsl --schema               compact summary of the API (context, functions, types)
-//   rcli-dsl --schema --json        the embedded schema bytes (the compiler's input, `_dsl_ schema="..."`)
-//   rcli-dsl --dsl-signatures       canonical registry signatures (diffed against `lmscript --dsl-signatures`)
-//   rcli-dsl --generate-schema      the schema JSON derived from the registry (maintenance: scripts/update-schema.sh)
-//   rcli-dsl --dsl A.dslb [B.dslb]  load and verify every file, then run them in order with shared host state
-//   rcli-dsl --version
+//   lmr --schema               compact summary of the API (context, functions, types)
+//   lmr --schema --json        the embedded schema bytes (the compiler's input, `_dsl_ schema="..."`)
+//   lmr --dsl-signatures       canonical registry signatures (diffed against `lmscript --dsl-signatures`)
+//   lmr --generate-schema      the schema JSON derived from the registry (maintenance: scripts/update-schema.sh)
+//   lmr --dsl A.dslb [B.dslb]  load and verify every file, then run them in order with shared host state
+//   lmr --version
 //
 // Exit codes: 0 ok, 2 usage, 3 load/run error, 4 application failure (out.fail or failed out.check calls).
 // stdout carries exactly one JSON result line; out.print text goes to stderr.
@@ -21,8 +21,8 @@
 #include "host.hpp"
 #include "schema_embedded.hpp"
 
-#ifndef RCLI_DSL_VERSION
-#define RCLI_DSL_VERSION "0.1.0"
+#ifndef LMR_VERSION
+#define LMR_VERSION "0.2.0"
 #endif
 
 namespace {
@@ -88,7 +88,7 @@ std::string generate_schema(const dslvm::Registry& reg, const OperatorTable& ops
     else if (p.kind == "fn") functions[p.name].push_back(p);
     else types[p.type][p.name].push_back(p);
   }
-  std::string out = "{\n  \"dsl.schema\": 2,\n  \"name\": \"rcli\",\n  \"context\": {";
+  std::string out = "{\n  \"dsl.schema\": 2,\n  \"name\": \"lmr\",\n  \"context\": {";
   size_t i = 0;
   for (const auto& c : context) out += (i++ ? ", " : "") + dslvm::json_escape(c.first) + ": " + dslvm::json_escape(c.second);
   out += "},\n  \"types\": {\n";
@@ -151,14 +151,14 @@ int main(int argc, char** argv) {
   try {
     bind_all(binder);
   } catch (const std::exception& e) {
-    std::cerr << "rcli-dsl: registry error: " << e.what() << "\n";
+    std::cerr << "lmr: registry error: " << e.what() << "\n";
     return 3;
   }
   const std::string usage =
-      "usage: rcli-dsl --schema [--json] | --dsl-signatures | --generate-schema | --version | --dsl FILE [FILE ...]\n";
+      "usage: lmr --schema [--json] | --dsl-signatures | --generate-schema | --version | --dsl FILE [FILE ...]\n";
   std::vector<std::string> args(argv + 1, argv + argc);
   if (args.size() == 1 && args[0] == "--version") {
-    std::cout << "rcli-dsl " << RCLI_DSL_VERSION << " (dslvm bytecode v" << dslvm::VERSION << ", native core, no R runtime)\n";
+    std::cout << "lmr " << LMR_VERSION << " (dslvm bytecode v" << dslvm::VERSION << ", native core, no R runtime)\n";
     return 0;
   }
   if (!args.empty() && args[0] == "--schema") {

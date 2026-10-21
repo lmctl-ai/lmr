@@ -1,20 +1,20 @@
 # rcli `_dsl_` API (native, no R)
 
-`rcli-dsl` is a single executable (no R runtime; it needs only the system glibc) that runs lmscript `_dsl_` bytecode against a native C++17 statistics core.
+`lmr` is a single executable (no R runtime; it needs only the system glibc) that runs lmscript `_dsl_` bytecode against a native C++17 statistics core.
 It needs no R, Python, Docker or third-party libraries. It replaces the R-backed operations of `rcli` with an
 object API. A script describes a whole multi-step analysis in one typed chunk; lmscript compiles that chunk once, and
 the host runs it in one process.
 
 ```
-lmscript examples/dsl/tut-lm.lms                     # compiles the chunk to build/dsl/tut-lm.dslb, runs rcli-dsl, checks
-rcli-dsl --dsl build/dsl/a.dslb build/dsl/b.dslb      # several chunks, one process, shared host state
-rcli-dsl --schema                                     # every signature, grouped by type
-rcli-dsl --schema --json > rcli.dsl.json              # the schema the compiler needs (byte-identical to native/schema/)
+lmscript examples/dsl/tut-lm.lms                     # compiles the chunk to build/dsl/tut-lm.dslb, runs lmr, checks
+lmr --dsl build/dsl/a.dslb build/dsl/b.dslb      # several chunks, one process, shared host state
+lmr --schema                                     # every signature, grouped by type
+lmr --schema --json > lmr.dsl.json              # the schema the compiler needs (byte-identical to native/schema/)
 ```
 
-The machine-checked list of all signatures is `native/schema/rcli.dsl.json`. The test `schema_matches_registry` checks
+The machine-checked list of all signatures is `native/schema/lmr.dsl.json`. The test `schema_matches_registry` checks
 it against the host registry and against `lmscript --dsl-signatures`. This page explains the design and each type;
-`rcli-dsl --schema` prints the full list.
+`lmr --schema` prints the full list.
 
 ## Why a DSL rather than one process per call
 
@@ -260,7 +260,7 @@ through, the worker is cancelled cleanly when the host exits.
 | `ts_arima`, `rng_arima_sim`, `ts_acf`, `ts_pacf`, `ts_stl` | `arima(...).fit`, `arima_sim`, `Vec.acf`, `Vec.pacf`, `stl` |
 | `cluster_kmeans`, `cluster_hclust` | `kmeans`, `hclust` |
 | `opt_minimize`, `opt_optimize`, `num_root`, `num_integrate` | `minimize`, `optimize`, `uniroot`, `integrate` (objective in DSL) |
-| `r_info` | `rcli-dsl --version` |
+| `r_info` | `lmr --version` |
 
 ## Agreement with R
 

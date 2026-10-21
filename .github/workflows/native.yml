@@ -1,6 +1,6 @@
 name: native
 
-# Builds and tests the R-free rcli-dsl host (native/) on every OS, and on a v* tag attaches the binaries to a GitHub
+# Builds and tests the R-free lmr host (native/) on every OS, and on a v* tag attaches the binaries to a GitHub
 # release. The R-backed lmapi tool keeps its own workflow (ci.yml).
 
 on:
@@ -91,7 +91,7 @@ jobs:
           npm i -g @lmctl-ai/lmctl@0.2.347
           # The DSL tests skip themselves without a compiler; CI must not.
           lmscript --version
-          lmscript --dsl-signatures native/schema/rcli.dsl.json > /dev/null
+          lmscript --dsl-signatures native/schema/lmr.dsl.json > /dev/null
 
       - name: build
         if: env.ONLY_OK == 'true'
@@ -107,12 +107,12 @@ jobs:
         if: env.ONLY_OK == 'true'
         run: |
           case "$RUNNER_OS" in
-            Linux)   ldd build-native/bin/rcli-dsl
-                     ! ldd build-native/bin/rcli-dsl | grep -vE 'linux-vdso|ld-linux|libc\.so|libm\.so' ;;
-            macOS)   otool -L build-native/bin/rcli-dsl
-                     ! otool -L build-native/bin/rcli-dsl | tail -n +2 | grep -v '/usr/lib/' ;;
-            Windows) objdump -p build-native/bin/rcli-dsl.exe | grep 'DLL Name' || true
-                     ! objdump -p build-native/bin/rcli-dsl.exe | grep -iE 'DLL Name: (libstdc|libgcc|libwinpthread)' ;;
+            Linux)   ldd build-native/bin/lmr
+                     ! ldd build-native/bin/lmr | grep -vE 'linux-vdso|ld-linux|libc\.so|libm\.so' ;;
+            macOS)   otool -L build-native/bin/lmr
+                     ! otool -L build-native/bin/lmr | tail -n +2 | grep -v '/usr/lib/' ;;
+            Windows) objdump -p build-native/bin/lmr.exe | grep 'DLL Name' || true
+                     ! objdump -p build-native/bin/lmr.exe | grep -iE 'DLL Name: (libstdc|libgcc|libwinpthread)' ;;
           esac
 
       - name: package
@@ -120,13 +120,13 @@ jobs:
         run: |
           mkdir -p dist
           ext=""; [ "$RUNNER_OS" = "Windows" ] && ext=".exe"
-          cp "build-native/bin/rcli-dsl$ext" "dist/rcli-dsl-${{ matrix.name }}$ext"
-          cp LICENSE THIRD_PARTY_NOTICES.md native/schema/rcli.dsl.json dist/
+          cp "build-native/bin/lmr$ext" "dist/lmr-${{ matrix.name }}$ext"
+          cp LICENSE THIRD_PARTY_NOTICES.md native/schema/lmr.dsl.json dist/
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: env.ONLY_OK == 'true'
         with:
-          name: rcli-dsl-${{ matrix.name }}
+          name: lmr-${{ matrix.name }}
           path: dist/
           if-no-files-found: error
 
@@ -139,7 +139,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          pattern: rcli-dsl-*
+          pattern: lmr-*
           path: dist
           merge-multiple: true
 

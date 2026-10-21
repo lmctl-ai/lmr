@@ -8,9 +8,9 @@
 //     index between the two partitions (an O(n^2) loop in the chunk), cluster profiles, and labels written to CSV.
 //   Step 4 (lmscript): cluster sizes from the CSV.
 // Usage: lmscript examples/dsl/flow-cluster-k.lms   (cwd = repository root)
-import "lib/rclidsl.lms";
+import "lib/lmr.lms";
 
-scan = _dsl_ schema="../../native/schema/rcli.dsl.json";
+scan = _dsl_ schema="../../native/schema/lmr.dsl.json";
 let r = rng(4242);
 let cx = parse_vec("0 7 0 7");
 let cy = parse_vec("0 0 7 7");
@@ -29,7 +29,7 @@ for (k in range(1, 9)) {
 out.set("wss", wss);
 end _dsl_
 mkdir("build/dsl");
-s = rclidsl.check(rclidsl.run(scan, "flow-cluster-1"));
+s = lmr.check(lmr.run(scan, "flow-cluster-1"));
 if (!has_key(s, "wss")) { println("dry run: nothing executed"); exit(0); }
 
 wss = s.wss; k = len(wss);
@@ -42,7 +42,7 @@ for (i = 0; i + 1 < len(wss); i = i + 1) { if (1 - wss[i + 1] / wss[i] < 0.3) { 
 println(sprintf("elbow: k = %d", k));
 if (k != 4) { println("the elbow rule did not find the 4 generating clusters"); exit(1); }
 
-validate = _dsl_ schema="../../native/schema/rcli.dsl.json";
+validate = _dsl_ schema="../../native/schema/lmr.dsl.json";
 let pts = read_csv("build/dsl/flow-points.csv");
 let km = kmeans(pts, ${k}, rng(11), 25);
 let hc = hclust(pts, "ward.D2");
@@ -71,7 +71,7 @@ out.check(km.betweenss() / km.totss() > 0.8, "clusters explain more than 80% of 
 pts.set("kmeans", a).set("ward", b).write_csv("build/dsl/flow-labels.csv");
 out.set("rand", rand);
 end _dsl_
-v = rclidsl.check(rclidsl.run(validate, "flow-cluster-2"));
+v = lmr.check(lmr.run(validate, "flow-cluster-2"));
 
 rows = read_csv("build/dsl/flow-labels.csv");
 sizes = {};

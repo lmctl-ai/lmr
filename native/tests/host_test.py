@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Host-level tests for rcli-dsl: bindings, reverse-communication protocol, CSV, formatting, chunk state, CLI.
+"""Host-level tests for lmr: bindings, reverse-communication protocol, CSV, formatting, chunk state, CLI.
 
-Each case compiles a small `_dsl_` chunk with lmscript and runs it with rcli-dsl, then asserts the exit code, values
+Each case compiles a small `_dsl_` chunk with lmscript and runs it with lmr, then asserts the exit code, values
 from the JSON result line, and substrings of stdout/stderr. Positive behaviour is mostly asserted inside the chunk with
 out.check (any failure gives exit 4 and names the check). Usage:
 
-    python3 native/tests/host_test.py build-native/bin/rcli-dsl [-k substring]
+    python3 native/tests/host_test.py build-native/bin/lmr [-k substring]
 
 Needs a DSL v5 lmscript ($LMSCRIPT_BIN or on PATH); exits 0 with a notice when none is available.
 """
@@ -18,7 +18,7 @@ import sys
 import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SCHEMA = os.path.abspath(os.path.join(HERE, "..", "schema", "rcli.dsl.json"))
+SCHEMA = os.path.abspath(os.path.join(HERE, "..", "schema", "lmr.dsl.json"))
 
 
 class Case:
@@ -714,11 +714,11 @@ out.check(t.conf_level() == 0.9 && t.alternative() == "two.sided" && t.df() == 6
 """)
 
 # ---------------------------------------------------------------- CLI
-case("cli: no arguments", None, args=[], code=2, err=("usage: rcli-dsl",))
+case("cli: no arguments", None, args=[], code=2, err=("usage: lmr",))
 case("cli: unknown flag", None, args=["--frobnicate"], code=2, err=("usage",))
 case("cli: --dsl without files", None, args=["--dsl"], code=2, err=("usage",))
 case("cli: flag among files", None, args=["--dsl", "a.dslb", "--x"], code=2, err=("usage",))
-case("cli: version", None, args=["--version"], out=("rcli-dsl", "no R runtime"))
+case("cli: version", None, args=["--version"], out=("lmr", "no R runtime"))
 case("cli: schema summary", None, args=["--schema"], out=("context out: Out", "Vec:", "fn lm(Frame, string) -> Lm"))
 case("cli: missing bytecode", None, args=["--dsl", "nope.dslb"], code=3, out=('"phase": "load"', "nope.dslb"))
 case("cli: garbage bytecode", None, args=["--dsl", "junk.dslb"], code=3, out=('"phase": "load"',),
