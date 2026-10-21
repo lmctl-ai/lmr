@@ -1,0 +1,34 @@
+// R vs lmr: principal component analysis. prcomp(USArrests, scale. = TRUE), the classic PCA tutorial; prcomp of the
+// iris measurements without scaling; and the eigenvalues of cor(mtcars).
+// R:   p <- prcomp(USArrests, scale. = TRUE); summary(p); prcomp(iris[, 1:4]); eigen(cor(mtcars))$values
+// Component signs are arbitrary (R's come from LAPACK), so loadings and scores are compared in absolute value.
+// summary(p) rounds the proportions of variance to 5 decimals, so those are compared at 1e-5.
+// Usage: lmscript examples/r-vs-dsl/pca-usarrests.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let us = read_csv("examples/r-vs-dsl/data/USArrests.csv").select("Murder,Assault,UrbanPop,Rape");
+let pc = prcomp(us, true);
+out.print(pc.summary());
+let sc = pc.scores();
+let first5 = vec();
+for (j in range(0, sc.ncol())) {
+  for (i in range(0, 5)) {
+    first5.push(abs(sc.at(i, j)));
+  }
+}
+let iris = prcomp(read_csv("examples/r-vs-dsl/data/iris.csv").select("Sepal.Length,Sepal.Width,Petal.Length,Petal.Width"), false);
+let mt = as_matrix(read_csv("examples/r-vs-dsl/data/mtcars.csv").select("mpg,cyl,disp,hp,drat,wt,qsec,vs,am,gear,carb"));
+out.set("sdev", pc.sdev());
+out.set("abs_rotation", pc.rotation().values().abs());
+out.set("abs_scores_first5", first5);
+out.set("proportion", pc.proportion());
+out.set("cumulative", pc.cumulative());
+out.set("iris_sdev", iris.sdev());
+out.set("iris_abs_pc1", iris.rotation().col(0).abs());
+out.set("mtcars_cor_eigenvalues", mt.cor().eigen().values());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-pca-usarrests"));
+compare.finish("pca-usarrests", compare.report("pca-usarrests", got, "examples/r-vs-dsl/expected/pca-usarrests.json", 0.000000001, {proportion: 0.00001, cumulative: 0.00001}));

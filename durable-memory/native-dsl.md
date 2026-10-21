@@ -45,7 +45,7 @@ tolerance tiers still apply.
   `lmr --dsl-schema --json` (the host flag; `--schema` is an alias) and, when `lmr` is not on PATH, downloads the
   release asset `lmr-OS-ARCH[.exe]`, so asset names must stay exactly that. `examples/dsl/install-and-run.lms` is the
   example; run-examples.sh puts the tested build first on PATH so it binds to that build. Bump its tag with each release.
-- **`examples/r-vs-dsl/`**: 36 common R recipes, each as `r/NAME.R` (writes `expected/NAME.json` with R 4.3.3) and
+- **`examples/r-vs-dsl/`**: 44 common R recipes, each as `r/NAME.R` (writes `expected/NAME.json` with R 4.3.3) and
   `NAME.lms` (lmr on the same `data/*.csv`, compared by `lib/compare.lms`). Run in ctest via run-examples.sh;
   `refresh-r.sh` regenerates the R side. Known differences (ks asymptotic p, BFGS fn count, L-BFGS-B stop point,
   smooth.spline df search, loess default surface) are documented per recipe with their own tolerance.
@@ -128,6 +128,27 @@ R is GPL. The rules:
 - **Working note**: background jobs and subagents in this environment are killed when the Claude session restarts. A
   hardening round run as three background agents was lost twice. Run long builds and tests in the foreground in steps
   under 10 minutes.
+
+## Breadth round (2026-10-21)
+
+The owner said R parity is a bug check, not a goal, and asked for broader coverage. Added (core by parallel agents,
+bindings and recipes by the lead):
+- **`ncdist.cpp`** (in `Dist`): noncentral t (Lenth AS 243 plus a chi-square-mixture integral), chi-square and F
+  (Poisson mixtures), studentized range `tukey` (Copenhaver & Holland; p/q only). R's own upper tails, `ptukey` at
+  small df and some `qtukey` values are less accurate than ours; `test_ncdist` checks those against independent sums.
+- **`htest2.cpp`**: kruskal, bartlett, fligner, oneway (Welch), friedman, quade, mcnemar, ansari (no conf.int).
+- **`multivar.cpp`** + **`bind_multivar.cpp`**: `Mat` type (LU solve/inverse/det in the binding), symmetric eigen
+  (Householder + implicit QR), one-sided Jacobi SVD, cholesky, prcomp, cmdscale, mahalanobis, cov/cor matrices.
+  Sign convention: unit vectors with the largest component positive.
+- **`kde.cpp`** + **`bind_kde.cpp`**: bw nrd0/nrd/ucv/bcv/SJ (R's binned pair counts reproduced by black box), exact
+  density sums (R bins + FFT, so ~1e-3 of peak apart), ecdf, hist, pretty. kde.cpp carries a private netlib zeroin
+  (public domain) that follows R's uniroot iterates; `roots.cpp` still uses Brent's original rule.
+- **Clean-room correction**: the kde agent had recalled one undocumented pretty() rule (cell -> 9 + cell/10 for a
+  near-constant range above 10); it was removed, so pretty() of such a range differs from R. Keep it that way.
+- **Factors** (`models.cpp`): text columns and `factor(v)` in formulas with treatment contrasts and R's column names,
+  `anova` (lm sequential SS, glm deviance with Chisq/F, nested lm). Levels sort in byte order (R's C locale);
+  read.csv-style data gives the same baseline as R, R's built-in datasets may order levels differently.
+- **Frame.drop(name)** (select strips spaces from names).
 
 ## Not done / next
 

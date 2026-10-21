@@ -1,0 +1,47 @@
+// R vs lmr: models with factor predictors written as in R. Text columns are factors with treatment contrasts, and
+// factor(v) makes a numeric column a factor, so no dummies are built by hand.
+// R:   tg <- lm(len ~ supp * factor(dose), ToothGrowth); anova(tg); cy <- lm(mpg ~ wt + factor(cyl), mtcars);
+//      anova(lm(mpg ~ wt, mtcars), cy); wb <- glm(breaks ~ wool * tension, poisson, warpbreaks);
+//      anova(wb, test = "Chisq"); pg <- lm(weight ~ group, PlantGrowth); anova(pg)
+// Factor levels sort alphabetically, as with read.csv in R; the R side therefore reads warpbreaks from the same CSV
+//   (the dataset's own tension order L, M, H would change the baseline, not the fit).
+// Compared: coefficients, standard errors, the sequential ANOVA table, the nested-model F test and the analysis of
+//   deviance.
+// Usage: lmscript examples/r-vs-dsl/factor-models.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let tg = lm(read_csv("examples/r-vs-dsl/data/ToothGrowth.csv"), "len ~ supp * factor(dose)");
+let at = tg.anova();
+out.print(tg.coef_table());
+out.print(at.table());
+let m = read_csv("examples/r-vs-dsl/data/mtcars.csv");
+let cy = lm(m, "mpg ~ wt + factor(cyl)");
+let nest = anova(lm(m, "mpg ~ wt"), cy);
+let cse = vec();
+for (i in range(0, cy.n_coef())) {
+  cse.push(cy.se(i));
+}
+let wb = glm(read_csv("examples/r-vs-dsl/data/warpbreaks.csv"), "breaks ~ wool * tension", "poisson");
+let ad = wb.anova("Chisq");
+out.print(ad.table());
+let pg = lm(read_csv("examples/r-vs-dsl/data/PlantGrowth.csv"), "weight ~ group");
+out.set("tooth_coef", tg.estimates());
+out.set("tooth_anova_ss", at.col("Sum Sq"));
+out.set("tooth_anova_f", at.col("F value").head(3));
+out.set("tooth_anova_p", at.col("Pr(>F)").head(3));
+out.set("cyl_coef", cy.estimates());
+out.set("cyl_se", cse);
+out.set("nested_f", nest.at(1, "F"));
+out.set("nested_p", nest.at(1, "Pr(>F)"));
+out.set("warp_coef", wb.estimates());
+out.set("warp_deviance", ad.col("Deviance").tail(3));
+out.set("warp_resid_dev", ad.col("Resid. Dev"));
+out.set("warp_p", ad.col("Pr(>Chi)").tail(3));
+out.set("plant_coef", pg.estimates());
+out.set("plant_anova_f", pg.anova().at("group", "F value"));
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-factor-models"));
+compare.finish("factor-models", compare.report("factor-models", got, "examples/r-vs-dsl/expected/factor-models.json", 0.000000001, {}));

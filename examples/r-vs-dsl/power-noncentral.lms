@@ -1,0 +1,52 @@
+// R vs lmr: power and sample size, plus the noncentral t, chi-square and F distributions behind them.
+// R:   power.t.test(n = 20, delta = 1, sd = 1); power.t.test(power = 0.90, delta = 1);
+//      power.t.test(n = 15, delta = 0.8, sd = 1.2, type = "one.sample", alternative = "one.sided");
+//      power.prop.test(p1 = 0.5, p2 = 0.75, power = 0.9); pt(q, df, ncp); qt; dt; pchisq; qchisq; pf; qf
+// lmr: the power functions are written from their textbook definitions: the power of the t test is the
+//   noncentral-t probability beyond the critical value, with ncp = delta / (sd * sqrt(1/n1 + 1/n2)); the sample size
+//   is the root of power(n) = target found with uniroot; the two-proportion power uses the normal approximation
+//   (Fleiss). R's uniroot stops at tol = 1.2e-4, so the sample sizes are compared at 1e-4.
+// Usage: lmscript examples/r-vs-dsl/power-noncentral.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+fn power_two_sample(n: float, delta: float, sd: float, alpha: float) -> float {
+  let df = 2.0 * (n - 1.0);
+  let ncp = sqrt(n / 2.0) * delta / sd;
+  return t_dist(df, ncp).p_upper(t_dist(df).q(1.0 - alpha / 2.0));
+}
+fn power_prop(n: float, p1: float, p2: float, alpha: float) -> float {
+  let pbar = (p1 + p2) / 2.0;
+  let z = norm().q(1.0 - alpha / 2.0);
+  return norm().p((sqrt(n) * abs(p1 - p2) - z * sqrt(2.0 * pbar * (1.0 - pbar))) / sqrt(p1 * (1.0 - p1) + p2 * (1.0 - p2)));
+}
+let pw = power_two_sample(20.0, 1.0, 1.0, 0.05);
+let r = uniroot(2.0, 1000.0).tol(0.0000000001);
+while (r.next()) {
+  r.tell(power_two_sample(r.x(), 1.0, 1.0, 0.05) - 0.9);
+}
+let n1 = 15.0;
+let one = t_dist(n1 - 1.0, sqrt(n1) * 0.8 / 1.2).p_upper(t_dist(n1 - 1.0).q(0.95));
+let rp = uniroot(2.0, 10000.0).tol(0.0000000001);
+while (rp.next()) {
+  rp.tell(power_prop(rp.x(), 0.5, 0.75, 0.05) - 0.9);
+}
+out.print(fmt("power with n = 20 per group: %.4f", pw) + fmt("; n per group for 90%% power: %.4f", r.root()));
+out.set("power_n20", pw);
+out.set("n_for_power90", r.root());
+out.set("power_one_sample", one);
+out.set("prop_n_for_power90", rp.root());
+out.set("pt_ncp", t_dist(10.0, 1.5).p_vec(parse_vec("-1 0 1 2 3")));
+out.set("pt_ncp_upper", t_dist(20.0, 1.0).p_upper(5.0));
+out.set("qt_ncp", t_dist(12.0, 2.0).q_vec(parse_vec("0.05 0.5 0.95")));
+out.set("dt_ncp", t_dist(8.0, 1.0).d_vec(parse_vec("0 1 2")));
+out.set("pchisq_ncp", chisq(4.0, 3.0).p_vec(parse_vec("1 5 10 20")));
+out.set("qchisq_ncp", chisq(3.0, 5.0).q(0.95));
+out.set("dchisq_ncp", chisq(4.0, 2.0).d(4.0));
+out.set("pf_ncp", f_dist(3.0, 20.0, 4.0).p_vec(parse_vec("1 2 4")));
+out.set("qf_ncp", f_dist(2.0, 30.0, 3.0).q(0.9));
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-power-noncentral"));
+compare.finish("power-noncentral", compare.report("power-noncentral", got, "examples/r-vs-dsl/expected/power-noncentral.json", 0.00000001, {n_for_power90: 0.0001, prop_n_for_power90: 0.0001}));

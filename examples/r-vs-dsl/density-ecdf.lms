@@ -1,0 +1,34 @@
+// R vs lmr: kernel density estimation of the Old Faithful eruption times (?density), the bandwidth rules, the
+// empirical CDF and histogram counts.
+// R:   bw.nrd0(x); bw.nrd(x); bw.ucv(x); bw.bcv(x); bw.SJ(x); d <- density(x);
+//      density(x, kernel = "epanechnikov", bw = 0.3); ecdf(x)(c(2, 3, 4, 4.5)); hist(x, plot = FALSE)
+// Known difference: R evaluates density() by binning the data on the grid and convolving with an FFT; lmr sums the
+//   kernel over the observations exactly. The two differ by R's binning error, about 1e-3 of the peak density, so
+//   the density values are compared at 2e-3. Grid, bandwidths, ECDF and histogram are compared tightly.
+// Usage: lmscript examples/r-vs-dsl/density-ecdf.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let x = read_csv("examples/r-vs-dsl/data/faithful.csv").col("eruptions");
+let d = density(x);
+let de = density(x, 0.3, "epanechnikov");
+let idx = parse_vec("0 99 199 255 299 399 511");
+let h = hist(x);
+out.print(fmt("bw.nrd0 %.6f", bw(x, "nrd0")) + fmt(", bw.SJ %.6f", bw(x, "SJ")) + fmt("; density peak %.4f", d.y().max()));
+out.print("hist breaks " + h.breaks().str() + "  counts " + h.counts().str());
+out.set("bw_nrd0", bw(x, "nrd0"));
+out.set("bw_nrd", bw(x, "nrd"));
+out.set("bw_ucv", bw(x, "ucv"));
+out.set("bw_bcv", bw(x, "bcv"));
+out.set("bw_sj", bw(x, "SJ"));
+out.set("grid_from_to", vec().push(d.x().at(0)).push(d.x().at(511)));
+out.set("gaussian_y", d.y().take(idx));
+out.set("epanechnikov_y", de.y().take(idx));
+out.set("ecdf_at", ecdf(x).eval(parse_vec("2 3 4 4.5")));
+out.set("hist_breaks", h.breaks());
+out.set("hist_counts", h.counts());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-density-ecdf"));
+compare.finish("density-ecdf", compare.report("density-ecdf", got, "examples/r-vs-dsl/expected/density-ecdf.json", 0.000000001, {gaussian_y: 0.002, epanechnikov_y: 0.002}));

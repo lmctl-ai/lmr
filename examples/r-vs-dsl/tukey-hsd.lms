@@ -1,0 +1,59 @@
+// R vs lmr: Tukey's honest significant differences after a one-way ANOVA (warpbreaks, breaks by tension, ?TukeyHSD),
+// and the studentized range distribution.
+// R:   TukeyHSD(aov(breaks ~ tension, data = warpbreaks)); ptukey(q, 3, 51); ptukey(3, 4, Inf); qtukey(p, 3, 51)
+// lmr: the intervals are diff -+ qtukey(0.95, k, df) * sqrt(MSE / 2 * (1/ni + 1/nj)) and the adjusted p value is the
+//   upper tail of the studentized range at |diff| / that standard error, with MSE from the one-way model. The pairs
+//   are in R's order M-L, H-L, H-M (the dataset orders tension L, M, H).
+// R documents its ptukey as accurate to about 1e-8 here, so the comparison uses 1e-7.
+// Usage: lmscript examples/r-vs-dsl/tukey-hsd.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let d = read_csv("examples/r-vs-dsl/data/warpbreaks.csv");
+let t = d.text("tension");
+let y = d.col("breaks");
+let levels = split("L,M,H", ",");
+let means = vec();
+let ns = vec();
+for (k in range(0, 3)) {
+  let mask = vec();
+  for (i in range(0, t.len())) {
+    if (t.at(i) == levels.at(k)) { mask.push(1.0); } else { mask.push(0.0); }
+  }
+  means.push(y.where(mask).mean());
+  ns.push(mask.sum());
+}
+let fit = lm(d, "breaks ~ tension");
+let mse = fit.sigma() * fit.sigma();
+let df = float(fit.df_residual());
+let q = tukey(3.0, df).q(0.95);
+let ia = parse_vec("1 2 2");
+let ib = parse_vec("0 0 1");
+let diff = vec();
+let lwr = vec();
+let upr = vec();
+let padj = vec();
+for (k in range(0, 3)) {
+  let a = int(ia.at(k));
+  let b = int(ib.at(k));
+  let dd = means.at(a) - means.at(b);
+  let se = sqrt(mse / 2.0 * (1.0 / ns.at(a) + 1.0 / ns.at(b)));
+  diff.push(dd);
+  lwr.push(dd - q * se);
+  upr.push(dd + q * se);
+  padj.push(tukey(3.0, df).p_upper(abs(dd) / se));
+  out.print(levels.at(a) + "-" + levels.at(b) + fmt("  diff %8.4f", dd) + fmt("  [%8.4f,", dd - q * se) + fmt(" %8.4f]", dd + q * se) + fmt("  p adj %.6f", padj.at(k)));
+}
+out.set("diff", diff);
+out.set("lwr", lwr);
+out.set("upr", upr);
+out.set("p_adj", padj);
+out.set("ptukey", tukey(3.0, 51.0).p_vec(parse_vec("1 2 3.5 5")));
+out.set("ptukey_inf_df", tukey(4.0, inf()).p(3.0));
+out.set("qtukey", tukey(3.0, 51.0).q_vec(parse_vec("0.9 0.95 0.99")));
+out.set("qtukey_k5", tukey(5.0, 20.0).q(0.95));
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-tukey-hsd"));
+compare.finish("tukey-hsd", compare.report("tukey-hsd", got, "examples/r-vs-dsl/expected/tukey-hsd.json", 0.0000001, {}));

@@ -396,6 +396,8 @@ void bind_all(Binder& b) {
   bind_ts(b);
   bind_cluster(b);
   bind_optim(b);
+  bind_multivar(b);
+  bind_kde(b);
 }
 
 }  // namespace rcli::host

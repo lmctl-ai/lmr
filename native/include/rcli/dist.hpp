@@ -9,7 +9,8 @@ namespace rcli {
 
 enum class DistKind {
   Norm, Lnorm, T, Chisq, F, Gamma, Beta, Exp, Unif, Weibull, Cauchy, Logis,  // continuous
-  Binom, Pois, Geom, Nbinom, Hyper                                             // discrete
+  Binom, Pois, Geom, Nbinom, Hyper,                                            // discrete
+  NcT, NcChisq, NcF, Tukey                                                     // noncentral t/chisq/F, studentized range
 };
 
 class Dist {
@@ -31,8 +32,15 @@ class Dist {
   static Dist geom(double prob);
   static Dist nbinom(double size, double prob);
   static Dist hyper(double m, double n, double k);  // m white, n black, k drawn (R dhyper(x, m, n, k))
+  // Noncentral versions (R's ncp argument). ncp == 0 gives the central kind (T, Chisq, F).
+  static Dist t(double df, double ncp);               // kind NcT; df may be Inf (then N(ncp, 1))
+  static Dist chisq(double df, double ncp);           // kind NcChisq; df >= 0, ncp > 0 finite
+  static Dist f(double df1, double df2, double ncp);  // kind NcF; df1 finite, df2 may be Inf
+  // Studentized range (R ptukey/qtukey): nmeans >= 2, df >= 2 (may be Inf), nranges >= 1. p and q only: d throws.
+  static Dist tukey(double nmeans, double df, double nranges = 1);
   // By R name ("norm", "t", "chisq", "f", "gamma", "beta", "exp", "unif", "lnorm", "weibull", "cauchy", "logis",
-  // "binom", "pois", "geom", "nbinom", "hyper") with up to three parameters in R's positional order.
+  // "binom", "pois", "geom", "nbinom", "hyper", "tukey") with up to three parameters in R's positional order.
+  // A non-NaN ncp makes "t" (p2), "chisq" (p2) and "f" (p3) noncentral; "tukey" takes (nmeans, df, nranges = 1).
   static Dist by_name(const std::string& name, double p1, double p2 = kNaN, double p3 = kNaN);
 
   DistKind kind() const { return kind_; }
@@ -51,5 +59,12 @@ class Dist {
   DistKind kind_;
   double par_[3];
 };
+
+// Kernels of the noncentral and studentized-range kinds (ncdist.cpp); Dist::d/p/q dispatch to them.
+namespace ncdist_detail {
+double d(DistKind kind, const double* par, double x, bool give_log);
+double p(DistKind kind, const double* par, double q, bool lower_tail, bool log_p);
+double q(DistKind kind, const double* par, double p, bool lower_tail, bool log_p);
+}  // namespace ncdist_detail
 
 }  // namespace rcli

@@ -3,6 +3,17 @@
   "name": "lmr",
   "context": {"out": "Out"},
   "types": {
+    "Anova": {
+      "methods": {
+        "at": [{"params": ["int", "string"], "returns": "float"},
+         {"params": ["string", "string"], "returns": "float"}],
+        "col": [{"params": ["string"], "returns": "Vec"}],
+        "columns": [{"params": [], "returns": "StrList"}],
+        "n_rows": [{"params": [], "returns": "int"}],
+        "row_name": [{"params": ["int"], "returns": "string"}],
+        "table": [{"params": [], "returns": "string"}]
+      }
+    },
     "ApproxFun": {
       "methods": {
         "at": [{"params": ["float"], "returns": "float"}],
@@ -53,6 +64,16 @@
         "scale": [{"params": ["float"], "returns": "CVec"}]
       }
     },
+    "Density": {
+      "methods": {
+        "at": [{"params": ["float"], "returns": "float"}],
+        "bw": [{"params": [], "returns": "float"}],
+        "eval": [{"params": ["Vec"], "returns": "Vec"}],
+        "kernel": [{"params": [], "returns": "string"}],
+        "x": [{"params": [], "returns": "Vec"}],
+        "y": [{"params": [], "returns": "Vec"}]
+      }
+    },
     "Dist": {
       "methods": {
         "d": [{"params": ["float"], "returns": "float"}],
@@ -74,6 +95,20 @@
         "var": [{"params": [], "returns": "float"}]
       }
     },
+    "Ecdf": {
+      "methods": {
+        "at": [{"params": ["float"], "returns": "float"}],
+        "eval": [{"params": ["Vec"], "returns": "Vec"}],
+        "knots": [{"params": [], "returns": "Vec"}],
+        "quantile": [{"params": ["float"], "returns": "float"}]
+      }
+    },
+    "Eigen": {
+      "methods": {
+        "values": [{"params": [], "returns": "Vec"}],
+        "vectors": [{"params": [], "returns": "Mat"}]
+      }
+    },
     "Forecast": {
       "methods": {
         "len": [{"params": [], "returns": "int"}],
@@ -88,6 +123,7 @@
     "Frame": {
       "methods": {
         "col": [{"params": ["string"], "returns": "Vec"}],
+        "drop": [{"params": ["string"], "returns": "Frame"}],
         "drop_nan": [{"params": [], "returns": "Frame"}],
         "has": [{"params": ["string"], "returns": "bool"}],
         "head": [{"params": ["int"], "returns": "Frame"}],
@@ -108,6 +144,7 @@
         "aic": [{"params": [], "returns": "float"}],
         "aliased": [{"params": ["int"], "returns": "bool"},
          {"params": ["string"], "returns": "bool"}],
+        "anova": [{"params": ["string"], "returns": "Anova"}],
         "coef_table": [{"params": [], "returns": "string"}],
         "conf_high": [{"params": ["int", "float"], "returns": "float"},
          {"params": ["string", "float"], "returns": "float"}],
@@ -151,6 +188,14 @@
         "merge_b": [{"params": ["int"], "returns": "int"}],
         "n": [{"params": [], "returns": "int"}],
         "order": [{"params": [], "returns": "Vec"}]
+      }
+    },
+    "Hist": {
+      "methods": {
+        "breaks": [{"params": [], "returns": "Vec"}],
+        "counts": [{"params": [], "returns": "Vec"}],
+        "density": [{"params": [], "returns": "Vec"}],
+        "mids": [{"params": [], "returns": "Vec"}]
       }
     },
     "Htest": {
@@ -218,6 +263,7 @@
         "aic": [{"params": [], "returns": "float"}],
         "aliased": [{"params": ["int"], "returns": "bool"},
          {"params": ["string"], "returns": "bool"}],
+        "anova": [{"params": [], "returns": "Anova"}],
         "bic": [{"params": [], "returns": "float"}],
         "coef_table": [{"params": [], "returns": "string"}],
         "conf_high": [{"params": ["int", "float"], "returns": "float"},
@@ -266,6 +312,44 @@
         "s": [{"params": [], "returns": "float"}],
         "trace_hat": [{"params": [], "returns": "float"}],
         "two_delta": [{"params": [], "returns": "float"}]
+      }
+    },
+    "Mat": {
+      "methods": {
+        "add": [{"params": ["Mat"], "returns": "Mat"}],
+        "at": [{"params": ["int", "int"], "returns": "float"}],
+        "chol": [{"params": [], "returns": "Mat"}],
+        "col": [{"params": ["int"], "returns": "Vec"}],
+        "cor": [{"params": [], "returns": "Mat"}],
+        "cov": [{"params": [], "returns": "Mat"}],
+        "det": [{"params": [], "returns": "float"}],
+        "diag": [{"params": [], "returns": "Vec"}],
+        "dist": [{"params": ["string"], "returns": "Mat"}],
+        "eigen": [{"params": [], "returns": "Eigen"}],
+        "format": [{"params": ["string"], "returns": "string"}],
+        "inverse": [{"params": [], "returns": "Mat"}],
+        "mul": [{"params": ["Mat"], "returns": "Mat"}],
+        "mul_vec": [{"params": ["Vec"], "returns": "Vec"}],
+        "ncol": [{"params": [], "returns": "int"}],
+        "nrow": [{"params": [], "returns": "int"}],
+        "row": [{"params": ["int"], "returns": "Vec"}],
+        "scale": [{"params": ["float"], "returns": "Mat"}],
+        "set": [{"params": ["int", "int", "float"], "returns": "Mat"}],
+        "solve": [{"params": ["Vec"], "returns": "Vec"}],
+        "str": [{"params": [], "returns": "string"}],
+        "sub": [{"params": ["Mat"], "returns": "Mat"}],
+        "svd": [{"params": [], "returns": "Svd"}],
+        "t": [{"params": [], "returns": "Mat"}],
+        "to_frame": [{"params": [], "returns": "Frame"}],
+        "values": [{"params": [], "returns": "Vec"}]
+      }
+    },
+    "Mds": {
+      "methods": {
+        "eig": [{"params": [], "returns": "Vec"}],
+        "gof": [{"params": [], "returns": "Vec"}],
+        "points": [{"params": [], "returns": "Mat"}],
+        "warning": [{"params": [], "returns": "string"}]
       }
     },
     "Minimizer": {
@@ -363,6 +447,19 @@
          {"params": ["string", "string"], "returns": "void"}]
       }
     },
+    "Pca": {
+      "methods": {
+        "center": [{"params": [], "returns": "Vec"}],
+        "cumulative": [{"params": [], "returns": "Vec"}],
+        "loading": [{"params": ["string", "int"], "returns": "float"}],
+        "proportion": [{"params": [], "returns": "Vec"}],
+        "rotation": [{"params": [], "returns": "Mat"}],
+        "scale": [{"params": [], "returns": "Vec"}],
+        "scores": [{"params": [], "returns": "Mat"}],
+        "sdev": [{"params": [], "returns": "Vec"}],
+        "summary": [{"params": [], "returns": "string"}]
+      }
+    },
     "Rng": {
       "methods": {
         "below": [{"params": ["int"], "returns": "int"}],
@@ -432,15 +529,26 @@
         "push": [{"params": ["string"], "returns": "StrList"}]
       }
     },
+    "Svd": {
+      "methods": {
+        "d": [{"params": [], "returns": "Vec"}],
+        "u": [{"params": [], "returns": "Mat"}],
+        "v": [{"params": [], "returns": "Mat"}]
+      }
+    },
     "Test": {
       "methods": {
         "alt": [{"params": ["string"], "returns": "Test"}],
+        "blocks": [{"params": ["StrList"], "returns": "Test"},
+         {"params": ["Vec"], "returns": "Test"}],
         "conf": [{"params": ["float"], "returns": "Test"}],
         "conf_int": [{"params": ["bool"], "returns": "Test"}],
         "correct": [{"params": ["bool"], "returns": "Test"}],
         "counts": [{"params": ["Vec"], "returns": "Test"}],
         "dist": [{"params": ["Dist"], "returns": "Test"}],
         "exact": [{"params": ["bool"], "returns": "Test"}],
+        "groups": [{"params": ["StrList"], "returns": "Test"},
+         {"params": ["Vec"], "returns": "Test"}],
         "method": [{"params": ["string"], "returns": "Test"}],
         "mu": [{"params": ["float"], "returns": "Test"}],
         "odds_ratio": [{"params": ["float"], "returns": "Test"}],
@@ -530,12 +638,14 @@
   },
   "functions": {
     "acos": [{"params": ["float"], "returns": "float"}],
+    "anova": [{"params": ["Lm", "Lm"], "returns": "Anova"}],
     "approx_fun": [{"params": ["Vec", "Vec"], "returns": "ApproxFun"},
      {"params": ["Vec", "Vec", "string", "int"], "returns": "ApproxFun"},
      {"params": ["Vec", "Vec", "string", "int", "float"], "returns": "ApproxFun"}],
     "arima": [{"params": ["int", "int", "int"], "returns": "ArimaSpec"}],
     "arima_sim": [{"params": ["Rng", "int", "Vec", "Vec", "float"], "returns": "Vec"},
      {"params": ["Rng", "int", "Vec", "Vec", "float", "int"], "returns": "Vec"}],
+    "as_matrix": [{"params": ["Frame"], "returns": "Mat"}],
     "asin": [{"params": ["float"], "returns": "float"}],
     "atan": [{"params": ["float"], "returns": "float"}],
     "atan2": [{"params": ["float", "float"], "returns": "float"}],
@@ -549,22 +659,33 @@
     "beta_dist": [{"params": ["float", "float"], "returns": "Dist"}],
     "beta_inc": [{"params": ["float", "float", "float"], "returns": "float"}],
     "binom": [{"params": ["int", "float"], "returns": "Dist"}],
+    "bw": [{"params": ["Vec", "string"], "returns": "float"}],
     "cauchy": [{"params": ["float", "float"], "returns": "Dist"}],
     "ceil": [{"params": ["float"], "returns": "float"}],
-    "chisq": [{"params": ["float"], "returns": "Dist"}],
+    "chisq": [{"params": ["float"], "returns": "Dist"},
+     {"params": ["float", "float"], "returns": "Dist"}],
     "choose": [{"params": ["float", "float"], "returns": "float"}],
+    "cmdscale": [{"params": ["Mat", "int"], "returns": "Mds"}],
     "cosh": [{"params": ["float"], "returns": "float"}],
     "cvec": [{"params": ["Vec", "Vec"], "returns": "CVec"}],
+    "density": [{"params": ["Vec"], "returns": "Density"},
+     {"params": ["Vec", "float", "string"], "returns": "Density"},
+     {"params": ["Vec", "string"], "returns": "Density"},
+     {"params": ["Vec", "string", "string"], "returns": "Density"},
+     {"params": ["Vec", "string", "string", "float"], "returns": "Density"}],
+    "diag": [{"params": ["Vec"], "returns": "Mat"}],
     "digamma": [{"params": ["float"], "returns": "float"}],
     "dist": [{"params": ["string", "float"], "returns": "Dist"},
      {"params": ["string", "float", "float"], "returns": "Dist"},
      {"params": ["string", "float", "float", "float"], "returns": "Dist"}],
+    "ecdf": [{"params": ["Vec"], "returns": "Ecdf"}],
     "erf": [{"params": ["float"], "returns": "float"}],
     "erfc": [{"params": ["float"], "returns": "float"}],
     "exp": [{"params": ["float"], "returns": "float"}],
     "exp_dist": [{"params": ["float"], "returns": "Dist"}],
     "expm1": [{"params": ["float"], "returns": "float"}],
-    "f_dist": [{"params": ["float", "float"], "returns": "Dist"}],
+    "f_dist": [{"params": ["float", "float"], "returns": "Dist"},
+     {"params": ["float", "float", "float"], "returns": "Dist"}],
     "factorial": [{"params": ["float"], "returns": "float"}],
     "fft": [{"params": ["Vec"], "returns": "CVec"}],
     "fmt": [{"params": ["string", "float"], "returns": "string"},
@@ -582,7 +703,11 @@
     "hclust": [{"params": ["Frame", "string"], "returns": "Hclust"},
      {"params": ["Frame", "string", "string"], "returns": "Hclust"},
      {"params": ["Frame", "string", "string", "float"], "returns": "Hclust"}],
+    "hist": [{"params": ["Vec"], "returns": "Hist"},
+     {"params": ["Vec", "Vec"], "returns": "Hist"},
+     {"params": ["Vec", "string"], "returns": "Hist"}],
     "hyper": [{"params": ["int", "int", "int"], "returns": "Dist"}],
+    "identity": [{"params": ["int"], "returns": "Mat"}],
     "inf": [{"params": [], "returns": "float"}],
     "integrate": [{"params": ["float", "float"], "returns": "Integral"}],
     "is_finite": [{"params": ["float"], "returns": "bool"}],
@@ -613,6 +738,8 @@
     "log2": [{"params": ["float"], "returns": "float"}],
     "logis": [{"params": ["float", "float"], "returns": "Dist"}],
     "lpad": [{"params": ["string", "int"], "returns": "string"}],
+    "mahalanobis": [{"params": ["Mat", "Vec", "Mat"], "returns": "Vec"}],
+    "matrix": [{"params": ["Vec", "int", "bool"], "returns": "Mat"}],
     "minimize": [{"params": ["Vec", "string"], "returns": "Minimizer"}],
     "nan": [{"params": [], "returns": "float"}],
     "nbinom": [{"params": ["float", "float"], "returns": "Dist"}],
@@ -624,6 +751,10 @@
     "parse_vec": [{"params": ["string"], "returns": "Vec"}],
     "pi": [{"params": [], "returns": "float"}],
     "pois": [{"params": ["float"], "returns": "Dist"}],
+    "prcomp": [{"params": ["Frame", "bool"], "returns": "Pca"},
+     {"params": ["Frame", "bool", "bool"], "returns": "Pca"},
+     {"params": ["Mat", "bool"], "returns": "Pca"}],
+    "pretty": [{"params": ["float", "float", "int"], "returns": "Vec"}],
     "read_csv": [{"params": ["string"], "returns": "Frame"}],
     "rep": [{"params": ["float", "int"], "returns": "Vec"}],
     "rng": [{"params": ["int"], "returns": "Rng"}],
@@ -645,12 +776,15 @@
     "stl_periodic": [{"params": ["Vec", "int"], "returns": "Stl"},
      {"params": ["Vec", "int", "bool"], "returns": "Stl"}],
     "strs": [{"params": [], "returns": "StrList"}],
-    "t_dist": [{"params": ["float"], "returns": "Dist"}],
+    "t_dist": [{"params": ["float"], "returns": "Dist"},
+     {"params": ["float", "float"], "returns": "Dist"}],
     "tan": [{"params": ["float"], "returns": "float"}],
     "tanh": [{"params": ["float"], "returns": "float"}],
     "test": [{"params": ["string"], "returns": "Test"}],
     "trigamma": [{"params": ["float"], "returns": "float"}],
     "trunc": [{"params": ["float"], "returns": "float"}],
+    "tukey": [{"params": ["float", "float"], "returns": "Dist"},
+     {"params": ["float", "float", "float"], "returns": "Dist"}],
     "unif": [{"params": ["float", "float"], "returns": "Dist"}],
     "uniroot": [{"params": ["float", "float"], "returns": "RootFinder"}],
     "vec": [{"params": [], "returns": "Vec"}],

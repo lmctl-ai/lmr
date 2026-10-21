@@ -150,6 +150,8 @@ void bind_smooth(Binder& b);   // splines, approx, smooth.spline, loess
 void bind_ts(Binder& b);       // acf, pacf, arima, arima_sim, stl
 void bind_cluster(Binder& b);  // kmeans, hclust
 void bind_optim(Binder& b);    // minimize, optimize, uniroot, integrate
+void bind_multivar(Binder& b); // Mat, eigen, svd, prcomp, cmdscale, mahalanobis
+void bind_kde(Binder& b);      // density, bw, ecdf, hist, pretty
 void bind_all(Binder& b);
 
 }  // namespace rcli::host

@@ -33,16 +33,39 @@ namespace rcli {
 // Data
 // ===================================================================================================================
 
+size_t Data::nrow() const {
+  if (!cols.empty()) return cols[0].size();
+  if (!text_cols.empty()) return text_cols[0].size();
+  return 0;
+}
+
+bool Data::is_text(const std::string& name) const {
+  return std::find(text_names.begin(), text_names.end(), name) != text_names.end();
+}
+
+bool Data::has(const std::string& name) const {
+  return is_text(name) || std::find(names.begin(), names.end(), name) != names.end();
+}
+
 const Vec& Data::col(const std::string& name) const {
   for (size_t i = 0; i < names.size(); ++i)
     if (names[i] == name) return cols[i];
+  if (is_text(name)) throw Error("Data: column '" + name + "' is text, not numeric");
   throw Error("Data: object '" + name + "' not found");
 }
 
+const std::vector<std::string>& Data::text(const std::string& name) const {
+  for (size_t i = 0; i < text_names.size(); ++i)
+    if (text_names[i] == name) return text_cols[i];
+  throw Error("Data: text column '" + name + "' not found");
+}
+
 void Data::add(const std::string& name, Vec v) {
-  if (!cols.empty() && v.size() != nrow())
+  if ((!cols.empty() || !text_cols.empty()) && v.size() != nrow())
     throw Error("Data: column '" + name + "' has length " + std::to_string(v.size()) + ", expected " +
                 std::to_string(nrow()));
+  if (is_text(name)) throw Error("Data: column '" + name + "' already exists as a text column");
+  if (std::find(order.begin(), order.end(), name) == order.end()) order.push_back(name);
   for (size_t i = 0; i < names.size(); ++i)
     if (names[i] == name) {
       cols[i] = std::move(v);
@@ -50,6 +73,33 @@ void Data::add(const std::string& name, Vec v) {
     }
   names.push_back(name);
   cols.push_back(std::move(v));
+}
+
+void Data::add_text(const std::string& name, std::vector<std::string> v) {
+  if ((!cols.empty() || !text_cols.empty()) && v.size() != nrow())
+    throw Error("Data: column '" + name + "' has length " + std::to_string(v.size()) + ", expected " +
+                std::to_string(nrow()));
+  if (std::find(names.begin(), names.end(), name) != names.end())
+    throw Error("Data: column '" + name + "' already exists as a numeric column");
+  if (std::find(order.begin(), order.end(), name) == order.end()) order.push_back(name);
+  for (size_t i = 0; i < text_names.size(); ++i)
+    if (text_names[i] == name) {
+      text_cols[i] = std::move(v);
+      return;
+    }
+  text_names.push_back(name);
+  text_cols.push_back(std::move(v));
+}
+
+std::vector<std::string> Data::column_order() const {
+  std::vector<std::string> out;
+  for (const auto& n : order)
+    if (has(n) && std::find(out.begin(), out.end(), n) == out.end()) out.push_back(n);
+  for (const auto& n : names)
+    if (std::find(out.begin(), out.end(), n) == out.end()) out.push_back(n);
+  for (const auto& n : text_names)
+    if (std::find(out.begin(), out.end(), n) == out.end()) out.push_back(n);
+  return out;
 }
 
 int CoefTable::index(const std::string& name) const {
@@ -192,6 +242,8 @@ class FormulaParser {
     TermSet rhs = sum();
     if (peek().kind != Tok::End) throw Error("formula: unexpected '" + peek().text + "' in '" + text_ + "'");
     f.intercept = rhs.icpt != -1;
+    for (const auto& v : vars_)
+      if (v != f.response) f.variables.push_back(v);
     std::stable_sort(rhs.terms.begin(), rhs.terms.end(),
                      [](const std::vector<int>& x, const std::vector<int>& y) { return x.size() < y.size(); });
     for (const auto& t : rhs.terms) {
@@ -326,7 +378,7 @@ class FormulaParser {
     if (t.kind == Tok::Name && t.text == "." && !(toks_[pos_ + 1].kind == Tok::Op && toks_[pos_ + 1].text == "(")) {
       ++pos_;
       if (!data_) throw Error("formula: '.' in formula and no 'data' argument");
-      for (const auto& nm : data_->names) {
+      for (const auto& nm : data_->column_order()) {
         if (std::find(response_vars_.begin(), response_vars_.end(), nm) != response_vars_.end()) continue;
         std::vector<int> term{var_index(nm)};
         if (!has_term(r, term)) r.terms.push_back(term);
@@ -573,29 +625,296 @@ void check_finite_design(const char* fn, const Matrix& X, const Vec& y) {
     if (std::isinf(v)) throw Error(std::string(fn) + ": NA/NaN/Inf in 'y'");
 }
 
-// Rows with no NaN in y, X or the extra vectors (R's default na.action = na.omit).
-std::vector<size_t> complete_rows(const Vec& y, const Matrix& X, const std::vector<const Vec*>& extra) {
-  std::vector<size_t> rows;
-  for (size_t i = 0; i < y.size(); ++i) {
-    bool ok = !std::isnan(y[i]);
-    for (size_t j = 0; ok && j < X.cols; ++j) ok = !std::isnan(X(i, j));
-    for (const Vec* e : extra)
-      if (ok && e && !e->empty()) ok = !std::isnan((*e)[i]);
-    if (ok) rows.push_back(i);
-  }
-  return rows;
-}
-
-Matrix take_rows(const Matrix& X, const std::vector<size_t>& rows) {
-  Matrix out(rows.size(), X.cols);
-  for (size_t i = 0; i < rows.size(); ++i)
-    for (size_t j = 0; j < X.cols; ++j) out(i, j) = X(rows[i], j);
-  return out;
-}
 Vec take(const Vec& v, const std::vector<size_t>& rows) {
   Vec out(rows.size());
   for (size_t i = 0; i < rows.size(); ++i) out[i] = v[rows[i]];
   return out;
+}
+
+// ===================================================================================================================
+// Factors and the model matrix
+//
+// Coding follows J. M. Chambers and T. J. Hastie (eds.), "Statistical Models in S" (Wadsworth 1992), section 2.4.1:
+// the columns of a term are the products of one column set per variable (the first variable varying fastest); a
+// numeric variable gives itself; a factor F in term T is coded by contrasts (here treatment contrasts: indicators of
+// levels 2..L, the first level being the baseline) when the margin T\F is already spanned by the terms before T, and
+// by indicators of all L levels otherwise. "Spanned" was established by black-box experiments with R's model.matrix:
+//  - a non-empty margin T\F is spanned when it is contained in an earlier term (y ~ z:x + x:a codes a by contrasts;
+//    y ~ a:c + a:b codes c in a:c by indicators but b in a:b by contrasts);
+//  - the empty margin (a factor main effect) is spanned by the intercept or, without an intercept, by an earlier
+//    factor main effect (y ~ 0 + a + b: indicators for a, contrasts for b; y ~ 0 + x + a: indicators for a).
+// Terms are already ordered by degree (R's terms()), so main effects precede interactions.
+// ===================================================================================================================
+
+// A double printed as R's as.character: up to 15 significant digits (the fewest that reproduce the value rounded to
+// 15 digits), in fixed notation unless scientific notation is narrower (R's ?options "scipen" = 0 rule).
+std::string r_num_label(double x) {
+  if (x == 0) return "0";
+  if (std::isnan(x)) return "NaN";
+  if (std::isinf(x)) return x > 0 ? "Inf" : "-Inf";
+  char buf[64];
+  std::snprintf(buf, sizeof buf, "%.14e", x);
+  double target = std::strtod(buf, nullptr);
+  int sig = 15;
+  for (int k = 1; k <= 15; ++k) {
+    std::snprintf(buf, sizeof buf, "%.*e", k - 1, x);
+    if (std::strtod(buf, nullptr) == target) {
+      sig = k;
+      break;
+    }
+  }
+  std::snprintf(buf, sizeof buf, "%.*e", sig - 1, x);
+  std::string sci = buf;
+  int ex = std::atoi(sci.c_str() + sci.find('e') + 1);
+  int neg = x < 0 ? 1 : 0;
+  int decimals = std::max(0, sig - 1 - ex);
+  int fixed_width = ex >= 0 ? neg + ex + 1 + (decimals > 0 ? 1 + decimals : 0) : neg + 1 + (-ex) + sig;
+  if (fixed_width > static_cast<int>(sci.size())) return sci;
+  std::snprintf(buf, sizeof buf, "%.*f", decimals, x);
+  return buf;
+}
+
+// factor(v) / as.factor(v): returns the inner expression.
+bool factor_call(const std::string& label, std::string* inner) {
+  for (const char* fn : {"factor(", "as.factor("}) {
+    std::string pre = fn;
+    if (label.size() > pre.size() && label.compare(0, pre.size(), pre) == 0 && label.back() == ')') {
+      *inner = label.substr(pre.size(), label.size() - pre.size() - 1);
+      return true;
+    }
+  }
+  return false;
+}
+
+// One evaluated formula variable: numeric values, or a factor's per-row labels.
+struct VarData {
+  bool factor = false;
+  bool numeric_levels = false;     // factor(v) of a numeric v: levels sort by value
+  Vec num;                         // numeric variable values, or v for factor(v)
+  std::vector<std::string> lab;    // factor labels per row
+  std::vector<bool> miss;          // factor value missing (NaN in v)
+};
+
+VarData eval_variable(const std::string& label, const Data& d) {
+  VarData v;
+  size_t n = d.nrow();
+  std::string inner;
+  if (d.is_text(label)) {
+    v.factor = true;
+    v.lab = d.text(label);
+    v.miss.assign(n, false);
+  } else if (factor_call(label, &inner)) {
+    v.factor = true;
+    if (d.is_text(inner)) {
+      v.lab = d.text(inner);
+      v.miss.assign(n, false);
+    } else {
+      v.numeric_levels = true;
+      v.num = eval_var(inner, d);
+      v.lab.resize(v.num.size());
+      v.miss.resize(v.num.size());
+      for (size_t i = 0; i < v.num.size(); ++i) {
+        v.miss[i] = std::isnan(v.num[i]);
+        if (!v.miss[i]) v.lab[i] = r_num_label(v.num[i]);
+      }
+    }
+  } else {
+    v.num = eval_var(label, d);
+  }
+  if ((v.factor ? v.lab.size() : v.num.size()) != n)
+    throw Error("formula: variable '" + label + "' has the wrong length");
+  return v;
+}
+
+// Levels of a factor over the rows in mask: text in byte order (std::string comparison is unsigned-byte
+// lexicographic, R's order in the C locale), numeric values in numeric order labelled by r_num_label.
+std::vector<std::string> learn_levels(const VarData& v, const std::vector<bool>& mask) {
+  std::vector<std::string> out;
+  if (v.numeric_levels) {
+    Vec vals;
+    for (size_t i = 0; i < v.num.size(); ++i)
+      if (mask[i] && !v.miss[i]) vals.push_back(v.num[i]);
+    std::sort(vals.begin(), vals.end());
+    std::set<std::string> seen;
+    for (double x : vals) {
+      std::string s = r_num_label(x);
+      if (seen.insert(s).second) out.push_back(s);
+    }
+  } else {
+    std::set<std::string> s;
+    for (size_t i = 0; i < v.lab.size(); ++i)
+      if (mask[i] && !v.miss[i]) s.insert(v.lab[i]);
+    out.assign(s.begin(), s.end());
+  }
+  return out;
+}
+
+// The variables and terms of a formula: terms as lists of indices into the variable labels.
+struct TermStructure {
+  std::vector<std::string> vars;
+  std::vector<std::vector<int>> terms;
+};
+
+TermStructure term_structure(const Formula& f) {
+  TermStructure ts;
+  for (const auto& lab : f.term_labels) {
+    std::vector<int> t;
+    for (const auto& var : split_term(lab)) {
+      auto it = std::find(ts.vars.begin(), ts.vars.end(), var);
+      if (it == ts.vars.end()) {
+        ts.vars.push_back(var);
+        t.push_back(static_cast<int>(ts.vars.size() - 1));
+      } else {
+        t.push_back(static_cast<int>(it - ts.vars.begin()));
+      }
+    }
+    ts.terms.push_back(t);
+  }
+  return ts;
+}
+
+// Model matrix rows `rows` from evaluated variables and factor levels (levels[k] used when vars[k] is a factor).
+Matrix build_design(const Formula& f, const TermStructure& ts, const std::vector<VarData>& vd,
+                    const std::vector<std::vector<std::string>>& levels, const std::vector<size_t>& rows,
+                    std::vector<std::string>* colnames, std::vector<int>* assign) {
+  size_t n = rows.size();
+  // Level codes per factor variable (-1: missing).
+  std::vector<std::vector<int>> code(ts.vars.size());
+  for (size_t k = 0; k < ts.vars.size(); ++k) {
+    if (!vd[k].factor) continue;
+    if (levels[k].size() < 2) throw Error("contrasts can be applied only to factors with 2 or more levels");
+    std::map<std::string, int> idx;
+    for (size_t l = 0; l < levels[k].size(); ++l) idx[levels[k][l]] = static_cast<int>(l);
+    code[k].assign(n, -1);
+    for (size_t i = 0; i < n; ++i) {
+      size_t r = rows[i];
+      if (vd[k].miss[r]) continue;
+      auto it = idx.find(vd[k].lab[r]);
+      if (it == idx.end()) throw Error("factor " + ts.vars[k] + " has new level " + vd[k].lab[r]);
+      code[k][i] = it->second;
+    }
+  }
+  std::vector<Vec> columns;
+  std::vector<std::string> names;
+  std::vector<int> asg;
+  if (f.intercept) {
+    columns.emplace_back(n, 1.0);
+    names.push_back("(Intercept)");
+    asg.push_back(0);
+  }
+  for (size_t t = 0; t < ts.terms.size(); ++t) {
+    const std::vector<int>& term = ts.terms[t];
+    // Per variable: the list of levels to take (factor), or {-1} for a numeric variable.
+    std::vector<std::vector<int>> pieces;
+    for (int v : term) {
+      std::vector<int> pc;
+      if (!vd[v].factor) {
+        pc.push_back(-1);
+      } else {
+        std::vector<int> margin;
+        for (int u : term)
+          if (u != v) margin.push_back(u);
+        bool spanned = false;
+        for (size_t s = 0; s < t && !spanned; ++s) {
+          const std::vector<int>& prev = ts.terms[s];
+          if (margin.empty()) {
+            spanned = prev.size() == 1 && vd[prev[0]].factor;
+          } else {
+            spanned = std::all_of(margin.begin(), margin.end(), [&](int u) {
+              return std::find(prev.begin(), prev.end(), u) != prev.end();
+            });
+          }
+        }
+        if (margin.empty() && f.intercept) spanned = true;
+        for (size_t l = spanned ? 1 : 0; l < levels[v].size(); ++l) pc.push_back(static_cast<int>(l));
+      }
+      pieces.push_back(pc);
+    }
+    std::vector<size_t> pos(term.size(), 0);
+    while (true) {
+      Vec col(n, 1.0);
+      std::string name;
+      for (size_t q = 0; q < term.size(); ++q) {
+        int v = term[q];
+        int lev = pieces[q][pos[q]];
+        if (q) name += ":";
+        name += ts.vars[v];
+        if (lev < 0) {
+          for (size_t i = 0; i < n; ++i) col[i] *= vd[v].num[rows[i]];
+        } else {
+          name += levels[v][static_cast<size_t>(lev)];
+          for (size_t i = 0; i < n; ++i) col[i] *= code[v][i] < 0 ? kNaN : (code[v][i] == lev ? 1.0 : 0.0);
+        }
+      }
+      columns.push_back(std::move(col));
+      names.push_back(name);
+      asg.push_back(static_cast<int>(t + 1));
+      size_t q = 0;  // odometer, first variable fastest
+      while (q < term.size() && ++pos[q] == pieces[q].size()) pos[q++] = 0;
+      if (q == term.size()) break;
+    }
+  }
+  Matrix X(n, columns.size());
+  for (size_t j = 0; j < columns.size(); ++j)
+    for (size_t i = 0; i < n; ++i) X(i, j) = columns[j][i];
+  if (colnames) *colnames = names;
+  if (assign) *assign = asg;
+  return X;
+}
+
+// The model frame of a fit: complete rows (R's na.omit over the response, the variables and the extra vectors),
+// factor levels learned from those rows (R's drop.unused.levels), and the model matrix on those rows.
+struct ModelFrame {
+  Formula f;                       // with xlevels set
+  Matrix X;
+  Vec y;
+  std::vector<size_t> rows;
+  std::vector<std::string> names;
+  std::vector<int> assign;
+};
+
+ModelFrame model_frame(const Formula& f, const Data& d, const std::vector<const Vec*>& extra, const char* fn) {
+  ModelFrame mf;
+  mf.f = f;
+  Vec yall = f.response_values(d);
+  size_t N = yall.size();
+  TermStructure ts = term_structure(f);
+  std::vector<VarData> vd;
+  for (const auto& v : ts.vars) vd.push_back(eval_variable(v, d));
+  std::vector<VarData> vd_extra;
+  for (const auto& v : f.variables)  // variables outside the terms still take part in NA removal
+    if (std::find(ts.vars.begin(), ts.vars.end(), v) == ts.vars.end() && v != f.response) {
+      VarData extra_var = eval_variable(v, d);
+      extra_var.factor = true;  // only the missing flags matter
+      if (extra_var.miss.empty()) {
+        extra_var.miss.resize(extra_var.num.size());
+        for (size_t i = 0; i < extra_var.num.size(); ++i) extra_var.miss[i] = std::isnan(extra_var.num[i]);
+      }
+      vd_extra.push_back(std::move(extra_var));
+    }
+  std::vector<bool> mask(N);
+  for (size_t i = 0; i < N; ++i) {
+    bool ok = !std::isnan(yall[i]);
+    for (const VarData& v : vd)
+      if (ok) ok = v.factor ? !v.miss[i] : !std::isnan(v.num[i]);
+    for (const VarData& v : vd_extra)
+      if (ok) ok = !v.miss[i];
+    for (const Vec* e : extra)
+      if (ok && e && !e->empty()) ok = !std::isnan((*e)[i]);
+    mask[i] = ok;
+    if (ok) mf.rows.push_back(i);
+  }
+  if (mf.rows.empty()) throw Error(std::string(fn) + ": 0 (non-NA) cases");
+  std::vector<std::vector<std::string>> levels(ts.vars.size());
+  for (size_t k = 0; k < ts.vars.size(); ++k) {
+    if (!vd[k].factor) continue;
+    auto it = f.xlevels.find(ts.vars[k]);
+    levels[k] = it != f.xlevels.end() ? it->second : learn_levels(vd[k], mask);
+    mf.f.xlevels[ts.vars[k]] = levels[k];
+  }
+  mf.X = build_design(f, ts, vd, levels, mf.rows, &mf.names, &mf.assign);
+  mf.y = take(yall, mf.rows);
+  return mf;
 }
 
 }  // namespace
@@ -608,32 +927,29 @@ Formula Formula::parse(const std::string& text, const Data* data) { return Formu
 
 Vec Formula::response_values(const Data& d) const {
   if (response.empty()) throw Error("formula: the formula has no response");
+  std::string inner;
+  if (d.is_text(response) || factor_call(response, &inner))
+    throw Error("formula: the response '" + response + "' is a factor (text); the response must be numeric");
   Vec y = eval_var(response, d);
   if (y.size() != d.nrow()) throw Error("formula: response length differs from the data");
   return y;
 }
 
-Matrix Formula::design(const Data& d, std::vector<std::string>* colnames) const {
+Matrix Formula::design(const Data& d, std::vector<std::string>* colnames, std::vector<int>* assign) const {
   size_t n = d.nrow();
-  size_t p = term_labels.size() + (intercept ? 1 : 0);
-  Matrix X(n, p, 1.0);
-  std::vector<std::string> names;
-  size_t j = 0;
-  if (intercept) {
-    names.push_back("(Intercept)");
-    ++j;
+  TermStructure ts = term_structure(*this);
+  std::vector<VarData> vd;
+  for (const auto& v : ts.vars) vd.push_back(eval_variable(v, d));
+  std::vector<bool> all(n, true);
+  std::vector<std::vector<std::string>> levels(ts.vars.size());
+  for (size_t k = 0; k < ts.vars.size(); ++k) {
+    if (!vd[k].factor) continue;
+    auto it = xlevels.find(ts.vars[k]);
+    levels[k] = it != xlevels.end() ? it->second : learn_levels(vd[k], all);
   }
-  for (const auto& lab : term_labels) {
-    for (const auto& var : split_term(lab)) {
-      Vec v = eval_var(var, d);
-      if (v.size() != n) throw Error("formula: variable '" + var + "' has the wrong length");
-      for (size_t i = 0; i < n; ++i) X(i, j) *= v[i];
-    }
-    names.push_back(lab);
-    ++j;
-  }
-  if (colnames) *colnames = names;
-  return X;
+  std::vector<size_t> rows(n);
+  for (size_t i = 0; i < n; ++i) rows[i] = i;
+  return build_design(*this, ts, vd, levels, rows, colnames, assign);
 }
 
 // ===================================================================================================================
@@ -660,18 +976,17 @@ Vec LmFit::predict_se(const Data& newdata) const {
 }
 
 LmFit lm(const Formula& f, const Data& d, const Vec* weights) {
-  Vec yall = f.response_values(d);
-  std::vector<std::string> names;
-  Matrix Xall = f.design(d, &names);
-  size_t N = yall.size();
+  size_t N = d.nrow();
   if (weights) {
     if (weights->size() != N) throw Error("lm: 'weights' must have the same length as the data");
     for (double w : *weights)
       if (w < 0 || std::isinf(w)) throw Error("lm: missing or negative weights not allowed");
   }
-  std::vector<size_t> rows = complete_rows(yall, Xall, {weights});
-  Matrix X = take_rows(Xall, rows);
-  Vec y = take(yall, rows);
+  ModelFrame mf = model_frame(f, d, {weights}, "lm");
+  const std::vector<size_t>& rows = mf.rows;
+  const std::vector<std::string>& names = mf.names;
+  const Matrix& X = mf.X;
+  const Vec& y = mf.y;
   Vec w = weights ? take(*weights, rows) : Vec(rows.size(), 1.0);
   check_finite_design("lm", X, y);
   size_t n = y.size(), p = X.cols;
@@ -689,7 +1004,8 @@ LmFit lm(const Formula& f, const Data& d, const Vec* weights) {
     yw[k] = y[pos[k]] * s;
   }
   QR qr(Xw, 1e-7);
-  Vec b = qr.solve_r(qr.qty(yw));
+  Vec effects = qr.qty(yw);
+  Vec b = qr.solve_r(effects);
   Vec est(p, kNaN);
   std::vector<bool> aliased(p, true);
   for (size_t k = 0; k < qr.rank; ++k) {
@@ -698,7 +1014,10 @@ LmFit lm(const Formula& f, const Data& d, const Vec* weights) {
   }
 
   LmFit fit;
-  fit.formula = f;
+  fit.formula = mf.f;
+  fit.assign = mf.assign;
+  fit.effects = effects;
+  for (size_t k = 0; k < p; ++k) fit.qr_pivot.push_back(static_cast<int>(qr.pivot[k]));
   fit.n = static_cast<int>(pos.size());
   fit.rank = static_cast<int>(qr.rank);
   fit.df_residual = fit.n - fit.rank;
@@ -1030,41 +1349,10 @@ IrlsResult irls(const Family& fam, const Matrix& X, const Vec& y, const Vec& wt,
 
 }  // namespace
 
-Vec GlmFit::predict(const Data& newdata, const std::string& type) const {
-  Vec eta = linear_predict(formula, coef, newdata);
-  if (type == "link") return eta;
-  if (type != "response") throw Error("predict: type must be \"link\" or \"response\"");
-  Family fam = make_family(family, link);
-  for (double& e : eta) e = std::isnan(e) ? kNaN : fam.linkinv(e);
-  return eta;
-}
-
-GlmFit glm(const Formula& f, const Data& d, const GlmOptions& opt) {
-  Family fam = make_family(opt.family, opt.link);
-  if (!(opt.epsilon > 0)) throw Error("glm: value of 'epsilon' must be > 0");
-  if (opt.maxit < 1) throw Error("glm: maximum number of iterations must be > 0");
-  Vec yall = f.response_values(d);
-  std::vector<std::string> names;
-  Matrix Xall = f.design(d, &names);
-  size_t N = yall.size();
-  if (!opt.weights.empty()) {
-    if (opt.weights.size() != N) throw Error("glm: 'weights' must have the same length as the data");
-    for (double w : opt.weights)
-      if (w < 0 || std::isinf(w)) throw Error("glm: negative weights not allowed");
-  }
-  if (!opt.offset.empty() && opt.offset.size() != N)
-    throw Error("glm: number of offsets is " + std::to_string(opt.offset.size()) + ", should equal " +
-                std::to_string(N) + " (number of observations)");
-  std::vector<size_t> rows = complete_rows(yall, Xall, {&opt.weights, &opt.offset});
-  Matrix X = take_rows(Xall, rows);
-  Vec y = take(yall, rows);
-  Vec wt = opt.weights.empty() ? Vec(rows.size(), 1.0) : take(opt.weights, rows);
-  Vec off = opt.offset.empty() ? Vec(rows.size(), 0.0) : take(opt.offset, rows);
-  check_finite_design("glm", X, y);
+namespace {
+// Family initialisation and starting values (?family / ?glm); binomial y with zero weight is set to 0.
+Vec glm_start(const Family& fam, Vec& y, const Vec& wt) {
   size_t n = y.size();
-  if (n == 0) throw Error("glm: 0 (non-NA) cases");
-
-  // Family initialisation and starting values (?family / ?glm).
   Vec mustart(n);
   for (size_t i = 0; i < n; ++i) {
     switch (fam.fam) {
@@ -1084,10 +1372,53 @@ GlmFit glm(const Formula& f, const Data& d, const GlmOptions& opt) {
         break;
     }
   }
+  return mustart;
+}
+}  // namespace
+
+Vec GlmFit::predict(const Data& newdata, const std::string& type) const {
+  Vec eta = linear_predict(formula, coef, newdata);
+  if (type == "link") return eta;
+  if (type != "response") throw Error("predict: type must be \"link\" or \"response\"");
+  Family fam = make_family(family, link);
+  for (double& e : eta) e = std::isnan(e) ? kNaN : fam.linkinv(e);
+  return eta;
+}
+
+GlmFit glm(const Formula& f, const Data& d, const GlmOptions& opt) {
+  Family fam = make_family(opt.family, opt.link);
+  if (!(opt.epsilon > 0)) throw Error("glm: value of 'epsilon' must be > 0");
+  if (opt.maxit < 1) throw Error("glm: maximum number of iterations must be > 0");
+  size_t N = d.nrow();
+  if (!opt.weights.empty()) {
+    if (opt.weights.size() != N) throw Error("glm: 'weights' must have the same length as the data");
+    for (double w : opt.weights)
+      if (w < 0 || std::isinf(w)) throw Error("glm: negative weights not allowed");
+  }
+  if (!opt.offset.empty() && opt.offset.size() != N)
+    throw Error("glm: number of offsets is " + std::to_string(opt.offset.size()) + ", should equal " +
+                std::to_string(N) + " (number of observations)");
+  ModelFrame mf = model_frame(f, d, {&opt.weights, &opt.offset}, "glm");
+  const std::vector<size_t>& rows = mf.rows;
+  const std::vector<std::string>& names = mf.names;
+  const Matrix& X = mf.X;
+  Vec y = mf.y;
+  Vec wt = opt.weights.empty() ? Vec(rows.size(), 1.0) : take(opt.weights, rows);
+  Vec off = opt.offset.empty() ? Vec(rows.size(), 0.0) : take(opt.offset, rows);
+  check_finite_design("glm", X, y);
+  size_t n = y.size();
+  Vec mustart = glm_start(fam, y, wt);
   IrlsResult r = irls(fam, X, y, wt, off, mustart, opt.maxit, opt.epsilon);
 
   GlmFit g;
-  g.formula = f;
+  g.formula = mf.f;
+  g.assign = mf.assign;
+  g.model_matrix = X;
+  g.y = y;
+  g.prior_weights = wt;
+  g.offset = off;
+  g.maxit = opt.maxit;
+  g.epsilon = opt.epsilon;
   g.family = opt.family;
   g.link = opt.link == "default" || opt.link.empty()
                ? std::string(fam.fam == Fam::Gaussian ? "identity"
@@ -1164,6 +1495,173 @@ GlmFit glm(const Formula& f, const Data& d, const GlmOptions& opt) {
   g.coef = make_table(names, r.coef, r.aliased, g.cov_unscaled, g.dispersion, g.df_residual,
                       !fam.dispersion_fixed());
   return g;
+}
+
+// ===================================================================================================================
+// Analysis of variance and deviance tables
+//
+// Sequential (type I) sums of squares from the orthogonal effects Q'y of the QR decomposition: the squared effects of
+// the columns of each term, in model order (Chambers & Hastie 1992, "Statistical Models in S", section 5.2; Seber &
+// Lee, "Linear Regression Analysis", 2nd ed., section 4.5); analysis of deviance by refitting the nested sequence of models
+// (McCullagh & Nelder 1989, section 2.3.2 and 4.4); layout and column names as documented in ?anova.lm and ?anova.glm.
+// ===================================================================================================================
+
+const Vec& AnovaTable::col(const std::string& name) const {
+  for (size_t j = 0; j < col_names.size(); ++j)
+    if (col_names[j] == name) return cols[j];
+  throw Error("anova: no column '" + name + "'");
+}
+
+double AnovaTable::at(const std::string& row, const std::string& column) const {
+  const Vec& c = col(column);
+  for (size_t i = 0; i < row_names.size(); ++i)
+    if (row_names[i] == row) return c[i];
+  throw Error("anova: no row '" + row + "'");
+}
+
+namespace {
+
+std::string formula_text(const Formula& f) {
+  std::string s = f.response + " ~ ";
+  if (f.term_labels.empty()) return s + (f.intercept ? "1" : "0");
+  for (size_t i = 0; i < f.term_labels.size(); ++i) s += (i ? " + " : "") + f.term_labels[i];
+  if (!f.intercept) s += " - 1";
+  return s;
+}
+
+double pf_upper(double F, double df1, double df2) {
+  if (std::isnan(F) || !(df1 > 0) || !(df2 > 0)) return kNaN;
+  if (std::isinf(df2)) return Dist::chisq(df1).p(F * df1, false);
+  return Dist::f(df1, df2).p(F, false);
+}
+
+}  // namespace
+
+AnovaTable anova(const LmFit& fit) {
+  size_t nt = fit.formula.term_labels.size();
+  Vec ss(nt + 1, 0.0), df(nt + 1, 0.0);
+  for (int k = 0; k < fit.rank; ++k) {
+    int a = fit.assign[static_cast<size_t>(fit.qr_pivot[static_cast<size_t>(k)])];
+    ss[static_cast<size_t>(a)] += fit.effects[static_cast<size_t>(k)] * fit.effects[static_cast<size_t>(k)];
+    df[static_cast<size_t>(a)] += 1;
+  }
+  AnovaTable t;
+  t.heading = "Analysis of Variance Table\n\nResponse: " + fit.formula.response + "\n";
+  t.col_names = {"Df", "Sum Sq", "Mean Sq", "F value", "Pr(>F)"};
+  t.cols.assign(5, Vec());
+  double rdf = fit.df_residual;
+  double resvar = rdf > 0 ? fit.rss / rdf : kNaN;
+  for (size_t a = 1; a <= nt; ++a) {
+    if (df[a] == 0) continue;  // terms with no estimable columns are dropped, as R does
+    double ms = ss[a] / df[a];
+    double F = ms / resvar;
+    t.row_names.push_back(fit.formula.term_labels[a - 1]);
+    t.cols[0].push_back(df[a]);
+    t.cols[1].push_back(ss[a]);
+    t.cols[2].push_back(ms);
+    t.cols[3].push_back(F);
+    t.cols[4].push_back(pf_upper(F, df[a], rdf));
+  }
+  t.row_names.push_back("Residuals");
+  t.cols[0].push_back(rdf);
+  t.cols[1].push_back(fit.rss);
+  t.cols[2].push_back(resvar);
+  t.cols[3].push_back(kNaN);
+  t.cols[4].push_back(kNaN);
+  return t;
+}
+
+AnovaTable anova(const GlmFit& g, const std::string& test_in) {
+  std::string test = test_in == "LRT" ? "Chisq" : test_in;
+  if (test != "none" && !test.empty() && test != "Chisq" && test != "F")
+    throw Error("anova: test must be \"none\", \"Chisq\", \"LRT\" or \"F\" (\"Rao\" and \"Cp\" are not supported)");
+  Family fam = make_family(g.family, g.link);
+  size_t nt = g.formula.term_labels.size();
+  int n_ok = 0;
+  for (double w : g.prior_weights)
+    if (w != 0) ++n_ok;
+  Vec resid_df(nt + 1), resid_dev(nt + 1);
+  resid_df[0] = g.df_null;
+  resid_dev[0] = g.null_deviance;
+  for (size_t i = 1; i < nt; ++i) {
+    std::vector<size_t> keep;
+    for (size_t j = 0; j < g.assign.size(); ++j)
+      if (g.assign[j] <= static_cast<int>(i)) keep.push_back(j);
+    Matrix Xs(g.model_matrix.rows, keep.size());
+    for (size_t r = 0; r < Xs.rows; ++r)
+      for (size_t c = 0; c < keep.size(); ++c) Xs(r, c) = g.model_matrix(r, keep[c]);
+    Vec y = g.y;
+    Vec mustart = glm_start(fam, y, g.prior_weights);
+    IrlsResult r = irls(fam, Xs, y, g.prior_weights, g.offset, mustart, g.maxit, g.epsilon);
+    resid_df[i] = n_ok - static_cast<double>(r.rank);
+    resid_dev[i] = r.dev;
+  }
+  if (nt > 0) {
+    resid_df[nt] = g.df_residual;
+    resid_dev[nt] = g.deviance;
+  }
+  AnovaTable t;
+  t.heading = "Analysis of Deviance Table\n\nModel: " + g.family + ", link: " + g.link + "\n\nResponse: " +
+              g.formula.response + "\n\nTerms added sequentially (first to last)\n\n";
+  t.col_names = {"Df", "Deviance", "Resid. Df", "Resid. Dev"};
+  t.cols.assign(4, Vec());
+  t.row_names.push_back("NULL");
+  for (size_t i = 0; i <= nt; ++i) {
+    if (i > 0) t.row_names.push_back(g.formula.term_labels[i - 1]);
+    t.cols[0].push_back(i ? resid_df[i - 1] - resid_df[i] : kNaN);
+    t.cols[1].push_back(i ? resid_dev[i - 1] - resid_dev[i] : kNaN);
+    t.cols[2].push_back(resid_df[i]);
+    t.cols[3].push_back(resid_dev[i]);
+  }
+  if (test == "Chisq" || test == "F") {
+    double disp = g.dispersion;
+    double df_disp = fam.dispersion_fixed() ? kInf : static_cast<double>(g.df_residual);
+    Vec fv, pv;
+    for (size_t i = 0; i <= nt; ++i) {
+      double df = t.cols[0][i], dev = t.cols[1][i];
+      if (i == 0 || !(df > 0)) {
+        fv.push_back(kNaN);
+        pv.push_back(kNaN);
+        continue;
+      }
+      if (test == "Chisq") {
+        pv.push_back(Dist::chisq(df).p(dev / disp, false));
+      } else {
+        double F = dev / df / disp;
+        fv.push_back(F);
+        pv.push_back(pf_upper(F, df, df_disp));
+      }
+    }
+    if (test == "F") {
+      t.col_names.push_back("F");
+      t.cols.push_back(fv);
+    }
+    t.col_names.push_back(test == "F" ? "Pr(>F)" : "Pr(>Chi)");
+    t.cols.push_back(pv);
+  }
+  return t;
+}
+
+AnovaTable anova(const LmFit& m1, const LmFit& m2) {
+  if (m1.n != m2.n) throw Error("anova: models were not all fitted to the same size of dataset");
+  const LmFit& big = m2.df_residual <= m1.df_residual ? m2 : m1;
+  double scale = big.rss / big.df_residual;
+  AnovaTable t;
+  t.heading = "Analysis of Variance Table\n\nModel 1: " + formula_text(m1.formula) + "\nModel 2: " +
+              formula_text(m2.formula) + "\n";
+  t.row_names = {"1", "2"};
+  t.col_names = {"Res.Df", "RSS", "Df", "Sum of Sq", "F", "Pr(>F)"};
+  double df = static_cast<double>(m1.df_residual) - m2.df_residual;
+  double ss = m1.rss - m2.rss;
+  double F = df != 0 ? ss / df / scale : kNaN;
+  double p = df != 0 ? pf_upper(F, std::fabs(df), big.df_residual) : kNaN;
+  t.cols = {{static_cast<double>(m1.df_residual), static_cast<double>(m2.df_residual)},
+            {m1.rss, m2.rss},
+            {kNaN, df},
+            {kNaN, ss},
+            {kNaN, F},
+            {kNaN, p}};
+  return t;
 }
 
 // ===================================================================================================================

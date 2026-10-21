@@ -446,7 +446,8 @@ out.check(m.residuals("pearson").len() == 10, "pearson residuals");
 """)
 for body, msg in [
     ('let m = lm(frame().set("y", parse_vec("1 2")), "y ~ z");', "z"),
-    ('let m = lm(frame().set("y", parse_vec("1 2")).set("t", split("a,b", ",")), "y ~ t");', "column 't' is text"),
+    ('let m = lm(frame().set("y", parse_vec("1 2 3")).set("t", split("a,b,c", ",")), "t ~ y");', "the response 't' is a factor (text)"),
+    ('let m = lm(frame().set("y", parse_vec("1 2")).set("t", split("a,a", ",")), "y ~ t");', "contrasts can be applied only to factors with 2 or more levels"),
     ('let m = lm(frame().set("y", parse_vec("1 2")), "y ~ x", parse_vec("1"));', "weights have 1 values"),
     ('let m = glm(frame().set("y", parse_vec("1 2")).set("x", parse_vec("1 2")), "y ~ x", "nonsense");', "family"),
     ('let m = glm(frame().set("y", parse_vec("1 2")).set("x", parse_vec("1 2")), "y ~ x", "poisson", "log", vec(), parse_vec("1"));', "offset has 1 values"),
@@ -605,6 +606,146 @@ for body, msg in [
     ('let k = kmeans(frame().set("x", parse_vec("1 2 9")), 2, rng(1));\nout.print(str(k.size(3)));', "cluster label 3 is outside 1..2"),
 ]:
     case("cluster error: " + msg[:60], body, code=3, out=(msg,))
+
+# ---------------------------------------------------------------- matrices, PCA, MDS
+case("Mat construction, access and algebra", r"""
+let m = matrix(parse_vec("1 2 3 4"), 2, false);
+out.check(m.at(0, 1) == 3.0 && m.at(1, 0) == 2.0, "matrix fills by column like R");
+let r = matrix(parse_vec("1 2 3 4"), 2, true);
+out.check(r.at(0, 1) == 2.0 && r.t().at(1, 0) == 2.0, "byrow and transpose");
+out.check(m.det() == -2.0, "determinant");
+let inv = m.inverse();
+let id = m.mul(inv);
+out.check(abs(id.at(0, 0) - 1.0) < 0.000000000001 && abs(id.at(0, 1)) < 0.000000000001, "inverse");
+let x = m.solve(parse_vec("5 6"));
+out.check(abs(x.at(0) + 1.0) < 0.000000000001 && abs(x.at(1) - 2.0) < 0.000000000001, "solve");
+out.check(m.values().str() == "[1, 2, 3, 4]" && m.row(1).str() == "[2, 4]" && m.col(1).str() == "[3, 4]", "values row col");
+out.check(identity(2).mul_vec(parse_vec("7 8")).str() == "[7, 8]" && diag(parse_vec("2 3")).diag().str() == "[2, 3]", "identity diag");
+out.check(m.add(m).sub(m).scale(2.0).at(1, 1) == 8.0, "add sub scale");
+out.set("frame_cols", m.to_frame().ncol());
+""", values={"frame_cols": 2})
+case("eigen, svd, chol", r"""
+let a = matrix(parse_vec("4 1 1 3"), 2, false);
+let e = a.eigen();
+out.check(abs(e.values().at(0) - (3.5 + sqrt(1.25))) < 0.000000000001, "largest eigenvalue");
+let v = e.vectors().col(0);
+let av = a.mul_vec(v);
+out.check(abs(av.at(0) - e.values().at(0) * v.at(0)) < 0.000000000001, "A v = lambda v");
+let s = matrix(parse_vec("1 2 3 4 5 6"), 3, false).svd();
+out.check(s.d().len() == 2 && s.u().nrow() == 3 && s.v().nrow() == 2, "svd shapes");
+let r = a.chol();
+out.check(abs(r.t().mul(r).at(0, 1) - 1.0) < 0.000000000001 && r.at(1, 0) == 0.0, "chol is upper, R'R = A");
+""")
+case("prcomp, cmdscale, mahalanobis", r"""
+let f = frame().set("a", parse_vec("1 2 3 4 5")).set("b", parse_vec("2 1 4 3 6"));
+let p = prcomp(f, true);
+out.check(p.sdev().len() == 2 && abs(p.cumulative().at(1) - 1.0) < 0.000000001, "two components, all variance");
+out.check(p.summary() != "", "summary text");
+out.check(abs(abs(p.loading("a", 0)) - sqrt(0.5)) < 0.000000000001, "scaled 2-variable PCA loads equally");
+let d = as_matrix(f).dist("euclidean");
+let m = cmdscale(d, 1);
+out.check(m.points().ncol() == 1 && m.eig().len() == 5, "cmdscale");
+let x = as_matrix(f);
+let md = mahalanobis(x, parse_vec("3 3.2"), x.cov());
+out.check(md.len() == 5 && md.min() >= 0.0, "mahalanobis");
+""")
+for body, msg in [
+    ('let m = matrix(parse_vec("1 2 3"), 2, false);', "is not a positive multiple of nrow 2"),
+    ('let m = matrix(parse_vec("1 2 2 4"), 2, false).inverse();', "singular"),
+    ('let m = matrix(parse_vec("1 2 3 4 5 6"), 2, false).det();', "must be square"),
+    ('let m = matrix(parse_vec("1 2 3 4"), 2, false).mul(matrix(parse_vec("1 2 3"), 3, false));', "non-conformable"),
+    ('let m = matrix(parse_vec("1 2 3 4"), 2, false).at(2, 0);', "out of range"),
+    ('let p = prcomp(frame().set("a", parse_vec("1 1 1")).set("b", parse_vec("1 2 3")), true);', "cannot rescale a constant/zero column"),
+    ('let m = as_matrix(frame().set("t", split("a,b", ",")));', "is text; select the numeric columns"),
+    ('let m = matrix(parse_vec("1 2 2 1"), 2, false).chol();', "not positive"),
+]:
+    case("matrix error: " + msg, body, code=3, out=(msg,))
+
+# ---------------------------------------------------------------- factors and anova
+case("factor formulas and anova", r"""
+let f = frame().set("y", parse_vec("1 2 3 5 4 6 8 9")).set("g", split("a,a,b,b,c,c,a,b", ","))
+  .set("d", parse_vec("1 2 1 2 1 2 1 2"));
+let m = lm(f, "y ~ g + factor(d)");
+out.check(m.n_coef() == 4 && m.name(1) == "gb" && m.name(3) == "factor(d)2", "R's column names");
+let at = m.anova();
+out.check(at.n_rows() == 3 && at.row_name(2) == "Residuals" && at.columns().at(4) == "Pr(>F)", "anova shape");
+let ss = at.col("Sum Sq").sum();
+let y = f.col("y");
+out.check(abs(ss - y.var() * 7.0) < 0.000000001, "sequential SS add up to the total");
+let small = lm(f, "y ~ g");
+let n = anova(small, m);
+out.check(n.n_rows() == 2 && n.at(1, "Df") == 1.0, "nested comparison");
+let g = glm(f, "y ~ g", "poisson");
+out.check(g.anova("Chisq").at("g", "Df") == 2.0, "analysis of deviance");
+out.check(m.predict(frame().set("g", split("c", ",")).set("d", parse_vec("2"))).len() == 1, "predict with factor levels");
+""")
+for body, msg in [
+    ('let m = lm(frame().set("y", parse_vec("1 2 3")).set("g", split("a,b,a", ",")), "y ~ g"); let p = m.predict(frame().set("g", split("z", ",")));', "has new level z"),
+    ('let m = lm(frame().set("y", parse_vec("1 2 3")).set("x", parse_vec("1 2 3")), "y ~ x"); let a = m.anova().at("nope", "Df");', "nope"),
+]:
+    case("factor error: " + msg, body, code=3, out=(msg,))
+
+# ---------------------------------------------------------------- k-sample and block tests
+case("k-sample and block tests", r"""
+let x = parse_vec("1 2 3 4 5 6 7 8 9 10 11 12");
+let g = parse_vec("1 1 1 1 2 2 2 2 3 3 3 3");
+let k = test("kruskal").x(x).groups(g).run();
+out.check(k.method() == "Kruskal-Wallis rank sum test" && k.df() == 2.0 && k.p_value() < 0.02, "kruskal");
+let s = test("kruskal").x(x).groups(split("b,b,b,b,a,a,a,a,c,c,c,c", ",")).run();
+out.check(s.statistic() == k.statistic(), "text groups");
+out.check(test("bartlett").x(x.pow(2.0)).groups(g).run().p_value() < 1.0, "bartlett");
+out.check(test("fligner").x(x).groups(g).run().statistic_name() == "Fligner-Killeen:med chi-squared", "fligner");
+out.check(test("oneway").x(x).groups(g).var_equal(true).run().param("num df") == 2.0, "oneway");
+let f = test("friedman").table(parse_vec("1 2 3 2 3 1 3 1 2 1 3 2"), 4, true).run();
+out.check(f.df() == 2.0, "friedman from a blocks x groups table");
+let f2 = test("friedman").x(parse_vec("1 2 3 2 3 1 3 1 2 1 3 2")).groups(parse_vec("0 1 2 0 1 2 0 1 2 0 1 2")).blocks(parse_vec("0 0 0 1 1 1 2 2 2 3 3 3")).run();
+out.check(f2.statistic() == f.statistic(), "friedman from vectors");
+out.check(test("quade").table(parse_vec("1 2 3 2 3 1 3 1 2 1 3 2"), 4, true).run().method() == "Quade test", "quade");
+out.check(test("mcnemar").table(parse_vec("10 5 2 8"), 2, false).run().df() == 1.0, "mcnemar");
+out.check(test("ansari").x(parse_vec("1 2 3 4 5")).y(parse_vec("2 4 6 8 10 12")).run().statistic_name() == "AB", "ansari");
+""")
+for body, msg in [
+    ('let t = test("kruskal").x(parse_vec("1 2")).run();', "call .groups(...) before run()"),
+    ('let t = test("friedman").x(parse_vec("1 2")).groups(parse_vec("0 1")).run();', "call .blocks"),
+    ('let t = test("mcnemar").x(parse_vec("1 2")).run();', "call .table(values, nrow, byrow) before run()"),
+    ('let t = test("kruskal").x(parse_vec("1 2 3")).groups(parse_vec("1 1 1")).run();', "all observations are in the same group"),
+]:
+    case("test error: " + msg, body, code=3, out=(msg,))
+
+# ---------------------------------------------------------------- density, ecdf, hist, noncentral and tukey
+case("density, bandwidths, ecdf, hist, pretty", r"""
+let x = parse_vec("1 2 2 3 3 3 4 4 5 7");
+let d = density(x);
+out.check(d.x().len() == 512 && d.y().len() == 512 && d.bw() == bw(x, "nrd0"), "grid and default bandwidth");
+out.check(abs(d.at(3.0) - d.eval(parse_vec("3")).at(0)) < 0.000000000000001 && d.kernel() == "gaussian", "at and eval");
+let e = density(x, 0.5, "epanechnikov");
+out.check(e.bw() == 0.5 && e.at(100.0) == 0.0, "explicit bandwidth, compact kernel");
+out.check(density(x, "SJ", "biweight", 1.5).bw() > 0.0, "rule, kernel and adjust");
+let F = ecdf(x);
+out.check(F.at(3.0) == 0.6 && F.at(0.0) == 0.0 && F.knots().len() == 6, "ecdf");
+let h = hist(x);
+out.check(h.counts().sum() == 10.0 && h.breaks().len() == h.counts().len() + 1, "hist");
+out.check(hist(x, parse_vec("0 4 8")).counts().str() == "[8, 2]", "hist with breaks (right-closed)");
+out.check(pretty(1.0, 15.0, 5).str() == "[0, 2, 4, 6, 8, 10, 12, 14, 16]", "pretty");
+""")
+case("noncentral and studentized range distributions", r"""
+out.check(abs(t_dist(10.0, 0.0).p(1.0) - t_dist(10.0).p(1.0)) < 0.000000000000001, "ncp 0 is central t");
+out.check(abs(chisq(3.0, 2.0).mean() - 5.0) < 0.000000000001, "noncentral chi-square mean df + ncp");
+let q = f_dist(2.0, 30.0, 3.0).q(0.9);
+out.check(abs(f_dist(2.0, 30.0, 3.0).p(q) - 0.9) < 0.000000001, "F quantile round trip");
+out.check(abs(tukey(2.0, 10.0).p(3.0) - (2.0 * t_dist(10.0).p(3.0 / sqrt(2.0)) - 1.0)) < 0.00000000001, "two means: ptukey from pt");
+out.check(dist("tukey", 3.0, 20.0).name() == "tukey", "by name");
+""")
+for body, msg in [
+    ('let d = tukey(3.0, 20.0).d(1.0);', "dtukey is not available"),
+    ('let d = tukey(1.0, 20.0);', "tukey"),
+    ('let d = density(parse_vec("1 2 3"), "nonsense");', "nonsense"),
+    ('let d = density(parse_vec("1 2 3"), 0.5, "box");', "box"),
+    ('let d = density(parse_vec("1 2 3"), -1.0, "gaussian");', "bw must be positive"),
+    ('let q = ecdf(parse_vec("1 2")).quantile(2.0);', "p must be in [0, 1]"),
+    ('let r = rng(1).draw(tukey(3.0, 10.0));', "studentized range"),
+]:
+    case("density/dist error: " + msg, body, code=3, out=(msg,))
 
 # ---------------------------------------------------------------- adversarial
 case("formula transforms through a frame", r"""

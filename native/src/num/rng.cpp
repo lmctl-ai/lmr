@@ -269,6 +269,25 @@ double Rng::draw(const Dist& d) {
       if (a == 0 || b == 1) return 0;
       return rpois(*this, gamma(a) * (1 - b) / b);
     case DistKind::Hyper: return rhyper(*this, d, a, b, c);
+    // Noncentral laws by their definitions: t = (Z + ncp) / sqrt(V / df); chi-square as the Poisson(ncp / 2) mixture
+    // of central chi-squares with df + 2K degrees of freedom; F = (noncentral chi-square / df1) / (chi-square / df2).
+    case DistKind::NcT: {
+      const double z = norm() + b;
+      return std::isinf(a) ? z : z / std::sqrt(2 * gamma(0.5 * a) / a);
+    }
+    case DistKind::NcChisq: {
+      const double k = rpois(*this, 0.5 * b);
+      const double shape = 0.5 * a + k;
+      return shape > 0 ? 2 * gamma(shape) : 0.0;
+    }
+    case DistKind::NcF: {
+      const double k = rpois(*this, 0.5 * c);
+      const double shape = 0.5 * a + k;
+      const double x1 = (shape > 0 ? 2 * gamma(shape) : 0.0) / a;
+      const double x2 = std::isinf(b) ? 1.0 : 2 * gamma(0.5 * b) / b;
+      return x1 / x2;
+    }
+    case DistKind::Tukey: fail("draw: random draws from the studentized range distribution are not available");
   }
   return kNaN;
 }

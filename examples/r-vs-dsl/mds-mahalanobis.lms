@@ -1,0 +1,40 @@
+// R vs lmr: classical multidimensional scaling of the road distances between 21 European cities (?cmdscale), and
+// Mahalanobis distances of the iris setosa measurements from their mean.
+// R:   cmdscale(eurodist, k = 2, eig = TRUE); se <- iris[iris$Species == "setosa", 1:4];
+//      mahalanobis(se, colMeans(se), cov(se)); cor(se)
+// The coordinates' signs are arbitrary, so they are compared in absolute value.
+// Usage: lmscript examples/r-vs-dsl/mds-mahalanobis.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let raw = read_csv("examples/r-vs-dsl/data/eurodist.csv");
+let cities = raw.text("city");
+let d = as_matrix(raw.drop("city"));
+let m = cmdscale(d, 2);
+let pts = m.points();
+for (i in range(0, 4)) {
+  out.print(rpad(cities.at(i), 12) + fmt(" %9.2f", pts.at(i, 0)) + fmt(" %9.2f", pts.at(i, 1)));
+}
+let iris = read_csv("examples/r-vs-dsl/data/iris.csv");
+let sp = iris.text("Species");
+let mask = vec();
+for (i in range(0, sp.len())) {
+  if (sp.at(i) == "setosa") { mask.push(1.0); } else { mask.push(0.0); }
+}
+let se = as_matrix(iris.where(mask).select("Sepal.Length,Sepal.Width,Petal.Length,Petal.Width"));
+let centre = vec();
+for (j in range(0, se.ncol())) {
+  centre.push(se.col(j).mean());
+}
+let d2 = mahalanobis(se, centre, se.cov());
+out.set("abs_points", pts.values().abs());
+out.set("eig_top5", m.eig().head(5));
+out.set("gof", m.gof());
+out.set("mahalanobis", d2);
+out.set("mahalanobis_max", d2.max());
+out.set("cor_matrix", se.cor().values());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-mds-mahalanobis"));
+compare.finish("mds-mahalanobis", compare.report("mds-mahalanobis", got, "examples/r-vs-dsl/expected/mds-mahalanobis.json", 0.000000001, {}));

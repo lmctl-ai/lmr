@@ -1,0 +1,16 @@
+{
+  "recipe": "block-paired-tests",
+  "r_version": "R version 4.3.3 (2024-02-29)",
+  "values": {
+    "friedman_chi2": 11.142857142857142,
+    "friedman_df": 2,
+    "friedman_p": 0.003805040775511363,
+    "quade_f": 3.8292515841753727,
+    "quade_df": [4, 24],
+    "quade_p": 0.015189020073274591,
+    "mcnemar_chi2": 16.817796610169491,
+    "mcnemar_p": 4.1145622813459449e-05,
+    "mcnemar_uncorrected": 17.35593220338983,
+    "mcnemar_uncorrected_p": 3.0992934410452189e-05
+  }
+}

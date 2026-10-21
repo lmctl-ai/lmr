@@ -84,7 +84,7 @@ refuses stale bytecode with `LOAD_SCHEMA_MISMATCH`.
 - **StrList**: `strs()`, `split(text, sep)`, then `len`, `at`, `push`, `join(sep)`, `contains`, `index` (-1 when absent).
 - **Frame**: `read_csv(path)` (RFC 4180; a column is numeric when every cell is a number or NA/empty) and `frame()`.
   Methods: `nrow`, `ncol`, `names`, `has`, `is_text`, `col(name) -> Vec`, `text(name) -> StrList`,
-  `set(name, Vec|StrList)`, `select("a,b")`, `where(mask)`, `head(k)`, `drop_nan`, `write_csv(path)`.
+  `set(name, Vec|StrList)`, `select("a,b")`, `drop(name)`, `where(mask)`, `head(k)`, `drop_nan`, `write_csv(path)`.
 - **Keeping objects**: `keep(name, Vec|Frame)`, `kept_vec(name)`, `kept_frame(name)`, `is_kept(name)` carry objects
   across chunks of one `--dsl` run.
 
@@ -99,12 +99,16 @@ refuses stale bytecode with `LOAD_SCHEMA_MISMATCH`.
 - **Formatting**: `fmt("%.4f", x)` takes exactly one `%f %e %g %d %s` conversion with flags, width and precision, plus
   any literal text. `lpad(s, w)`, `rpad(s, w)`.
 
-### `Dist`: 17 distributions with R semantics
+### `Dist`: 21 distributions with R semantics
 
 - **Constructors**: `norm()`, `norm(mean, sd)`, `lnorm`, `t_dist(df)`, `chisq(df)`, `f_dist(df1, df2)`,
   `gamma_dist(shape, rate)`, `beta_dist(a, b)`, `exp_dist(rate)`, `unif(min, max)`, `weibull`, `cauchy`, `logis`,
   `binom(size, prob)`, `pois(lambda)`, `geom(prob)`, `nbinom(size, prob)`, `hyper(m, n, k)`, and
   `dist("name", p1[, p2[, p3]])`.
+- **Noncentral and studentized range**: `t_dist(df, ncp)`, `chisq(df, ncp)`, `f_dist(df1, df2, ncp)`, and
+  `tukey(nmeans, df[, nranges])` (R's `ptukey`/`qtukey`: `p` and `q` only; `df` may be `inf()`). These power
+  `power.t.test`-style calculations and Tukey HSD intervals; see `examples/r-vs-dsl/power-noncentral.lms` and
+  `tukey-hsd.lms`.
 - **Methods**: `d`, `log_d`, `p`, `p_upper`, `log_p`, `log_p_upper`, `q`, `q_upper`, `q_log`, `mean`, `var`, `sd`,
   `is_discrete`, `name`, and vectorised `d_vec`, `p_vec`, `q_vec`.
 - Upper tails and logs are computed directly, as in R, so `norm().p_upper(40.0)` and `t_dist(5.0).log_p(-200.0)` are
@@ -121,7 +125,8 @@ refuses stale bytecode with `LOAD_SCHEMA_MISMATCH`.
 
 ### Hypothesis tests: `test(kind)` → `Test` → `run()` → `Htest`
 
-Kinds: `t`, `wilcox`, `var`, `cor`, `shapiro`, `ks`, `chisq`, `fisher`, `binom`, `prop`.
+Kinds: `t`, `wilcox`, `var`, `cor`, `shapiro`, `ks`, `chisq`, `fisher`, `binom`, `prop`, `kruskal`, `bartlett`,
+`fligner`, `oneway` (Welch unless `var_equal(true)`), `friedman`, `quade`, `mcnemar`, `ansari`.
 
 | Setter | Used by |
 |---|---|
@@ -136,6 +141,9 @@ Kinds: `t`, `wilcox`, `var`, `cor`, `shapiro`, `ks`, `chisq`, `fisher`, `binom`,
 | `counts(Vec)`, `probs(Vec)` | chisq goodness of fit |
 | `successes(x)`, `trials(n)`, `p(float \| Vec)` | binom (one value each), prop (vectors) |
 | `odds_ratio(float)` | fisher null |
+| `groups(Vec \| StrList)` | kruskal, bartlett, fligner, oneway; friedman, quade (with `blocks`); text labels sort in byte order |
+| `blocks(Vec \| StrList)` | friedman, quade; or give `.table(values, nblocks, byrow)` with blocks as rows, groups as columns |
+| `table(values, nrow, byrow)` | mcnemar (k x k) |
 
 `Htest` methods:
 
@@ -150,7 +158,14 @@ The method strings are byte-identical to R's.
 ### Models
 
 - **`lm(frame, formula[, weights])` → `Lm`.** Formulas: `y ~ a + b`, `a:b`, `a*b`, `(a+b)^2`, `- 1` / `0 +`, `.`, and
-  `log()`, `exp()`, `sqrt()`, `I(x^k)` of a column or of the response. Rows with NaN in a used column are dropped
+  `log()`, `exp()`, `sqrt()`, `I(x^k)` of a column or of the response.
+  - **Factors**: a text column is a factor, and `factor(v)` makes a numeric column one. Levels sort in byte order (as
+    `read.csv` + R's C locale), treatment contrasts use the first level as the baseline, and columns are named as in R
+    (`suppVC`, `factor(dose)2`, `suppVC:factor(dose)2`). Predicting with a level not seen in the fit is an error.
+  - **ANOVA**: `Lm.anova()` (sequential sums of squares, R's `anova.lm`), `Glm.anova(test)` (analysis of deviance;
+    test `"none"`, `"Chisq"`/`"LRT"` or `"F"`), and `anova(smaller, bigger)` (nested F test). An `Anova` has
+    `n_rows`, `row_name(i)`, `columns`, `col(name)` → Vec, `at(row name | index, column)` and `table()` (printable),
+    with R's column names (`"Df"`, `"Sum Sq"`, `"F value"`, `"Pr(>F)"`, `"Deviance"`, `"Resid. Dev"`, `"Pr(>Chi)"`). Rows with NaN in a used column are dropped
   (R's `na.omit`). Aliased (collinear) terms are reported as in R, through `aliased(name)` and `rank()`.
 - **`glm(frame, formula, family[, link[, weights[, offset]]])` → `Glm`.** Families: gaussian, binomial, poisson and
   Gamma, with R's allowed links. A binomial response is 0/1, or proportions with the trials as weights. An empty `vec()`
@@ -210,6 +225,32 @@ The data is the numeric columns of a `Frame`; use `select` first if it also has 
   - Methods: `n`, `height(i)`, `heights`, `merge_a(i)`, `merge_b(i)`, `order` (1-based leaves), `cut(k)` (labels by
     first appearance).
   - Merges, heights and order equal R's, including R's tie order.
+
+### Matrices and multivariate analysis
+
+- **`Mat`** (dense): `matrix(values, nrow, byrow)` (R fills by column unless `byrow`), `as_matrix(frame)` (numeric
+  columns), `diag(Vec)`, `identity(n)`.
+  - Access: `nrow`, `ncol`, `at(i, j)`, `set(i, j, x)`, `row(i)`, `col(j)`, `values()` (column-major, as R's
+    `as.vector`), `diag()`, `to_frame()` (columns V1..Vp), `str()`, `format(spec)`.
+  - Algebra: `t`, `mul(Mat)`, `mul_vec(Vec)`, `add`, `sub`, `scale(x)`, `solve(Vec)` and `inverse` (LU with partial
+    pivoting), `det`, `chol` (upper R with R'R = A, as R's `chol`), `cov`, `cor`, `dist(method)`.
+  - `eigen()` → `Eigen` (`values` decreasing, `vectors` as columns; symmetric matrices) and `svd()` → `Svd` (`d`, `u`,
+    `v`). Each vector is unit length with its largest component positive (R's signs are arbitrary).
+- **`prcomp(frame | Mat, scale[, …])`** → `Pca`: `prcomp(frame, scale)` centres; `prcomp(frame, center, scale)`.
+  Methods `sdev`, `rotation` (Mat), `scores` (Mat), `center`, `scale`, `proportion`, `cumulative`,
+  `loading(variable, k)`, `summary()`.
+- **`cmdscale(distances, k)`** → `Mds` (`points`, `eig`, `gof`, `warning`), classical multidimensional scaling.
+- **`mahalanobis(x, center, cov)`** → squared distances, as R's `mahalanobis`.
+
+### Density estimation and histograms
+
+- **`bw(x, rule)`**: `"nrd0"`, `"nrd"`, `"ucv"`, `"bcv"`, `"SJ"` (`"SJ-ste"`), `"SJ-dpi"`, as R's `bw.*`.
+- **`density(x[, rule | bw, kernel[, adjust]])`** → `Density` on R's 512-point grid (from min − 3 bw to max + 3 bw),
+  kernels gaussian, epanechnikov, rectangular, triangular, biweight, cosine, optcosine with bw the kernel's sd.
+  Methods `x`, `y`, `bw`, `kernel`, `at(x0)`, `eval(Vec)`. Values are exact kernel sums; R bins and uses an FFT, so it
+  differs by its binning error (about 1e-3 of the peak).
+- **`ecdf(x)`** → `Ecdf` (`at`, `eval`, `knots`, `quantile(p)`); **`hist(x[, rule | breaks])`** → `Hist` (`breaks`,
+  `counts`, `density`, `mids`; R's Sturges/Scott/FD rules and right-closed bins); **`pretty(lo, hi, n)`**.
 
 ### FFT
 

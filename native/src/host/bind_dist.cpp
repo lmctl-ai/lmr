@@ -19,6 +19,12 @@ void bind_dist(Binder& b) {
   b.fn("t_dist", {"float"}, "Dist", [dist](A& a) { return dist(Dist::t(a[0].f)); });
   b.fn("chisq", {"float"}, "Dist", [dist](A& a) { return dist(Dist::chisq(a[0].f)); });
   b.fn("f_dist", {"float", "float"}, "Dist", [dist](A& a) { return dist(Dist::f(a[0].f, a[1].f)); });
+  // Noncentral laws (the last argument is the noncentrality) and the studentized range (p and q only).
+  b.fn("t_dist", {"float", "float"}, "Dist", [dist](A& a) { return dist(Dist::t(a[0].f, a[1].f)); });
+  b.fn("chisq", {"float", "float"}, "Dist", [dist](A& a) { return dist(Dist::chisq(a[0].f, a[1].f)); });
+  b.fn("f_dist", {"float", "float", "float"}, "Dist", [dist](A& a) { return dist(Dist::f(a[0].f, a[1].f, a[2].f)); });
+  b.fn("tukey", {"float", "float"}, "Dist", [dist](A& a) { return dist(Dist::tukey(a[0].f, a[1].f)); });
+  b.fn("tukey", {"float", "float", "float"}, "Dist", [dist](A& a) { return dist(Dist::tukey(a[0].f, a[1].f, a[2].f)); });
   b.fn("gamma_dist", {"float", "float"}, "Dist", [dist](A& a) { return dist(Dist::gamma(a[0].f, a[1].f)); });
   b.fn("beta_dist", {"float", "float"}, "Dist", [dist](A& a) { return dist(Dist::beta(a[0].f, a[1].f)); });
   b.fn("exp_dist", {"float"}, "Dist", [dist](A& a) { return dist(Dist::exp(a[0].f)); });

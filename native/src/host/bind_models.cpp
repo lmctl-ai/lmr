@@ -12,7 +12,10 @@ namespace rcli::host {
 
 namespace {
 
-// Columns named in the formula, then complete cases only (R's default na.action = na.omit).
+// A missing text cell: empty or "NA" (read_csv keeps them as text in a text column).
+bool text_missing(const std::string& v) { return v.empty() || v == "NA"; }
+
+// Columns named in the formula (text columns become factors), then complete cases only (R's na.action = na.omit).
 Data model_data(const Frame& f, const std::string& formula, Vec* weights, std::vector<size_t>* kept_rows = nullptr) {
   std::set<std::string> used;
   bool dot = false;
@@ -33,29 +36,33 @@ Data model_data(const Frame& f, const std::string& formula, Vec* weights, std::v
   }
   Data d;
   std::vector<const Column*> cols;
+  Strs names;
   for (size_t j = 0; j < f.names.size(); ++j) {
     const Column& c = f.cols[j];
     if (!(dot || used.count(f.names[j]))) continue;
-    if (c.text) {
-      if (used.count(f.names[j])) throw dslvm::Error("model: column '" + f.names[j] + "' is text; models take numeric columns");
-      continue;  // "." skips text columns
-    }
-    d.names.push_back(f.names[j]);
     cols.push_back(&c);
+    names.push_back(f.names[j]);
   }
   if (weights && weights->size() != f.nrow())
     throw dslvm::Error("model: weights have " + std::to_string(weights->size()) + " values; the frame has " + std::to_string(f.nrow()) + " rows");
   std::vector<size_t> rows;
   for (size_t r = 0; r < f.nrow(); ++r) {
     bool ok = !(weights && std::isnan((*weights)[r]));
-    for (const Column* c : cols) ok = ok && !std::isnan(c->num[r]);
+    for (const Column* c : cols) ok = ok && (c->text ? !text_missing(c->str[r]) : !std::isnan(c->num[r]));
     if (ok) rows.push_back(r);
   }
-  for (const Column* c : cols) {
-    Vec v;
-    v.reserve(rows.size());
-    for (size_t r : rows) v.push_back(c->num[r]);
-    d.cols.push_back(std::move(v));
+  for (size_t k = 0; k < cols.size(); ++k) {  // frame order, so "." expands in R's column order
+    const Column* c = cols[k];
+    if (c->text) {
+      Strs v;
+      for (size_t r : rows) v.push_back(c->str[r]);
+      d.add_text(names[k], std::move(v));
+    } else {
+      Vec v;
+      v.reserve(rows.size());
+      for (size_t r : rows) v.push_back(c->num[r]);
+      d.add(names[k], std::move(v));
+    }
   }
   if (weights) {
     Vec w;
@@ -69,7 +76,8 @@ Data model_data(const Frame& f, const std::string& formula, Vec* weights, std::v
 Data frame_data(const Frame& f) {
   Data d;
   for (size_t j = 0; j < f.names.size(); ++j)
-    if (!f.cols[j].text) { d.names.push_back(f.names[j]); d.cols.push_back(f.cols[j].num); }
+    if (f.cols[j].text) d.add_text(f.names[j], f.cols[j].str);
+    else d.add(f.names[j], f.cols[j].num);
   return d;
 }
 
@@ -417,6 +425,37 @@ void bind_models(Binder& b) {
   b.m("Nls", "fitted", {}, "Vec", [fit, vec](void* s, A&) { return vec(fit(s).fitted); });
   b.m("Nls", "residuals", {}, "Vec", [fit, vec](void* s, A&) { return vec(fit(s).residuals); });
   b.m("Nls", "evaluations", {}, "int", [](void* s, A&) { return Value::integer(self<NlsJob>(s).evaluations); });
+
+  // ---- ANOVA tables: sequential sums of squares (lm), analysis of deviance (glm), nested lm comparison ----
+  b.m("Lm", "anova", {}, "Anova", [&h](void* s, A&) { return h.hold("Anova", anova(self<LmFit>(s))); });
+  b.m("Glm", "anova", {"string"}, "Anova", [&h](void* s, A& a) { return h.hold("Anova", anova(self<GlmFit>(s), a[0].s)); });
+  b.fn("anova", {"Lm", "Lm"}, "Anova", [&h](A& a) { return h.hold("Anova", anova(obj<LmFit>(a[0]), obj<LmFit>(a[1]))); });
+  b.m("Anova", "n_rows", {}, "int", [](void* s, A&) { return Value::integer(static_cast<int64_t>(self<AnovaTable>(s).row_names.size())); });
+  b.m("Anova", "row_name", {"int"}, "string", [](void* s, A& a) {
+    auto& t = self<AnovaTable>(s);
+    return Value::string(t.row_names[static_cast<size_t>(as_index(a[0].i, t.row_names.size(), "Anova.row_name"))]);
+  });
+  b.m("Anova", "columns", {}, "StrList", [&h](void* s, A&) { return h.hold("StrList", self<AnovaTable>(s).col_names); });
+  b.m("Anova", "col", {"string"}, "Vec", [vec](void* s, A& a) { return vec(self<AnovaTable>(s).col(a[0].s)); });
+  b.m("Anova", "at", {"string", "string"}, "float", [](void* s, A& a) { return Value::real(self<AnovaTable>(s).at(a[0].s, a[1].s)); });
+  b.m("Anova", "at", {"int", "string"}, "float", [](void* s, A& a) {
+    auto& t = self<AnovaTable>(s);
+    return Value::real(t.col(a[1].s)[static_cast<size_t>(as_index(a[0].i, t.row_names.size(), "Anova.at"))]);
+  });
+  b.m("Anova", "table", {}, "string", [](void* s, A&) {
+    auto& t = self<AnovaTable>(s);
+    size_t w = 10;
+    for (const auto& r : t.row_names) w = std::max(w, r.size() + 1);
+    std::string out = t.heading.empty() ? "" : t.heading + "\n";
+    out += std::string(w, ' ');
+    char buf[64];
+    for (const auto& c : t.col_names) { std::snprintf(buf, sizeof buf, "%12s", c.c_str()); out += buf; }
+    for (size_t i = 0; i < t.row_names.size(); ++i) {
+      out += "\n" + t.row_names[i] + std::string(w - t.row_names[i].size(), ' ');
+      for (const auto& c : t.cols) out += " " + fmt_cell(c[i], 11);
+    }
+    return Value::string(out);
+  });
 }
 
 }  // namespace rcli::host

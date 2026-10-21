@@ -16,6 +16,7 @@
 //   log X with mean digamma(a) and variance trigamma(a).
 // - Discrete quantiles: smallest x with P(X <= x) >= p, found by an exponential then binary search from a
 //   Cornish-Fisher start; a relative fuzz of 8 eps (log scale 2.5 eps) as R applies, so q(p(k)) == k.
+// - Noncentral t, chi-square, F and the studentized range: see ncdist.cpp (this file only dispatches to it).
 #include "rcli/dist.hpp"
 
 #include <algorithm>
@@ -468,6 +469,32 @@ Dist Dist::hyper(double m, double n, double k) {
   return Dist(DistKind::Hyper, m, n, k);
 }
 
+Dist Dist::t(double df, double ncp) {
+  if (std::isnan(df) || df <= 0) fail("t", "df must be > 0");
+  if (!std::isfinite(ncp)) fail("t", "ncp must be finite");
+  if (ncp == 0) return t(df);
+  return Dist(DistKind::NcT, df, ncp, kNaN);
+}
+Dist Dist::chisq(double df, double ncp) {
+  if (std::isnan(df) || df < 0 || std::isinf(df)) fail("chisq", "df must be finite and >= 0");
+  if (std::isnan(ncp) || ncp < 0 || std::isinf(ncp)) fail("chisq", "ncp must be finite and >= 0");
+  if (ncp == 0) return chisq(df);
+  return Dist(DistKind::NcChisq, df, ncp, kNaN);
+}
+Dist Dist::f(double df1, double df2, double ncp) {
+  if (std::isnan(df1) || std::isnan(df2) || df1 <= 0 || df2 <= 0) fail("f", "df1 and df2 must be > 0");
+  if (std::isnan(ncp) || ncp < 0 || std::isinf(ncp)) fail("f", "ncp must be finite and >= 0");
+  if (ncp == 0) return f(df1, df2);
+  if (std::isinf(df1)) fail("f", "df1 must be finite when ncp > 0");
+  return Dist(DistKind::NcF, df1, df2, ncp);
+}
+Dist Dist::tukey(double nmeans, double df, double nranges) {
+  if (std::isnan(nmeans) || nmeans < 2 || std::isinf(nmeans)) fail("tukey", "nmeans must be finite and >= 2");
+  if (std::isnan(df) || df < 2) fail("tukey", "df must be >= 2");
+  if (std::isnan(nranges) || nranges < 1 || std::isinf(nranges)) fail("tukey", "nranges must be finite and >= 1");
+  return Dist(DistKind::Tukey, nmeans, df, nranges);
+}
+
 Dist Dist::by_name(const std::string& name, double p1, double p2, double p3) {
   auto need = [&](int k) {
     const double v[3] = {p1, p2, p3};
@@ -476,9 +503,10 @@ Dist Dist::by_name(const std::string& name, double p1, double p2, double p3) {
   };
   if (name == "norm") { if (std::isnan(p1)) p1 = 0; if (std::isnan(p2)) p2 = 1; return norm(p1, p2); }
   if (name == "lnorm") { if (std::isnan(p1)) p1 = 0; if (std::isnan(p2)) p2 = 1; return lnorm(p1, p2); }
-  if (name == "t") { need(1); return t(p1); }
-  if (name == "chisq") { need(1); return chisq(p1); }
-  if (name == "f") { need(2); return f(p1, p2); }
+  if (name == "t") { need(1); return std::isnan(p2) ? t(p1) : t(p1, p2); }
+  if (name == "chisq") { need(1); return std::isnan(p2) ? chisq(p1) : chisq(p1, p2); }
+  if (name == "f") { need(2); return std::isnan(p3) ? f(p1, p2) : f(p1, p2, p3); }
+  if (name == "tukey") { need(2); return tukey(p1, p2, std::isnan(p3) ? 1.0 : p3); }
   if (name == "gamma") { need(1); if (std::isnan(p2)) p2 = 1; return gamma(p1, p2); }
   if (name == "beta") { need(2); return beta(p1, p2); }
   if (name == "exp") { if (std::isnan(p1)) p1 = 1; return exp(p1); }
@@ -513,6 +541,10 @@ std::string Dist::name() const {
     case DistKind::Geom: return "geom";
     case DistKind::Nbinom: return "nbinom";
     case DistKind::Hyper: return "hyper";
+    case DistKind::NcT: return "t";
+    case DistKind::NcChisq: return "chisq";
+    case DistKind::NcF: return "f";
+    case DistKind::Tukey: return "tukey";
   }
   return "?";
 }
@@ -533,6 +565,8 @@ double Dist::d(double x, bool lg) const {
   if (std::isnan(x)) return x;
   const double a = par_[0], b = par_[1], c = par_[2];
   switch (kind_) {
+    case DistKind::NcT: case DistKind::NcChisq: case DistKind::NcF: case DistKind::Tukey:
+      return ncdist_detail::d(kind_, par_, x, lg);
     case DistKind::Norm: {
       if (b == 0) return x == a ? kInf : d0(lg);
       const double v = dnorm_std((x - a) / b, lg);
@@ -660,6 +694,8 @@ double Dist::p(double x, bool lower, bool lg) const {
   if (std::isnan(x)) return x;
   const double a = par_[0], b = par_[1], c = par_[2];
   switch (kind_) {
+    case DistKind::NcT: case DistKind::NcChisq: case DistKind::NcF: case DistKind::Tukey:
+      return ncdist_detail::p(kind_, par_, x, lower, lg);
     case DistKind::Norm: {
       if (b == 0) return pstep(x < a, lower, lg);
       const double z = (x - a) / b;
@@ -789,6 +825,8 @@ double Dist::q(double p, bool lower, bool lg) const {
   double ll, lu;
   if (!tails(p, lower, lg, &ll, &lu)) return kNaN;
   switch (kind_) {
+    case DistKind::NcT: case DistKind::NcChisq: case DistKind::NcF: case DistKind::Tukey:
+      return ncdist_detail::q(kind_, par_, p, lower, lg);
     case DistKind::Norm:
       if (b == 0) return a;
       return a + b * qnorm_std(p, lower, lg);
@@ -963,6 +1001,17 @@ double Dist::mean() const {
     case DistKind::Geom: return (1 - a) / a;
     case DistKind::Nbinom: return a * (1 - b) / b;
     case DistKind::Hyper: return c * a / (a + b);
+    case DistKind::NcT: {  // E T = ncp sqrt(df/2) Gamma((df-1)/2) / Gamma(df/2)  (Johnson, Kotz & Balakrishnan 31.5)
+      if (!(a > 1)) return kNaN;
+      if (std::isinf(a)) return b;
+      return b * std::sqrt(0.5 * a) * std::exp(sp::lgamma(0.5 * (a - 1)) - sp::lgamma(0.5 * a));
+    }
+    case DistKind::NcChisq: return a + b;
+    case DistKind::NcF: {
+      if (std::isinf(b)) return (a + c) / a;
+      return b > 2 ? b * (a + c) / (a * (b - 2)) : kInf;
+    }
+    case DistKind::Tukey: return kNaN;
   }
   return kNaN;
 }
@@ -1002,6 +1051,22 @@ double Dist::var() const {
       if (N <= 1) return 0;
       return c * (a / N) * (b / N) * (N - c) / (N - 1);
     }
+    case DistKind::NcT: {  // Var T = df (1 + ncp^2) / (df - 2) - (E T)^2
+      if (!(a > 1)) return kNaN;
+      if (a <= 2) return kInf;
+      if (std::isinf(a)) return 1.0;
+      const double m = mean();
+      return a * (1 + b * b) / (a - 2) - m * m;
+    }
+    case DistKind::NcChisq: return 2 * (a + 2 * b);
+    case DistKind::NcF: {
+      const double m = a, n = b;
+      if (std::isinf(n)) return 2 * (m + 2 * c) / (m * m);
+      if (n <= 2) return kNaN;
+      if (n <= 4) return kInf;
+      return 2 * (n / m) * (n / m) * ((m + c) * (m + c) + (m + 2 * c) * (n - 2)) / ((n - 2) * (n - 2) * (n - 4));
+    }
+    case DistKind::Tukey: return kNaN;
   }
   return kNaN;
 }

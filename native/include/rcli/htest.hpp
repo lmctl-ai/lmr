@@ -63,4 +63,20 @@ HtestResult binom_test(double x, double n, const TestOptions& o = {});  // Clopp
 // One or more proportions: successes x[i] out of n[i]. p empty: equality of k >= 2 proportions; else the given p.
 HtestResult prop_test(const Vec& x, const Vec& n, const Vec& p = {}, const TestOptions& o = {});
 
+// k-sample, block and symmetry tests (htest2.cpp). Groups / blocks are numeric labels (any distinct values), ordered
+// by label value as R's factor of numbers. For the k-sample tests a pair with NaN in x or g is dropped (R drops NA);
+// Inf is kept. For the block designs NaN in groups/blocks is an error and a block with a NaN response is removed.
+HtestResult kruskal_test(const Vec& x, const Vec& g);   // Kruskal-Wallis with tie correction
+HtestResult bartlett_test(const Vec& x, const Vec& g);  // each group needs >= 2 observations
+HtestResult fligner_test(const Vec& x, const Vec& g);   // Fligner-Killeen:med
+HtestResult oneway_test(const Vec& x, const Vec& g, bool var_equal = false);  // F or Welch (1951)
+// Unreplicated complete block designs: exactly one y per (group, block); at least 2 groups and 2 complete blocks.
+HtestResult friedman_test(const Vec& y, const Vec& groups, const Vec& blocks);
+HtestResult quade_test(const Vec& y, const Vec& groups, const Vec& blocks);
+// k x k table: McNemar (k = 2) / Bowker symmetry; continuity correction only for 2 x 2 with n12 != n21.
+HtestResult mcnemar_test(const Matrix& table, bool correct = true);
+// Ansari-Bradley; uses o.alternative and o.exact (auto: exact when both samples have < 50 finite values and there
+// are no ties). NaN is dropped, Inf kept. o.conf_int is not supported (throws).
+HtestResult ansari_test(const Vec& x, const Vec& y, const TestOptions& o = {});
+
 }  // namespace rcli

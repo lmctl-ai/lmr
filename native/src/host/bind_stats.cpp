@@ -1,4 +1,5 @@
 // Hypothesis tests (a Test builder that runs into an Htest result) and the discrete Fourier transform (CVec).
+#include <algorithm>
 #include <cstdio>
 #include <optional>
 
@@ -13,17 +14,39 @@ namespace {
 
 struct TestSpec {
   std::string kind;
-  std::optional<Vec> x, y, counts, probs, successes, trials, p_vec;
+  std::optional<Vec> x, y, counts, probs, successes, trials, p_vec, groups, blocks;
   std::optional<Dist> dist;
   std::optional<Matrix> table;
   TestOptions o;
   bool exact_set = false;
 };
 
-const char* kKinds = "t, wilcox, var, cor, shapiro, ks, chisq, fisher, binom, prop";
+const char* kKinds = "t, wilcox, var, cor, shapiro, ks, chisq, fisher, binom, prop, kruskal, bartlett, fligner, oneway, "
+                     "friedman, quade, mcnemar, ansari";
 
 void need(const std::optional<Vec>& v, const std::string& kind, const char* what) {
   if (!v) throw dslvm::Error("test(\"" + kind + "\"): call ." + what + "(...) before run()");
+}
+
+// Blocked designs: .x(y).groups(g).blocks(b), or .table(values, nblocks, byrow) with blocks as rows and groups as
+// columns (R's friedman.test(matrix)).
+void block_design(const TestSpec& s, const std::string& k, Vec& y, Vec& g, Vec& bl) {
+  if (s.table) {
+    const Matrix& m = *s.table;
+    for (size_t i = 0; i < m.rows; ++i)
+      for (size_t j = 0; j < m.cols; ++j) {
+        y.push_back(m(i, j));
+        g.push_back(static_cast<double>(j));
+        bl.push_back(static_cast<double>(i));
+      }
+    return;
+  }
+  need(s.x, k, "x");
+  need(s.groups, k, "groups");
+  need(s.blocks, k, "blocks (or .table(values, nblocks, byrow))");
+  y = *s.x;
+  g = *s.groups;
+  bl = *s.blocks;
 }
 
 HtestResult run_test(const TestSpec& s) {
@@ -60,7 +83,34 @@ HtestResult run_test(const TestSpec& s) {
     need(s.trials, k, "trials");
     return prop_test(*s.successes, *s.trials, s.p_vec ? *s.p_vec : Vec{}, s.o);
   }
+  if (k == "kruskal" || k == "bartlett" || k == "fligner" || k == "oneway") {
+    need(s.x, k, "x");
+    need(s.groups, k, "groups");
+    if (k == "kruskal") return kruskal_test(*s.x, *s.groups);
+    if (k == "bartlett") return bartlett_test(*s.x, *s.groups);
+    if (k == "fligner") return fligner_test(*s.x, *s.groups);
+    return oneway_test(*s.x, *s.groups, s.o.var_equal);
+  }
+  if (k == "friedman" || k == "quade") {
+    Vec y, g, bl;
+    block_design(s, k, y, g, bl);
+    return k == "friedman" ? friedman_test(y, g, bl) : quade_test(y, g, bl);
+  }
+  if (k == "mcnemar") {
+    if (!s.table) throw dslvm::Error("test(\"mcnemar\"): call .table(values, nrow, byrow) before run()");
+    return mcnemar_test(*s.table, s.o.correct);
+  }
+  if (k == "ansari") { need(s.x, k, "x"); need(s.y, k, "y"); return ansari_test(*s.x, *s.y, s.o); }
   throw dslvm::Error("test: unknown kind '" + k + "' (kinds: " + kKinds + ")");
+}
+
+Vec level_codes(const Strs& labels) {
+  Strs levels(labels);
+  std::sort(levels.begin(), levels.end());
+  levels.erase(std::unique(levels.begin(), levels.end()), levels.end());
+  Vec out;
+  for (const auto& l : labels) out.push_back(static_cast<double>(std::lower_bound(levels.begin(), levels.end(), l) - levels.begin()));
+  return out;
 }
 
 std::string num(double v) {
@@ -103,7 +153,8 @@ void bind_stats(Binder& b) {
 
   // ---- Test builder ----
   b.fn("test", {"string"}, "Test", [&h](A& a) {
-    static const char* kinds[] = {"t", "wilcox", "var", "cor", "shapiro", "ks", "chisq", "fisher", "binom", "prop"};
+    static const char* kinds[] = {"t", "wilcox", "var", "cor", "shapiro", "ks", "chisq", "fisher", "binom", "prop",
+                                  "kruskal", "bartlett", "fligner", "oneway", "friedman", "quade", "mcnemar", "ansari"};
     bool known = false;
     for (const char* k : kinds) known = known || a[0].s == k;
     if (!known) throw dslvm::Error("test: unknown kind '" + a[0].s + "' (kinds: " + kKinds + ")");
@@ -143,6 +194,11 @@ void bind_stats(Binder& b) {
   setter("successes", "Vec", [](TestSpec& s, const Value& v) { s.successes = obj<Vec>(v); });
   setter("trials", "float", [](TestSpec& s, const Value& v) { s.trials = Vec{v.f}; });
   setter("trials", "Vec", [](TestSpec& s, const Value& v) { s.trials = obj<Vec>(v); });
+  setter("groups", "Vec", [](TestSpec& s, const Value& v) { s.groups = obj<Vec>(v); });
+  // Text labels become codes in sorted (byte) order, as R orders the levels of a character vector in the C locale.
+  setter("groups", "StrList", [](TestSpec& s, const Value& v) { s.groups = level_codes(obj<Strs>(v)); });
+  setter("blocks", "Vec", [](TestSpec& s, const Value& v) { s.blocks = obj<Vec>(v); });
+  setter("blocks", "StrList", [](TestSpec& s, const Value& v) { s.blocks = level_codes(obj<Strs>(v)); });
   b.m("Test", "table", {"Vec", "int", "bool"}, "Test", [](void* s, A& a) {
     const Vec& v = obj<Vec>(a[0]);
     int64_t nr = a[1].i;

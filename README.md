@@ -24,9 +24,10 @@ install="github:lmctl-ai/lmr@v0.3.0"` downloads the release binary when `lmr` is
 [examples/dsl/install-and-run.lms](examples/dsl/install-and-run.lms)).
 
 The API is in [docs/dsl-api.md](docs/dsl-api.md), and the examples, including multi-step flows, are in
-[examples/dsl/](examples/dsl/README.md). [examples/r-vs-dsl/](examples/r-vs-dsl/README.md) solves 36 common R recipes
-(regression, GLMs, ANOVA, classical tests, distributions, clustering, ARIMA, STL, optimisation, MLE, smoothing, FFT)
-both in R and in lmr on the same data, and compares 2962 numbers side by side. R is used only as an oracle process for the unit tests' expected values.
+[examples/dsl/](examples/dsl/README.md). [examples/r-vs-dsl/](examples/r-vs-dsl/README.md) solves 44 common R recipes
+(regression, GLMs, factors and ANOVA, classical and rank tests, power, distributions, PCA, MDS, clustering, ARIMA,
+STL, optimisation, MLE, density estimation, smoothing, FFT) both in R and in lmr on the same data, and compares 3304
+numbers side by side. R is used only as an oracle process for the unit tests' expected values.
 
 ## Operations
 

@@ -451,6 +451,14 @@ void bind_core(Binder& b) {
     for (const auto& n : split_names(a[0].s)) out.set(n, f.col(n));
     return frame(out);
   });
+  b.m("Frame", "drop", {"string"}, "Frame", [frame](void* s, A& a) {  // one column, by its exact name
+    const Frame& f = self<Frame>(s);
+    if (f.find(a[0].s) < 0) f.col(a[0].s);  // throws the usual "no column" error
+    Frame out;
+    for (size_t j = 0; j < f.cols.size(); ++j)
+      if (f.names[j] != a[0].s) out.set(f.names[j], f.cols[j]);
+    return frame(out);
+  });
   b.m("Frame", "where", {"Vec"}, "Frame", [frame](void* s, A& a) {
     const Frame& f = self<Frame>(s);
     const Vec& mask = V(a[0]);

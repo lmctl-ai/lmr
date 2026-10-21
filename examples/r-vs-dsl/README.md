@@ -50,7 +50,9 @@ largest `diff`.
 | [lm-interaction-weights](lm-interaction-weights.lms) | `lm(mpg ~ wt * hp)`, `lm(log(dist) ~ log(speed))`, weighted `lm` | 19 | 2.6e-15 |
 | [lm-prediction-intervals](lm-prediction-intervals.lms) | `predict(interval = "confidence"/"prediction")` | 25 | 3.9e-15 |
 | [anova-twoway-toothgrowth](anova-twoway-toothgrowth.lms) | `aov(len ~ supp * dose, ToothGrowth)`, sequential sums of squares | 24 | 3.9e-15 |
+| [tukey-hsd](tukey-hsd.lms) | `TukeyHSD(aov(breaks ~ tension))`, `ptukey`, `qtukey` | 21 | 1.6e-8 |
 | [pairwise-t-plantgrowth](pairwise-t-plantgrowth.lms) | `pairwise.t.test`: pooled SD, Holm, Bonferroni | 9 | 3.9e-16 |
+| [factor-models](factor-models.lms) | `lm(len ~ supp * factor(dose))`, `anova()`, nested `anova(m1, m2)`, `anova(glm, test = "Chisq")` | 46 | 2.2e-14 |
 | [glm-dobson-poisson](glm-dobson-poisson.lms) | the Poisson example of `?glm` (Dobson 1990) | 41 | 7.3e-15 |
 | [glm-gamma-clotting](glm-gamma-clotting.lms) | the Gamma example of `?glm` (McCullagh & Nelder, clotting) | 13 | 2.1e-14 |
 | [glm-binomial-links](glm-binomial-links.lms) | logit/probit/cloglog by AIC; grouped binomial with weights, LD50 | 18 | 3.1e-15 |
@@ -60,12 +62,17 @@ largest `diff`.
 | [wilcox-tests](wilcox-tests.lms) | `wilcox.test`: exact paired, ties with correction, Hodges-Lehmann interval | 9 | 5.0e-16 |
 | [chisq-tests](chisq-tests.lms) | `chisq.test`: 2 × 3 independence, goodness of fit, Yates 2 × 2 | 13 | 6.9e-18 |
 | [fisher-binom-prop](fisher-binom-prop.lms) | `fisher.test(TeaTasting)`, `binom.test(682, 925)`, `prop.test(smokers, patients)` | 20 | 4.4e-16 |
+| [k-sample-tests](k-sample-tests.lms) | `kruskal.test`, `bartlett.test`, `fligner.test`, `oneway.test` (equal variances and Welch) | 13 | 1.7e-18 |
+| [block-paired-tests](block-paired-tests.lms) | `friedman.test`, `quade.test`, `mcnemar.test` (help-page examples) | 11 | 3.5e-17 |
+| [power-noncentral](power-noncentral.lms) | `power.t.test`, `power.prop.test`, noncentral `pt`/`qt`/`dt`/`pchisq`/`qchisq`/`pf`/`qf` | 26 | 9.7e-8 * |
 | [cor-test-mtcars](cor-test-mtcars.lms) | `cor.test(mpg, wt)`: Pearson, Spearman, Kendall | 11 | 7.4e-16 |
 | [cor-test-exact](cor-test-exact.lms) | exact Kendall and Spearman tests (Hollander & Wolfe, `?cor.test`) | 10 | 1.1e-16 |
 | [contingency-mtcars](contingency-mtcars.lms) | `chisq.test(table(cyl, gear))`, `fisher.test(table(am, vs))` | 22 | 2.3e-16 |
 | [normality-variance](normality-variance.lms) | `shapiro.test`, `var.test(mpg ~ am)`, `ks.test(mpg, "pnorm", 20, 6)` | 10 | 1.3e-10 * |
 | [summary-quantiles](summary-quantiles.lms) | `summary`, `quantile(type = 1..9)`, `sd`, `IQR`, `mad`, `cor` | 54 | 1.1e-16 |
 | [distributions](distributions.lms) | `dnorm`, `pt`, `qt`, `qchisq`, `qf`, `dbinom`, `dpois`, `qgamma`, `pbeta`, ... | 47 | 4.3e-16 |
+| [pca-usarrests](pca-usarrests.lms) | `prcomp(USArrests, scale. = TRUE)`, `prcomp(iris)`, `eigen(cor(mtcars))` | 67 | 2.5e-6 * |
+| [mds-mahalanobis](mds-mahalanobis.lms) | `cmdscale(eurodist)`, `mahalanobis`, `cor` | 116 | 1.4e-13 |
 | [kmeans-iris](kmeans-iris.lms) | `kmeans(iris[, 1:4], 3, nstart = 25)` (label-free results) | 12 | 1.9e-15 |
 | [hclust-usarrests](hclust-usarrests.lms) | `hclust(dist(scale(USArrests)))`, complete and average, `cutree(4)` | 252 | 1.9e-16 |
 | [arima-lh](arima-lh.lms) | `arima(lh, c(1,0,0))`, `c(3,0,0)`, `c(1,0,1)`, `predict(n.ahead = 12)` | 44 | 4.0e-8 |
@@ -76,10 +83,11 @@ largest `diff`.
 | [optim-rosenbrock](optim-rosenbrock.lms) | `optim` on Rosenbrock: Nelder-Mead, BFGS, L-BFGS-B | 11 | see below * |
 | [mle-gamma-optim](mle-gamma-optim.lms) | gamma MLE with `optim(BFGS, hessian = TRUE)`, standard errors | 8 | 3.6e-11 |
 | [integrate-roots](integrate-roots.lms) | `integrate` (incl. infinite bounds), `uniroot`, `optimize` | 8 | 1.4e-16 |
+| [density-ecdf](density-ecdf.lms) | `density()`, `bw.nrd0/nrd/ucv/bcv/SJ`, `ecdf`, `hist` | 42 | 1.3e-14 * |
 | [smoothing-cars](smoothing-cars.lms) | `smooth.spline(df = 5)`, `loess`, `splinefun`, `approx` | 118 | 9.9e-6 * |
 | [fft-spectrum](fft-spectrum.lms) | `fft(1:8)`, amplitude spectrum, inverse transform | 113 | 1.4e-15 |
 
-In total, 36 recipes compare 2962 numbers.
+In total, 44 recipes compare 3304 numbers.
 
 Several recipes also show how to do in a few DSL lines what R does with a helper lmr does not have: R's treatment
 dummies for factors, sequential ANOVA sums of squares, Holm's adjustment, `Box.test`, prediction intervals, Wald odds
@@ -87,7 +95,14 @@ ratios, and the contingency table itself.
 
 ## Known differences (*)
 
-Each one is explained in the recipe's header and compared with its own tolerance; nothing is hidden by a loose default.
+The comparison is a bug detector, not a byte-identity requirement: tolerances are set where a real bug would show.
+Each known difference is explained in the recipe's header and compared with its own tolerance.
+
+- **`density()`** (density-ecdf): R bins the data and convolves with an FFT; lmr sums the kernel exactly. Density
+  values differ by R's binning error (about 3e-4 here) and are compared at 2e-3; bandwidths, grid, ECDF and
+  histogram agree to 1e-14.
+- **`summary(prcomp)`** (pca-usarrests): R rounds the proportions of variance to 5 decimals.
+- **Sample sizes from `power.*.test`** (power-noncentral): R's `uniroot` stops at tol = 1.2e-4; lmr solves to 1e-10.
 
 - **`ks.test` with ties** (normality-variance): both sides use the asymptotic Kolmogorov distribution. lmr's p-value,
   0.74573634804, is the limit series summed to double precision; R stops its series early and reports a value

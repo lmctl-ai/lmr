@@ -1,0 +1,37 @@
+// R vs lmr: k-sample tests. Kruskal-Wallis on ozone by month (airquality, the ?kruskal.test example; months with
+// missing ozone are dropped), Bartlett and Fligner-Killeen tests of equal variances and the one-way analysis of
+// means with and without equal variances (Welch) on InsectSprays.
+// R:   kruskal.test(Ozone ~ Month, airquality); bartlett.test(count ~ spray, InsectSprays);
+//      fligner.test(count ~ spray, InsectSprays); oneway.test(count ~ spray, InsectSprays[, var.equal = TRUE])
+// Usage: lmscript examples/r-vs-dsl/k-sample-tests.lms   (cwd = repository root)
+import "../dsl/lib/lmr.lms";
+import "lib/compare.lms";
+
+p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+let aq = read_csv("examples/r-vs-dsl/data/airquality.csv");
+let k = test("kruskal").x(aq.col("Ozone")).groups(aq.col("Month")).run();
+let ins = read_csv("examples/r-vs-dsl/data/InsectSprays.csv");
+let count = ins.col("count");
+let spray = ins.text("spray");
+let b = test("bartlett").x(count).groups(spray).run();
+let f = test("fligner").x(count).groups(spray).run();
+let o1 = test("oneway").x(count).groups(spray).var_equal(true).run();
+let o2 = test("oneway").x(count).groups(spray).run();
+out.print(k.summary());
+out.print(o2.summary());
+out.set("kruskal_chi2", k.statistic());
+out.set("kruskal_df", k.df());
+out.set("kruskal_p", k.p_value());
+out.set("bartlett_k2", b.statistic());
+out.set("bartlett_p", b.p_value());
+out.set("fligner_chi2", f.statistic());
+out.set("fligner_p", f.p_value());
+out.set("oneway_f", o1.statistic());
+out.set("oneway_p", o1.p_value());
+out.set("welch_f", o2.statistic());
+out.set("welch_df", vec().push(o2.param("num df")).push(o2.param("denom df")));
+out.set("welch_p", o2.p_value());
+end _dsl_
+
+got = lmr.check(lmr.run(p, "rvd-k-sample-tests"));
+compare.finish("k-sample-tests", compare.report("k-sample-tests", got, "examples/r-vs-dsl/expected/k-sample-tests.json", 0.000000001, {}));
