@@ -1,0 +1,86 @@
+// access: write (build/dsl/tut-arima-roundtrip.dslb)
+// Topic: ARMA simulation and estimation round trip with residual diagnostics (after: R ?arima.sim, ?arima, ?tsdiag)
+// What it does: one _dsl_ chunk simulates an ARMA(1,1) with arima_sim, fits ARIMA(1,0,1) by exact ML and prints the
+//   coefficient table against the generating values, then checks the estimates within 2.5 SE, the innovation variance,
+//   whiteness of the residuals (largest ACF at lags 1-10 inside the band plus 0.05), that the residual mean square
+//   matches sigma2, a 6-step forecast whose standard errors start at sqrt(sigma2), never shrink and follow the psi-weight
+//   formula at h = 2, that the CSS-ML method agrees with ML to 0.02, and that the same seed reproduces the series
+//   exactly. Same checks as examples/tut-arima-roundtrip.lms.
+// Data: 500 values of x_t = 0.7 x_{t-1} + e_t - 0.4 e_{t-1}, e ~ N(0, 1.5^2), arima_sim with rng(314) (the native
+//   generator, not R's stream, so the series differs from the original's seed 314).
+// Usage: lmscript examples/dsl/tut-arima-roundtrip.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
+import "lib/rclidsl.lms";
+
+p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+let ar = 0.7;
+let ma = -0.4;
+let sd = 1.5;
+let n = 500;
+let x = arima_sim(rng(314), n, parse_vec("0.7"), parse_vec("-0.4"), sd);
+let again = arima_sim(rng(314), n, parse_vec("0.7"), parse_vec("-0.4"), sd);
+let fit = arima(1, 0, 1).method("ML").fit(x);
+let css = arima(1, 0, 1).method("CSS-ML").fit(x);
+let truth = parse_vec("0 0 0").set(0, ar).set(1, ma);
+out.print(fmt("n=%d", n) + fmt("  sigma2=%.4f", fit.sigma2()) + fmt(" (true %.2f)", sd * sd) + fmt("  loglik=%.2f", fit.loglik()) + fmt("  AIC=%.2f", fit.aic()) + fmt("  convergence=%d", fit.convergence()));
+out.print("coefficient  estimate   std_err   truth    |z|   CSS-ML estimate");
+for (i in range(0, fit.n_coef())) {
+  let name = fit.name(i);
+  let t = 0.0;
+  if (name == "ar1") {
+    t = ar;
+  }
+  if (name == "ma1") {
+    t = ma;
+  }
+  let zdev = abs(fit.estimate(i) - t) / fit.se(i);
+  out.print(fmt("%-12s", name) + fmt(" %9.4f", fit.estimate(i)) + fmt(" %9.4f", fit.se(i)) + fmt(" %7.2f", t) + fmt("  %5.2f", zdev) + fmt("   %9.4f", css.estimate(name)));
+  # Self-check 1: each estimate within 2.5 SE of the generating value; CSS-ML agrees with ML to 0.02.
+  out.check(zdev <= 2.5, name + " within 2.5 SE of the generating value");
+  out.check(abs(fit.estimate(i) - css.estimate(name)) <= 0.02, "CSS-ML and ML agree on " + name);
+}
+out.check(fit.convergence() == 0, "ML fit converged");
+# Self-check 2: innovation variance within 20% of 2.25 (its SE is about sigma2 sqrt(2/n) = 0.14).
+out.check(abs(fit.sigma2() - sd * sd) <= 0.2 * sd * sd, "sigma2 within 20% of 2.25");
+# Self-check 3: residuals are white: the largest of the ten residual autocorrelations at lags 1-10 is inside
+# 1.96/sqrt(n) + 0.05, and their mean square matches sigma2 within 5%.
+let res = fit.residuals();
+let racf = res.acf(10);
+let band = 1.96 / sqrt(float(n));
+let worst = 0.0;
+for (k in range(1, 11)) {
+  worst = max(worst, abs(racf.at(k)));
+}
+let msq = res.dot(res) / float(n);
+out.print(fmt("residual ACF, largest |r_k| for k=1..10: %.4f", worst) + fmt(" (band %.4f)", band) + fmt("; residual mean square %.4f", msq) + fmt(" vs sigma2 %.4f", fit.sigma2()));
+out.check(worst <= band + 0.05, "residuals are white");
+out.check(abs(msq - fit.sigma2()) <= 0.05 * fit.sigma2(), "residual mean square agrees with sigma2 within 5%");
+# Self-check 4: the forecast standard errors start at sqrt(sigma2) and never shrink.
+let fc = fit.forecast(6);
+out.print("  h  forecast  se");
+for (h in range(0, 6)) {
+  out.print(fmt("%3d", h + 1) + fmt("  %8.4f", fc.mean_at(h)) + fmt("  %.4f", fc.se_at(h)));
+}
+out.check(abs(fc.se_at(0) - sqrt(fit.sigma2())) <= 0.000001, "one-step forecast SE is sqrt(sigma2)");
+for (h in range(1, 6)) {
+  out.check(fc.se_at(h) >= fc.se_at(h - 1) - 0.000001, fmt("forecast SE does not shrink at h = %d", h + 1));
+}
+# The two-step SE for ARMA(1,1) is sigma sqrt(1 + psi1^2) with psi1 = phi + theta in R's sign convention (theta = ma1
+# enters the MA polynomial with a plus sign).
+let psi1 = fit.estimate("ar1") + fit.estimate("ma1");
+out.check(abs(fc.se_at(1) - sqrt(fit.sigma2() * (1.0 + psi1 * psi1))) <= 0.000001, "two-step forecast SE follows the psi-weight formula");
+# Self-check 5: seeded reproducibility (the whole series, not just the first ten values).
+let same = again.len() == n;
+for (i in range(0, n)) {
+  if (x.at(i) != again.at(i)) {
+    same = false;
+  }
+}
+out.check(same, "rng(314) reproduces the series exactly");
+out.set("ar1", fit.estimate("ar1"));
+out.set("ma1", fit.estimate("ma1"));
+out.set("sigma2", fit.sigma2());
+out.set("resid_acf_max", worst);
+end _dsl_
+
+v = rclidsl.check(rclidsl.run(p, "tut-arima-roundtrip"));
+println(sprintf("Checks passed: ar1=%.3f ma1=%.3f within 2.5 SE of (0.7, -0.4); sigma2=%.3f; residual ACF max %.3f; forecast SEs follow the psi weights; seed reproducible.", v.ar1, v.ma1, v.sigma2, v.resid_acf_max));

@@ -1,0 +1,64 @@
+// access: write (build/dsl/tut-glm-poisson.dslb)
+// Topic: Poisson count regression with rate ratios and a dispersion check (after: R ?glm, Dobson's count examples)
+// What it does: one _dsl_ chunk fits count ~ dose with a log link (native glm) from examples/data/tut-counts.csv, prints the
+//   coefficient table with rate ratios and 95% Wald intervals, checks the generating rates against the intervals, tests the
+//   dose effect with the deviance drop (chi-square(1) upper tail), checks the deviance/df ratio for overdispersion, and
+//   refits with the dose centred at 2 so that the intercept is log of the fitted mean at dose 2 with its own standard
+//   error: a Wald check of that mean against the true rate exp(1.3), with the exact Poisson quartiles at the true rate
+//   printed for scale. Same checks as examples/tut-glm-poisson.lms; the centred refit also cross-checks Glm.predict.
+// Data: examples/data/tut-counts.csv, 80 rows: 20 doses on a 0..4 grid x 4 replicates, count ~ Poisson(exp(0.3 + 0.5 dose));
+//   seed 2719, scripts/generate-tutorial-data.py.
+// Usage: lmscript examples/dsl/tut-glm-poisson.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
+import "lib/rclidsl.lms";
+
+p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+let b0 = 0.3;
+let b1 = 0.5;
+let d = read_csv("examples/data/tut-counts.csv");
+let count = d.col("count");
+let n = d.nrow();
+let fit = glm(d, "count ~ dose", "poisson");
+let df = fit.df_residual();
+let ratio = fit.deviance() / float(df);
+out.print(fmt("n=%d", n) + fmt("  total count=%.0f", count.sum()) + fmt("  deviance=%.3f", fit.deviance()) + fmt(" on %d df", df) + fmt(" (ratio %.3f)", ratio) + fmt("  null deviance=%.3f", fit.null_deviance()) + fmt("  AIC=%.2f", fit.aic()));
+out.print("term          estimate   std_err    z        p          rate ratio [95% CI]   truth");
+let truth = vec().push(b0).push(b1);
+for (i in range(0, fit.n_coef())) {
+  let lo = fit.conf_low(i, 0.95);
+  let hi = fit.conf_high(i, 0.95);
+  out.print(fmt("%-12s", fit.name(i)) + fmt(" %9.4f", fit.estimate(i)) + fmt(" %9.4f", fit.se(i)) + fmt(" %8.3f", fit.statistic(i)) + fmt(" %.2e", fit.p_value(i)) + fmt("  %7.3f", exp(fit.estimate(i))) + fmt(" [%.3f, ", exp(lo)) + fmt("%.3f]", exp(hi)) + fmt("   %.3f", exp(truth.at(i))));
+  # Self-check 1: the generating log-rates lie inside the 95% Wald intervals.
+  out.check(lo <= truth.at(i) && truth.at(i) <= hi, "true " + fit.name(i) + " inside its 95% Wald interval");
+}
+# Self-check 2: the dose effect is decisive by the likelihood-ratio test.
+let lr = fit.null_deviance() - fit.deviance();
+let lr_p = chisq(1.0).p_upper(lr);
+out.print(fmt("Likelihood-ratio test of dose: chi^2(1)=%.2f", lr) + fmt(", p=%.2e", lr_p));
+out.check(lr_p <= 0.000001, "dose effect detected by the LR test (p <= 1e-6)");
+# Self-check 3: no overdispersion: deviance/df within [0.6, 1.5] (chi-square(78)/78 has sd 0.16).
+out.check(ratio >= 0.6 && ratio <= 1.5, fmt("deviance/df = %.3f within [0.6, 1.5]", ratio));
+# Self-check 4: a Wald check of the fitted mean at dose 2. Refitting with dose - 2 as the predictor makes the intercept
+# log mu(2) with its own standard error. The fitted log mean must be within 2.5 SE of the true log rate 1.3; on this
+# fixture it sits 2.1 SE above (a 3% event for a correct fit), and a generating intercept of 0.6 instead of 0.3 would put
+# the truth 3.0 SE away and fail. The Poisson quartiles at the true rate are printed for scale only.
+let d2 = frame().set("count", count).set("d2", d.col("dose") - 2.0);
+let fit2 = glm(d2, "count ~ d2", "poisson");
+let logmu2 = fit2.estimate(0);
+let se2 = fit2.se(0);
+let mu2 = exp(logmu2);
+let lam2 = exp(b0 + 2.0 * b1);
+let qs = pois(lam2).q_vec(parse_vec("0.25 0.5 0.75"));
+let away = abs(logmu2 - (b0 + 2.0 * b1)) / se2;
+out.print(fmt("fitted mean count at dose 2: %.3f", mu2) + fmt(" = exp(%.4f", logmu2) + fmt(" +- %.4f)", se2) + fmt(" (true rate %.3f = exp(1.3)", lam2) + fmt(", %.2f SE away)", away) + "; Poisson quartiles at the true rate: " + qs.str());
+out.check(away <= 2.5, "fitted log mean at dose 2 within 2.5 SE of the truth");
+out.check(abs(fit2.estimate(1) - fit.estimate(1)) <= 0.000000001, "centred refit keeps the slope");
+let at2 = fit.predict(frame().set("dose", vec().push(2.0)), "response").at(0);
+out.check(abs(at2 - mu2) < 0.000001 * mu2, "predict at dose 2 equals exp(centred intercept)");
+out.set("lr_p_text", fmt("%.2e", lr_p));
+out.set("dev_ratio", ratio);
+out.set("rate_ratio", exp(fit.estimate(1)));
+out.set("rate_ratio_true", exp(b1));
+end _dsl_
+
+values = rclidsl.check(rclidsl.run(p, "tut-glm-poisson"));
+println(sprintf("Checks passed: truth inside both intervals; LR p=%s; deviance/df=%.3f; rate ratio per unit dose %.3f (true %.3f).", values.lr_p_text, values.dev_ratio, values.rate_ratio, values.rate_ratio_true));

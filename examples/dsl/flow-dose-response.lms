@@ -1,0 +1,91 @@
+// access: write (build/dsl/flow-dose-*.dslb)
+// Topic: a dose-response study as three chunks run in ONE rcli-dsl process, sharing data through keep()/kept_*().
+// What it does:
+//   Chunk "prepare": simulates 8 dose groups x 40 animals (logistic truth, ED50 = 2.0, slope 1.5 per log-dose unit),
+//     drops a deliberately missing group, and keeps the frame.
+//   Chunk "compare": fits binomial GLMs with logit, probit and cloglog links (proportions with trials as weights),
+//     prints their AICs and keeps them.
+//   Chunk "ed50": refits the best link, finds ED50 and ED90 by uniroot on the fitted curve (reverse communication:
+//     the curve is written in the chunk), and checks ED50 against the closed form for the logit link.
+// lmscript only compiles the three chunks and starts one process: rclidsl.exec([a, b, c]). Every chunk is loaded and
+// verified before the first one runs.
+// Usage: lmscript examples/dsl/flow-dose-response.lms   (cwd = repository root)
+import "lib/rclidsl.lms";
+
+prepare = _dsl_ schema="../../native/schema/rcli.dsl.json";
+let r = rng(5150);
+let logdose = vec();
+let trials = vec();
+let prop = vec();
+for (g in range(0, 8)) {
+  let ld = log(0.5) + float(g) * 0.4;
+  let pr = 1.0 / (1.0 + exp(-1.5 * (ld - log(2.0))));
+  let hits = r.draw(binom(40, pr));
+  logdose.push(ld);
+  trials.push(40.0);
+  if (g == 5) {
+    prop.push(nan());
+  } else {
+    prop.push(hits / 40.0);
+  }
+}
+let f = frame().set("logdose", logdose).set("trials", trials).set("prop", prop).drop_nan();
+out.print(fmt("%d dose groups after dropping the incomplete one", f.nrow()));
+keep("doses", f);
+end _dsl_
+
+compare = _dsl_ schema="../../native/schema/rcli.dsl.json";
+let f = kept_frame("doses");
+let links = split("logit,probit,cloglog", ",");
+let aic = vec();
+for (i in range(0, links.len())) {
+  let m = glm(f, "prop ~ logdose", "binomial", links.at(i), f.col("trials"));
+  aic.push(m.aic());
+  out.print(fmt("%-8s", links.at(i)) + fmt(" AIC %.3f", m.aic()) + fmt("  deviance %.3f", m.deviance()) + fmt(" on %d df", m.df_residual()));
+}
+keep("aic", aic);
+out.set("aic", aic);
+end _dsl_
+
+ed50 = _dsl_ schema="../../native/schema/rcli.dsl.json";
+let f = kept_frame("doses");
+let links = split("logit,probit,cloglog", ",");
+let best = kept_vec("aic").which_min();
+let link = links.at(best);
+let m = glm(f, "prop ~ logdose", "binomial", link, f.col("trials"));
+let b0 = m.estimate(0);
+let b1 = m.estimate(1);
+# The fitted probability at log dose x for this link, written once and used by both root searches.
+fn fitted(link: string, eta: float) -> float {
+  let p = 1.0 - exp(-exp(eta));
+  if (link == "logit") {
+    p = 1.0 / (1.0 + exp(-eta));
+  } else if (link == "probit") {
+    p = norm().p(eta);
+  }
+  return p;
+}
+fn solve(link: string, b0: float, b1: float, target: float) -> float {
+  let s = uniroot(-5.0, 5.0).tol(0.000000001);
+  while (s.next()) {
+    s.tell(fitted(link, b0 + b1 * s.x()) - target);
+  }
+  return s.root();
+}
+let ed50 = exp(solve(link, b0, b1, 0.5));
+let ed90 = exp(solve(link, b0, b1, 0.9));
+out.print("best link: " + link + fmt("  ED50 = %.4f", ed50) + fmt("  ED90 = %.4f", ed90) + "  (true ED50 2.0)");
+if (link == "logit") {
+  out.check_close(log(ed50), -b0 / b1, 0.000001, "logit ED50 equals -b0/b1");
+}
+out.check(abs(log(ed50) - log(2.0)) < 0.25, "ED50 within 25% of the true 2.0 on the log scale");
+out.check(ed90 > ed50, "ED90 above ED50");
+out.set("link", link);
+out.set("ed50", ed50);
+out.set("ed90", ed90);
+end _dsl_
+
+paths = [rclidsl.save(prepare, "flow-dose-1"), rclidsl.save(compare, "flow-dose-2"), rclidsl.save(ed50, "flow-dose-3")];
+v = rclidsl.check(rclidsl.exec(paths));
+if (!has_key(v, "link")) { println("dry run: nothing executed"); exit(0); }
+println(sprintf("Flow passed in one process: best link %s (AICs %s), ED50 %.3f, ED90 %.3f.", v.link, json_stringify(v.aic), v.ed50, v.ed90));

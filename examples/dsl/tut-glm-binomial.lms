@@ -1,0 +1,69 @@
+// access: write (build/dsl/tut-glm-binomial.dslb)
+// Topic: logistic regression with odds ratios and a likelihood-ratio test (after: R ?glm, ?predict.glm)
+// What it does: one _dsl_ chunk simulates a dose-response experiment with a known logit, fits a binomial GLM with the
+//   native glm, prints the coefficient table with odds ratios and 95% Wald intervals, tests the slope with the deviance
+//   likelihood-ratio statistic (chi-square(1) upper tail), and checks the fitted probability at the true ED50. Same checks
+//   as examples/tut-glm-binomial.lms. The DSL Glm has no "statistic_type" field; the original's "z statistics" check is
+//   replaced by its meaning: each statistic equals estimate / SE and the interval is estimate -+ qnorm(0.975) SE.
+// Data: 300 doses ~ U(-3, 3) (rng seed 818); y = 1 when a second uniform draw (rng seed 819) is below
+//   p(dose) = 1 / (1 + exp(-(-0.5 + 1.2 dose))), so the truth is intercept -0.5, slope 1.2, ED50 = 0.5/1.2.
+//   The generator is xoshiro256**, not R's, so the draws differ from the original's.
+// Usage: lmscript examples/dsl/tut-glm-binomial.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
+import "lib/rclidsl.lms";
+
+p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+let b0 = -0.5;
+let b1 = 1.2;
+let n = 300;
+let dose = rng(818).draw(unif(-3.0, 3.0), n);
+let u = rng(819).draw(unif(0.0, 1.0), n);
+let y = vec();
+for (i in range(0, n)) {
+  let pr = 1.0 / (1.0 + exp(-(b0 + b1 * dose.at(i))));
+  if (u.at(i) < pr) {
+    y.push(1.0);
+  } else {
+    y.push(0.0);
+  }
+}
+let d = frame().set("y", y).set("dose", dose);
+let fit = glm(d, "y ~ dose", "binomial");
+let zq = norm().q(0.975);
+out.print(fmt("n=%d", n) + fmt(" events=%.0f", y.sum()) + fmt("  deviance=%.3f", fit.deviance()) + fmt(" on %d df", fit.df_residual()) + fmt("  null deviance=%.3f", fit.null_deviance()) + fmt("  AIC=%.2f", fit.aic()) + "  converged=" + str(fit.converged()) + fmt(" in %d iterations", fit.iter()));
+out.print("term          estimate   std_err    z        p          odds ratio [95% CI]");
+let truth = vec().push(b0).push(b1);
+for (i in range(0, fit.n_coef())) {
+  let lo = fit.conf_low(i, 0.95);
+  let hi = fit.conf_high(i, 0.95);
+  out.print(fmt("%-12s", fit.name(i)) + fmt(" %9.4f", fit.estimate(i)) + fmt(" %9.4f", fit.se(i)) + fmt(" %8.3f", fit.statistic(i)) + fmt(" %.2e", fit.p_value(i)) + fmt("  %7.3f", exp(fit.estimate(i))) + fmt(" [%.3f, ", exp(lo)) + fmt("%.3f]", exp(hi)));
+  # Self-check 1: the generating logit parameters lie inside the 95% Wald intervals.
+  out.check(lo <= truth.at(i) && truth.at(i) <= hi, "true " + fit.name(i) + " inside its 95% Wald interval");
+  # The statistics are Wald z: estimate / SE, with the normal-quantile interval.
+  out.check(abs(fit.statistic(i) - fit.estimate(i) / fit.se(i)) < 0.000001, fit.name(i) + " statistic is estimate / SE (z)");
+  out.check(abs(lo - (fit.estimate(i) - zq * fit.se(i))) < 0.000001 && abs(hi - (fit.estimate(i) + zq * fit.se(i))) < 0.000001, fit.name(i) + " interval is estimate -+ qnorm(0.975) SE");
+}
+# Self-check 2: the likelihood-ratio test of the slope is the chi-square(1) tail of the deviance drop, and it is decisive.
+let lr = fit.null_deviance() - fit.deviance();
+let lr_p = chisq(1.0).p_upper(lr);
+out.print(fmt("Likelihood-ratio test of the slope: chi^2(1)=%.2f", lr) + fmt(", p=%.2e", lr_p) + fmt("; Wald z=%.2f", fit.statistic(1)));
+out.check(lr_p <= 0.000001, "slope detected by the LR test (p <= 1e-6)");
+out.check(fit.dispersion() == 1.0, "binomial family reports dispersion 1");
+# Self-check 3: the fitted probability at the true ED50 (dose 0.5/1.2) is within 0.1 of one half.
+let ed50 = -b0 / b1;
+let p_hat = 1.0 / (1.0 + exp(-(fit.estimate(0) + fit.estimate(1) * ed50)));
+let ed50_frame = frame().set("dose", vec().push(ed50));
+let p_pred = fit.predict(ed50_frame, "response").at(0);
+out.print(fmt("fitted P(y=1) at the true ED50 %.4f: ", ed50) + fmt("%.3f (truth 0.5)", p_hat) + fmt("; fitted ED50 %.4f", -fit.estimate(0) / fit.estimate(1)));
+out.check(abs(p_hat - 0.5) <= 0.1, "fitted probability at the true ED50 within 0.1 of 0.5");
+out.check(abs(p_pred - p_hat) < 0.000000001, "predict(type = response) agrees with the inverse logit");
+# Self-check 4: the residual deviance is below the null deviance.
+out.check(fit.deviance() < fit.null_deviance(), "model improves on the null");
+out.set("lr_p", lr_p);
+out.set("lr_p_text", fmt("%.2e", lr_p));
+out.set("p_hat", p_hat);
+out.set("odds_ratio", exp(fit.estimate(1)));
+out.set("odds_ratio_true", exp(b1));
+end _dsl_
+
+values = rclidsl.check(rclidsl.run(p, "tut-glm-binomial"));
+println(sprintf("Checks passed: truth inside both Wald intervals; LR p=%s; P(ED50)=%.3f; odds ratio per unit dose %.3f (true %.3f).", values.lr_p_text, values.p_hat, values.odds_ratio, values.odds_ratio_true));

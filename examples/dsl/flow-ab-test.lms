@@ -1,0 +1,62 @@
+// access: write (build/dsl/flow-ab-*.dslb)
+// Topic: an A/B comparison where the choice of test depends on diagnostics, then a bootstrap confirms the answer.
+// What it does:
+//   Step 1 (DSL "diagnose"): simulates control and treatment revenues (seeded log-normal: skewed, unequal spread),
+//     runs Shapiro-Wilk on each group and the F test of equal variances, and publishes the p-values.
+//   Step 2 (lmscript): picks the analysis. Both groups look normal: Welch t (pooled when the variances also look
+//     equal). Otherwise: Wilcoxon rank-sum with the Hodges-Lehmann interval.
+//   Step 3 (DSL "infer", compiled with the decision substituted): runs the chosen test, then a 2000-resample bootstrap
+//     of the difference in medians written as an ordinary DSL loop over Rng draws, and checks that both say the same.
+//   Step 4 (lmscript): the final report.
+// Usage: lmscript examples/dsl/flow-ab-test.lms   (cwd = repository root)
+import "lib/rclidsl.lms";
+
+diagnose = _dsl_ schema="../../native/schema/rcli.dsl.json";
+let r = rng(77);
+let control = r.draw(lnorm(3.0, 0.6), 60);
+let treated = r.draw(lnorm(3.35, 0.8), 60);
+let sw_c = test("shapiro").x(control).run();
+let sw_t = test("shapiro").x(treated).run();
+let ft = test("var").x(control).y(treated).run();
+out.print(fmt("control: n=%d", control.len()) + fmt(" median %.2f", control.median()) + fmt("  Shapiro p=%.4f", sw_c.p_value()));
+out.print(fmt("treated: n=%d", treated.len()) + fmt(" median %.2f", treated.median()) + fmt("  Shapiro p=%.4f", sw_t.p_value()));
+out.print(fmt("F test of equal variances: ratio %.3f", ft.estimate()) + fmt(", p=%.4f", ft.p_value()));
+out.set("shapiro_control", sw_c.p_value());
+out.set("shapiro_treated", sw_t.p_value());
+out.set("var_test", ft.p_value());
+end _dsl_
+d = rclidsl.check(rclidsl.run(diagnose, "flow-ab-1"));
+if (!has_key(d, "var_test")) { println("dry run: nothing executed"); exit(0); }
+
+normal = d.shapiro_control > 0.05 && d.shapiro_treated > 0.05;
+kind = normal ? "t" : "wilcox";
+equal_var = normal && d.var_test > 0.05;
+println(sprintf("decision: %s (normal: %s; equal variances: %s)", normal ? (equal_var ? "pooled t-test" : "Welch t-test") : "Wilcoxon rank-sum with Hodges-Lehmann interval", normal, d.var_test > 0.05));
+
+infer = _dsl_ schema="../../native/schema/rcli.dsl.json";
+let r = rng(77);
+let control = r.draw(lnorm(3.0, 0.6), 60);
+let treated = r.draw(lnorm(3.35, 0.8), 60);
+let h = test(${kind}).x(treated).y(control).var_equal(${equal_var}).conf_int(true).run();
+out.print(h.summary());
+# Bootstrap the difference in medians: resample each group with replacement.
+let boot = rng(2026);
+let diffs = vec();
+for (b in range(0, 2000)) {
+  let ct = boot.sample(control, control.len(), true);
+  let tt = boot.sample(treated, treated.len(), true);
+  diffs.push(tt.median() - ct.median());
+}
+let lo = diffs.quantile(0.025);
+let hi = diffs.quantile(0.975);
+out.print(fmt("bootstrap 95%% interval for the median difference: [%.2f, ", lo) + fmt("%.2f]", hi) + fmt("  (observed %.2f)", treated.median() - control.median()));
+out.check(h.p_value() < 0.05, "the test detects the treatment effect");
+out.check(lo > 0.0, "the bootstrap interval excludes zero");
+out.check(h.conf_low() > 0.0, "the test interval excludes zero");
+out.set("p_value", h.p_value());
+out.set("method", h.method());
+out.set("boot_low", lo);
+out.set("boot_high", hi);
+end _dsl_
+res = rclidsl.check(rclidsl.run(infer, "flow-ab-2"));
+println(sprintf("Flow passed: %s p=%s; bootstrap median difference in [%.2f, %.2f].", res.method, str(res.p_value), res.boot_low, res.boot_high));

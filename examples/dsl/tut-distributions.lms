@@ -1,0 +1,73 @@
+// access: write (build/dsl/tut-distributions.dslb)
+// Topic: distribution functions, quantile tables and seeded simulation (after: R ?Distributions, ?qnorm, ?quantile, ?set.seed;
+//   scipy-lectures statistics chapter)
+// What it does: one _dsl_ chunk prints a quantile table for the normal, t, chi-square and binomial laws against textbook
+//   values, checks p(q(p)) round trips, the binomial quantile definition and the identity qchisq(1-a, 1) = qnorm(1-a/2)^2,
+//   integrates the normal density to 1 over the whole real line (integrate with -inf()/inf(), the density written in the
+//   chunk; the original used [-40, 40] because its client could not pass infinite bounds), and summarises a seeded
+//   normal sample against the theoretical quantiles, checking the sample mean within 3 standard errors and seeded
+//   reproducibility. Same checks as examples/tut-distributions.lms.
+// Data: a 4000-draw N(3, 2^2) sample, rng seed 42 (xoshiro256**, so the draws differ from R's); everything else is analytic.
+// Usage: lmscript examples/dsl/tut-distributions.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
+import "lib/rclidsl.lms";
+
+p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+let ps = parse_vec("0.005 0.025 0.05 0.5 0.95 0.975 0.995");
+let bd = binom(20, 0.3);
+let qn = norm().q_vec(ps);
+let qt = t_dist(10.0).q_vec(ps);
+let qc = chisq(1.0).q_vec(ps);
+let qb = bd.q_vec(ps);
+out.print("p       norm       t(10)      chisq(1)   binom(20, 0.3)");
+for (i in range(0, ps.len())) {
+  out.print(fmt("%.3f", ps.at(i)) + fmt("  %9.6f", qn.at(i)) + fmt("  %9.6f", qt.at(i)) + fmt("  %9.6f", qc.at(i)) + fmt("  %6.0f", qb.at(i)));
+}
+# Self-check 1: textbook values to 1e-9 (Abramowitz-Stegun / R reference values).
+out.check_close(qn.at(5), 1.959963984540054, 0.000000001, "qnorm(0.975)");
+out.check_close(qn.at(6), 2.5758293035489, 0.000000001, "qnorm(0.995)");
+out.check_close(qt.at(5), 2.228138851986274, 0.000000001, "qt(0.975, 10)");
+out.check_close(qc.at(4), 3.841458820694124, 0.000000001, "qchisq(0.95, 1)");
+# Self-check 2: qchisq(1-a, 1) = qnorm(1-a/2)^2 and p(q(p)) = p round trips.
+out.check_close(qc.at(4), qn.at(5) * qn.at(5), 0.000000001, "chi-square(1) quantile is the squared normal quantile");
+let pn = norm().p_vec(qn);
+let pt = t_dist(10.0).p_vec(qt);
+let pb = bd.p_vec(qb);
+let pbm = bd.p_vec(qb - 1.0);
+for (i in range(0, ps.len())) {
+  out.check(abs(pn.at(i) - ps.at(i)) <= 0.000000000001 && abs(pt.at(i) - ps.at(i)) <= 0.000000000001, fmt("p(q(p)) round trip at p = %.3f", ps.at(i)));
+  # The binomial quantile is the smallest k with P(X <= k) >= p.
+  out.check(pb.at(i) >= ps.at(i) && pbm.at(i) < ps.at(i), fmt("binomial quantile is the smallest k with P(X <= k) >= p at p = %.3f", ps.at(i)));
+}
+# Self-check 3: the standard normal density integrates to 1 over (-inf, inf) and dnorm(0) = 1/sqrt(2 pi).
+let area = integrate(-inf(), inf());
+while (area.next()) {
+  area.tell(norm().d(area.x()));
+}
+let d0 = norm().d(0.0);
+let r2pi = 1.0 / sqrt(2.0 * pi());
+out.print(fmt("integral of dnorm over (-inf, inf) = %.12f", area.value()) + fmt(" (error estimate %.1e)", area.abs_error()) + fmt("; dnorm(0) = %.15f", d0) + fmt(" (1/sqrt(2 pi) = %.15f)", r2pi));
+out.check(area.ok(), "integration over the real line reports OK");
+out.check_close(area.value(), 1.0, 0.000000001, "normal density integrates to 1");
+out.check_close(d0, r2pi, 0.000000000000001, "dnorm(0) = 1/sqrt(2 pi)");
+# Self-check 4: a seeded sample: mean within 3 SE, sample quantiles near the theoretical ones, same seed -> same draws.
+let n = 4000;
+let mu = 3.0;
+let sigma = 2.0;
+let x = rng(42).draw(norm(mu, sigma), n);
+let again = rng(42).draw(norm(mu, sigma), n);
+let xbar = x.mean();
+let se = sigma / sqrt(float(n));
+let sq = x.quantiles(parse_vec("0.025 0.5 0.975"), 7);
+let lo_th = mu + sigma * qn.at(1);
+let hi_th = mu + sigma * qn.at(5);
+out.print(fmt("N(3, 4) sample of %d: ", n) + fmt("mean %.4f", xbar) + fmt(" (SE %.4f)", se) + fmt("; quantiles 2.5%%/50%%/97.5%%: %.4f", sq.at(0)) + fmt(" / %.4f", sq.at(1)) + fmt(" / %.4f", sq.at(2)) + fmt(" vs theory %.4f", lo_th) + fmt(" / %.4f", mu) + fmt(" / %.4f", hi_th));
+out.check(abs(xbar - mu) <= 3.0 * se, "sample mean within 3 SE of 3");
+# Sample-quantile standard errors at n = 4000: about 0.04 at the median and 0.085 at the 2.5%/97.5% points; allow 3.5 SE.
+out.check(abs(sq.at(1) - mu) <= 0.15 && abs(sq.at(0) - lo_th) <= 0.3 && abs(sq.at(2) - hi_th) <= 0.3, "sample quantiles near theory");
+out.check((x - again).abs().max() == 0.0, "seed 42 reproduces every draw");
+out.set("xbar", xbar);
+out.set("area", area.value());
+end _dsl_
+
+values = rclidsl.check(rclidsl.run(p, "tut-distributions"));
+println(sprintf("Checks passed: reference quantiles to 1e-9; chi-square(1) = normal^2; p(q(p)) round trips; density integrates to 1 (%.12f); sample mean %.4f within 3 SE; seed 42 reproducible.", values.area, values.xbar));

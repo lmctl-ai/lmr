@@ -1,0 +1,122 @@
+// access: write (build/dsl/tut-cluster.dslb)
+// Topic: k-means and hierarchical clustering with recovery scoring (after: R ?kmeans, ?hclust, ?cutree; scikit-learn
+//   clustering guide)
+// What it does: one _dsl_ chunk draws three Gaussian clusters with known centres, runs kmeans (Hartigan-Wong, 10
+//   restarts) and hclust (complete linkage, cut at 3), prints sizes, centres and the purity of each method against the
+//   true labels, and checks purity, centre recovery, the within-SS against the generating variance, well-formed labels
+//   and sizes, the dendrogram's last-merge gap, and that the same seed reproduces the k-means partition. Same checks as
+//   examples/tut-cluster.lms.
+// Data: 3 x 40 points in the plane, centres (0,0), (6,0), (3,5), isotropic sd 0.8, drawn with the native generator
+//   from rng(441) (the original used R's streams with seeds 441..446, one per coordinate and group).
+// Usage: lmscript examples/dsl/tut-cluster.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
+import "lib/rclidsl.lms";
+
+p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+let ca = parse_vec("0 6 3");
+let cb = parse_vec("0 0 5");
+let m = 40;
+let sd = 0.8;
+let k = 3;
+let r = rng(441);
+let a = vec();
+let b = vec();
+let truth = vec();
+for (g in range(0, k)) {
+  a.append(r.draw(norm(ca.at(g), sd), m));
+  b.append(r.draw(norm(cb.at(g), sd), m));
+  truth.append(rep(float(g), m));
+}
+let n = a.len();
+let pts = frame().set("a", a).set("b", b);
+let km = kmeans(pts, k, rng(7), 10);
+let hc = hclust(pts, "complete");
+let kl = km.clusters();
+let hl = hc.cut(k);
+
+# Purity: for each true group, the share of its points carrying that group's most common label (labels are 1..k).
+fn purity(labels: Vec, truth: Vec, k: int) -> float {
+  let hits = 0;
+  for (g in range(0, k)) {
+    let best = 0;
+    for (label in range(1, k + 1)) {
+      let count = 0;
+      for (i in range(0, labels.len())) {
+        if (truth.at(i) == float(g) && labels.at(i) == float(label)) {
+          count = count + 1;
+        }
+      }
+      best = max(best, count);
+    }
+    hits = hits + best;
+  }
+  return float(hits) / float(labels.len());
+}
+let pk = purity(kl, truth, k);
+let ph = purity(hl, truth, k);
+out.print(fmt("k-means: sizes [%d, ", km.size(1)) + fmt("%d, ", km.size(2)) + fmt("%d]", km.size(3)) + fmt(", total within-SS %.2f", km.tot_withinss()) + fmt(" (per point %.3f,", km.tot_withinss() / float(n)) + fmt(" expected about 2 sd^2 = %.2f)", 2.0 * sd * sd) + fmt(", purity %.3f", pk));
+out.print("k-means centre        nearest true centre   distance");
+let worst_centre = 0.0;
+for (c in range(1, k + 1)) {
+  let best = 1000000.0;
+  let best_g = 0;
+  for (g in range(0, k)) {
+    let d = sqrt(pow(km.center(c, "a") - ca.at(g), 2.0) + pow(km.center(c, "b") - cb.at(g), 2.0));
+    if (d < best) {
+      best = d;
+      best_g = g;
+    }
+  }
+  worst_centre = max(worst_centre, best);
+  out.print(fmt("(%6.3f, ", km.center(c, "a")) + fmt("%6.3f)", km.center(c, "b")) + fmt("      (%.0f, ", ca.at(best_g)) + fmt("%.0f)", cb.at(best_g)) + fmt("                %.3f", best));
+}
+let heights = hc.heights();
+let nh = heights.len();
+out.print(fmt("hierarchical (complete): %d merges, ", nh) + fmt("last three heights %.3f, ", heights.at(nh - 3)) + fmt("%.3f, ", heights.at(nh - 2)) + fmt("%.3f", heights.at(nh - 1)) + fmt("; purity of the 3-cut %.3f", ph));
+
+# Self-checks. Centres 5-6 apart with sd 0.8 give essentially perfect recovery; allow one misassigned point per method.
+let floor_purity = 1.0 - 1.0 / float(n);
+out.check(pk >= floor_purity, "k-means purity at least 1 - 1/n");
+out.check(ph >= floor_purity, "hierarchical purity at least 1 - 1/n");
+out.check(worst_centre <= 3.0 * sd / sqrt(float(m)), "every k-means centre within 3 SE of its true centre");
+# Within-SS per point estimates 2 sd^2 (two coordinates): accept 30% around 1.28.
+out.check(abs(km.tot_withinss() / float(n) - 2.0 * sd * sd) <= 0.3 * 2.0 * sd * sd, "within-SS per point within 30% of 2 sd^2");
+# Label vectors: n entries, every label in 1..k and all k labels used; sizes add up to n.
+fn n_distinct(labels: Vec, k: int) -> int {
+  let used = 0;
+  for (c in range(1, k + 1)) {
+    let seen = false;
+    for (i in range(0, labels.len())) {
+      if (labels.at(i) == float(c)) {
+        seen = true;
+      }
+    }
+    if (seen) {
+      used = used + 1;
+    }
+  }
+  return used;
+}
+out.check(kl.len() == n && hl.len() == n, "one label per point");
+out.check(kl.min() >= 1.0 && kl.max() <= float(k) && hl.min() >= 1.0 && hl.max() <= float(k), "labels lie in 1..k");
+out.check(n_distinct(kl, k) == k && n_distinct(hl, k) == k, "both methods use all k labels");
+out.check(km.size(1) + km.size(2) + km.size(3) == n, "k-means sizes add up to n");
+# The two inter-cluster merges (the last two heights) sit far above the last within-cluster merge: a clear 3-cluster gap.
+out.check(heights.at(nh - 2) >= 1.5 * heights.at(nh - 3), "dendrogram gap at three clusters (ratio at least 1.5)");
+# Determinism: the same seed and nstart reproduce the partition.
+let again = kmeans(pts, k, rng(7), 10).clusters();
+let same = again.len() == n;
+for (i in range(0, n)) {
+  if (again.at(i) != kl.at(i)) {
+    same = false;
+  }
+}
+out.check(same, "k-means reproducible with the same seed");
+out.set("purity_kmeans", pk);
+out.set("purity_hclust", ph);
+out.set("worst_centre", worst_centre);
+out.set("wss_per_point", km.tot_withinss() / float(n));
+out.set("gap", heights.at(nh - 2) / heights.at(nh - 3));
+end _dsl_
+
+v = rclidsl.check(rclidsl.run(p, "tut-cluster"));
+println(sprintf("Checks passed: purity %.3f / %.3f; worst centre error %.3f; within-SS per point %.3f; dendrogram gap %.2fx; seeded rerun identical.", v.purity_kmeans, v.purity_hclust, v.worst_centre, v.wss_per_point, v.gap));

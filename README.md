@@ -4,6 +4,22 @@
 
 R is licensed under GPL. This project invokes the unmodified R program as a separate process and exchanges JSON through temporary files; it does not link `libR` or `libRmath`. See [CONTRIBUTING.md](CONTRIBUTING.md) for the dependency boundary.
 
+## Native `_dsl_` host (no R)
+
+`native/` builds `rcli-dsl`, a single executable (no R runtime; libstdc++ linked in, only glibc linked dynamically). It runs lmscript `_dsl_` bytecode against a
+clean-room C++17 statistics core that uses only the standard library: no R, no Docker, no Python and no third-party
+libraries. It covers the same domains as the operations below (distributions, random draws, special functions,
+quantiles, FFT, hypothesis tests, lm/glm/nls, splines, loess, ARIMA, STL, k-means, hclust, optimisation, roots and
+integration) as a typed object API. Objectives and models are written in the DSL itself.
+
+```sh
+cmake -S native -B build-native -G Ninja && cmake --build build-native && (cd build-native && ctest)
+lmscript examples/dsl/tut-lm.lms
+```
+
+The API is in [docs/dsl-api.md](docs/dsl-api.md), and the examples, including multi-step flows, are in
+[examples/dsl/](examples/dsl/README.md). R is used only as an oracle process for the unit tests' expected values.
+
 ## Operations
 
 | Operation | Description |

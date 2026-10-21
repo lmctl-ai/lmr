@@ -1,0 +1,83 @@
+// access: write (build/dsl/tut-tests.dslb)
+// Topic: classical hypothesis tests on data built to have known outcomes (after: R ?t.test, ?wilcox.test, ?chisq.test,
+//   ?fisher.test, ?binom.test, ?shapiro.test, ?cor.test, ?var.test)
+// What it does: one _dsl_ chunk runs ten native tests covering eight test types and checks each against what the
+//   construction guarantees: a shifted normal sample is detected by t and Wilcoxon and the true shift sits in the t
+//   interval; equal variances are not rejected; a balanced 2x2 table gives chi^2 = 0, p = 1 exactly; a diagonal table is
+//   rejected by chi-square and Fisher; 60/100 successes give the exact two-sided binomial p = 0.05688793; a correlated
+//   pair is detected with the estimate near the true correlation; Shapiro-Wilk passes a normal sample and fails an
+//   exponential one. Same checks as examples/tut-tests.lms.
+// Data: seeded rng samples (seeds 701..706, xoshiro256**, so the draws differ from R's) plus fixed contingency tables.
+// Usage: lmscript examples/dsl/tut-tests.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
+import "lib/rclidsl.lms";
+
+p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+let shift = 0.8;
+let sd = 0.7;
+let n = 30;
+let x = rng(701).draw(norm(5.0, sd), n);
+let y = rng(702).draw(norm(5.0 + shift, sd), n);
+fn show(label: string, h: Htest) -> string {
+  let ci = "";
+  if (h.has_ci()) {
+    ci = fmt("  95%% CI [%.4f, ", h.conf_low()) + fmt("%.4f]", h.conf_high());
+  }
+  let stat = "(no statistic)";
+  if (is_finite(h.statistic())) {
+    stat = h.statistic_name() + fmt("=%.4f", h.statistic());
+  }
+  return fmt("%-26s", label) + " " + fmt("%-22s", stat) + fmt(" p=%.2e", h.p_value()) + ci + "  (" + h.method() + ")";
+}
+out.print("test                       statistic              p-value   interval  method");
+let t2 = test("t").x(x).y(y).var_equal(true).run();
+out.print(show("two-sample t", t2));
+let w2 = test("wilcox").x(x).y(y).run();
+out.print(show("Wilcoxon rank-sum", w2));
+let vt = test("var").x(x).y(y).run();
+out.print(show("F test of variances", vt));
+let bal = test("chisq").table(parse_vec("50 50 50 50"), 2, false).run();
+out.print(show("chi-square, balanced 2x2", bal));
+let dep = test("chisq").table(parse_vec("80 20 20 80"), 2, false).run();
+out.print(show("chi-square, diagonal 2x2", dep));
+let fis = test("fisher").table(parse_vec("80 20 20 80"), 2, false).run();
+out.print(show("Fisher, diagonal 2x2", fis));
+let bin = test("binom").successes(60.0).trials(100.0).p(0.5).run();
+out.print(show("binomial 60/100 vs 0.5", bin));
+# A correlated pair: v = u + noise with sd 0.5 against u ~ N(0, 1): corr = 1 / sqrt(1 + 0.25) = 0.894.
+let u = rng(703).draw(norm(), 60);
+let v = u + rng(704).draw(norm(0.0, 0.5), 60);
+let rho_true = 1.0 / sqrt(1.25);
+let cr = test("cor").x(u).y(v).method("pearson").run();
+out.print(show("Pearson correlation", cr));
+let sw_n = test("shapiro").x(rng(705).draw(norm(), 80)).run();
+out.print(show("Shapiro-Wilk, normal", sw_n));
+let sw_e = test("shapiro").x(rng(706).draw(exp_dist(1.0), 80)).run();
+out.print(show("Shapiro-Wilk, exponential", sw_e));
+
+# Self-checks. The t statistic for a shift of 0.8 with sd 0.7 and n = 30 per group has expectation about 4.4, so p < 0.01.
+out.check(t2.p_value() < 0.01 && w2.p_value() < 0.01, "shift of 0.8 detected by t and Wilcoxon at 1%");
+out.check(t2.conf_low() <= -shift && -shift <= t2.conf_high(), "true difference -0.8 inside the t interval");
+out.check(abs(t2.estimate(0) - x.mean()) <= 0.000000001 && abs(t2.estimate(1) - y.mean()) <= 0.000000001, "t estimates are the sample means");
+out.check(t2.df() == float(2 * n - 2), "pooled t has 58 df");
+out.check(vt.p_value() >= 0.05, "equal variances not rejected at 5%");
+out.check(bal.statistic() == 0.0 && bal.p_value() == 1.0, "balanced table gives chi^2 = 0, p = 1");
+out.check(dep.p_value() <= 0.000001 && fis.p_value() <= 0.000001, "diagonal table rejected by chi-square and Fisher");
+out.check(fis.estimate(0) >= 10.0, "Fisher odds ratio for 80/20 vs 20/80 exceeds 10");
+out.check(abs(bin.p_value() - 0.05688793) <= 0.00000001, "binomial p equals the exact 0.05688793");
+out.check(abs(bin.estimate(0) - 0.6) <= 0.000000001, "binomial estimate is 0.6");
+out.check(cr.p_value() <= 0.000001 && abs(cr.estimate(0) - rho_true) <= 0.1, "correlation detected and within 0.1 of 0.894");
+out.check(cr.conf_low() <= rho_true && rho_true <= cr.conf_high(), "true correlation inside its interval");
+out.check(sw_n.p_value() >= 0.05, "normal sample passes Shapiro-Wilk at 5%");
+out.check(sw_e.p_value() <= 0.001, "exponential sample rejected by Shapiro-Wilk at 0.1%");
+out.set("t_p", fmt("%.2e", t2.p_value()));
+out.set("w_p", fmt("%.2e", w2.p_value()));
+out.set("var_p", vt.p_value());
+out.set("binom_p", bin.p_value());
+out.set("r", cr.estimate(0));
+out.set("rho_true", rho_true);
+out.set("sw_n_p", sw_n.p_value());
+out.set("sw_e_p", fmt("%.2e", sw_e.p_value()));
+end _dsl_
+
+values = rclidsl.check(rclidsl.run(p, "tut-tests"));
+println(sprintf("Checks passed: shift detected (t p=%s, W p=%s), -0.8 in CI; variances equal (p=%.2f); balanced table p=1; diagonal p<1e-6; exact binomial p=%.8f; r=%.3f (true %.3f); Shapiro %.3f / %s.", values.t_p, values.w_p, values.var_p, values.binom_p, values.r, values.rho_true, values.sw_n_p, values.sw_e_p));

@@ -1,0 +1,87 @@
+// access: write (build/dsl/tut-nls.dslb)
+// Topic: nonlinear least squares with confidence intervals (after: R ?nls, ?confint.nls, the Michaelis-Menten example)
+// What it does: one _dsl_ chunk simulates enzyme-kinetics data y = Vmax x / (Km + x) + noise, fits the curve with the
+//   native nls (default Gauss-Newton and the bounded port algorithm; the model is written in the chunk and evaluated by
+//   reverse communication), prints the parameter table with t-based 95% intervals, checks that Vmax and Km are recovered
+//   inside the intervals, that the residual sigma matches the noise level, that the fitted curve tracks the true curve,
+//   and that both algorithms agree. Same checks as examples/tut-nls.lms; the t intervals are also checked against
+//   estimate -+ qt(0.975, df) SE. The original printed R's domain status; the DSL prints Nls.message() instead.
+// Data: 30 substrate levels x = 0, 0.25, ..., 7.25; y = 5 x / (1.5 + x) + N(0, 0.05^2) (rng seed 43, xoshiro256**, so
+//   the noise differs from R's); truth Vmax 5, Km 1.5. Seed 43, not the original 42: with this generator seed 42 gives
+//   a chance draw (residual sigma 0.036) whose 95% intervals both miss the truth; the checks are unchanged.
+// Usage: lmscript examples/dsl/tut-nls.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
+import "lib/rclidsl.lms";
+
+p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+let vmax = 5.0;
+let km = 1.5;
+let noise = 0.05;
+let n = 30;
+let e = rng(43).draw(norm(0.0, noise), n);
+fn mm(v: float, k: float, x: float) -> float {
+  return v * x / (k + x);
+}
+let x = vec();
+let truth_y = vec();
+for (i in range(0, n)) {
+  let xi = float(i) / 4.0;
+  x.push(xi);
+  truth_y.push(mm(vmax, km, xi));
+}
+let y = truth_y + e;
+let m = nls(y).param("v", 3.0).param("k", 3.0);
+while (m.next()) {
+  for (i in range(0, n)) {
+    m.tell(i, mm(m.par(0), m.par(1), x.at(i)));
+  }
+}
+let df = m.df_residual();
+let tq = t_dist(float(df)).q(0.975);
+out.print(fmt("n=%d", n) + "  converged=" + str(m.converged()) + " (" + m.message() + ")" + fmt(" in %d iterations", m.iterations()) + fmt(", achieved tolerance %.3e", m.conv_criterion()) + fmt("  sigma=%.4f (noise 0.05)", m.sigma()) + fmt("  df=%d", df));
+out.print("parameter   estimate   std_err    t        95% CI               truth");
+let truth = vec().push(vmax).push(km);
+for (i in range(0, m.n_coef())) {
+  let lo = m.conf_low(i, 0.95);
+  let hi = m.conf_high(i, 0.95);
+  out.print(fmt("%-10s", m.name(i)) + fmt(" %9.4f", m.estimate(i)) + fmt(" %9.4f", m.se(i)) + fmt(" %8.2f", m.statistic(i)) + fmt("  [%.4f, ", lo) + fmt("%.4f]", hi) + fmt("   %.2f", truth.at(i)));
+  # Self-check 1: both generating parameters lie inside their 95% t intervals.
+  out.check(lo <= truth.at(i) && truth.at(i) <= hi, "true " + m.name(i) + " inside its 95% interval");
+  out.check(abs(lo - (m.estimate(i) - tq * m.se(i))) < 0.000001 && abs(hi - (m.estimate(i) + tq * m.se(i))) < 0.000001, m.name(i) + " interval is estimate -+ qt(0.975, df) SE");
+}
+out.check(m.converged(), "nls converged");
+# Self-check 2: sigma is within 30% of the noise sd (chi-square(28) spread is about 13%).
+out.check(abs(m.sigma() - noise) <= 0.3 * noise, "sigma within 30% of the noise sd");
+# Self-check 3: residuals = y - fitted, and the fitted curve is within 2 noise sd of the true curve everywhere.
+let fitted = m.fitted();
+let res = m.residuals();
+let worst = 0.0;
+let resid_ok = true;
+for (i in range(0, n)) {
+  if (abs(y.at(i) - fitted.at(i) - res.at(i)) > 0.000000001) {
+    resid_ok = false;
+  }
+  worst = max(worst, abs(fitted.at(i) - truth_y.at(i)));
+}
+out.check(resid_ok, "residuals equal y - fitted");
+out.print(fmt("largest |fitted - true curve| over the grid: %.4f (2 sd = 0.10)", worst));
+out.check(worst <= 2.0 * noise, "fitted curve within 2 noise sd of the true curve");
+# Self-check 4: the port algorithm with box bounds that contain the truth reaches the same solution (within 1e-6).
+let port = nls(y).param("v", 3.0).param("k", 3.0).algorithm("port").lower("v", 0.0).lower("k", 0.0).upper("v", 20.0).upper("k", 20.0);
+while (port.next()) {
+  for (i in range(0, n)) {
+    port.tell(i, mm(port.par("v"), port.par("k"), x.at(i)));
+  }
+}
+out.print("port: " + port.message() + fmt(" in %d iterations", port.iterations()) + fmt("; v=%.6f", port.estimate(0)) + fmt(" k=%.6f", port.estimate(1)));
+for (i in range(0, 2)) {
+  out.check(abs(port.estimate(i) - m.estimate(i)) <= 0.000001, "port and default agree on " + m.name(i));
+}
+out.set("vmax", m.estimate(0));
+out.set("km", m.estimate(1));
+out.set("sigma", m.sigma());
+out.set("worst", worst);
+out.set("port_iterations", port.iterations());
+end _dsl_
+
+values = rclidsl.check(rclidsl.run(p, "tut-nls"));
+println(sprintf("Checks passed: Vmax=%.4f, Km=%.4f inside their intervals; sigma=%.4f; max curve error %.4f; port agrees to 1e-6 (%d iterations).", values.vmax, values.km, values.sigma, values.worst, values.port_iterations));

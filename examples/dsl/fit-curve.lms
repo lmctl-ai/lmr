@@ -1,0 +1,35 @@
+// access: write (build/dsl/fit-curve.dslb)
+// Topic: recovering a known curve from noisy data with nonlinear least squares (after: R ?nls)
+// What it does: one _dsl_ chunk generates noisy Michaelis-Menten data y = 4 x / (2 + x) + noise and fits a x / (b + x)
+//   with the native nls (the model is written in the chunk and evaluated by reverse communication). Same check as
+//   examples/fit-curve.lms: the recovered parameters are within 0.2 of the generating values a = 4, b = 2.
+// Data: 17 points x = 0, 0.25, ..., 4; noise N(0, 0.01^2) from rng seed 42 (xoshiro256**, so the draws differ from R's).
+// Usage: lmscript examples/dsl/fit-curve.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
+import "lib/rclidsl.lms";
+
+p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+let n = 17;
+let noise = rng(42).draw(norm(0.0, 0.01), n);
+let x = vec();
+let y = vec();
+for (i in range(0, n)) {
+  let xi = float(i) / 4.0;
+  x.push(xi);
+  y.push(4.0 * xi / (2.0 + xi) + noise.at(i));
+}
+let m = nls(y).param("a", 3.0).param("b", 1.0);
+while (m.next()) {
+  for (i in range(0, n)) {
+    m.tell(i, m.par(0) * x.at(i) / (m.par(1) + x.at(i)));
+  }
+}
+out.print(fmt("Fitted curve: a=%.6f", m.estimate("a")) + fmt(" b=%.6f", m.estimate("b")) + fmt("  (%d iterations, ", m.iterations()) + m.message() + ")");
+out.check(m.converged(), "nls converged");
+out.check(abs(m.estimate("a") - 4.0) <= 0.2, "a within 0.2 of the generating 4");
+out.check(abs(m.estimate("b") - 2.0) <= 0.2, "b within 0.2 of the generating 2");
+out.set("a", m.estimate("a"));
+out.set("b", m.estimate("b"));
+end _dsl_
+
+values = rclidsl.check(rclidsl.run(p, "fit-curve"));
+println(sprintf("Noisy curve recovery passed: a=%.6f b=%.6f (truth 4, 2; tolerance 0.2).", values.a, values.b));

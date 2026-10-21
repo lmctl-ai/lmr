@@ -1,0 +1,117 @@
+// access: write (build/dsl/tut-special-fft.dslb)
+// Topic: special functions and the discrete Fourier transform checked against identities (after: R ?Special, ?besselJ, ?fft)
+// What it does: one _dsl_ chunk evaluates gamma, lgamma, beta, choose, digamma and Bessel functions and checks the
+//   classical identities (n! recursion, lgamma against log n!, beta = gamma ratio, Pascal's rule with C(11,4) computed by
+//   the host, Euler's constant, J0(0) = 1 and the Bessel Wronskian), then transforms an impulse, a constant and a pure
+//   cosine with fft and checks the spectra, linearity (fft(2 impulse + 3 cosine) = 2 fft(impulse) + 3 fft(cosine) bin by
+//   bin), Parseval's identity and the unnormalised inverse transform round trip (divide by n, as with R's fft).
+//   Same checks and tolerances as examples/tut-special-fft.lms.
+// Data: analytic inputs and a 32-point cosine of frequency 4 cycles per record; no random input.
+// Usage: lmscript examples/dsl/tut-special-fft.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
+import "lib/rclidsl.lms";
+
+p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+let euler = 0.5772156649015329;
+let sp = sqrt(pi());
+let g = vec();
+for (k in range(1, 7)) {
+  g.push(gamma(float(k)));
+}
+out.print("gamma(1..6)  = " + g.str() + "   (0!, 1!, ..., 5!)");
+out.print(fmt("gamma(1/2)   = %.15f", gamma(0.5)) + fmt("  sqrt(pi) = %.15f", sp) + fmt(";  gamma(2.5) = %.15f", gamma(2.5)) + fmt("  (3/4 sqrt(pi) = %.15f)", 0.75 * sp));
+out.print(fmt("lgamma(10)   = %.12f (log 9! = log 362880)", lgamma(10.0)) + fmt(";  lgamma(100) = %.6f", lgamma(100.0)) + fmt(";  lgamma(1000) = %.6f", lgamma(1000.0)));
+out.print(fmt("beta(2,3)    = %.15f (1/12)", beta(2.0, 3.0)) + fmt(";  beta(1/2,1/2) = %.15f (pi)", beta(0.5, 0.5)) + fmt(";  beta(3,4) = %.15f (1/60)", beta(3.0, 4.0)));
+let ch = vec().push(choose(10.0, 3.0)).push(choose(10.0, 4.0)).push(choose(10.0, 5.0)).push(choose(52.0, 5.0)).push(choose(11.0, 4.0));
+out.print("choose       = [" + ch.format("%.0f", ", ") + "]   (C(10,3), C(10,4), C(10,5), C(52,5), C(11,4))");
+out.print(fmt("digamma(1)   = %.15f", digamma(1.0)) + fmt(" (-gamma_E = %.15f)", -euler) + fmt(";  digamma(2) = %.15f (1 - gamma_E)", digamma(2.0)));
+let wr = bessel_j(1.0, 0.0) * bessel_y(1.0, 1.0) - bessel_j(1.0, 1.0) * bessel_y(1.0, 0.0);
+out.print(fmt("J0(0) = %.15f", bessel_j(0.0, 0.0)) + fmt(";  J0(first zero) = %.3e", bessel_j(2.404825557695773, 0.0)) + fmt(";  J0(1) Y1(1) - J1(1) Y0(1) = %.15f", wr) + fmt("  (-2/pi = %.15f)", -2.0 / pi()));
+
+# Self-check 1: factorials, half-integer gamma, beta as a gamma ratio, Pascal's rule, Euler's constant, Bessel identities.
+let fact = 1.0;
+for (k in range(1, 7)) {
+  out.check(abs(g.at(k - 1) - fact) <= 0.000000000001 * fact, fmt("gamma(%d) is (k-1)!", k));
+  fact = fact * float(k);
+}
+out.check(abs(gamma(0.5) - sp) <= 0.000000000000001 && abs(gamma(2.5) - 0.75 * sp) <= 0.000000000000001, "half-integer gamma");
+out.check(abs(beta(2.0, 3.0) - 1.0 / 12.0) <= 0.000000000000001 && abs(beta(0.5, 0.5) - pi()) <= 0.000000000000005 && abs(beta(3.0, 4.0) - 1.0 / 60.0) <= 0.000000000000001, "beta values");
+out.check(ch.at(0) == 120.0 && ch.at(1) == 210.0 && ch.at(2) == 252.0 && ch.at(3) == 2598960.0, "binomial coefficients");
+out.check(ch.at(4) == 330.0 && ch.at(0) + ch.at(1) == ch.at(4), "Pascal's rule C(10,3) + C(10,4) = C(11,4)");
+out.check(abs(digamma(1.0) + euler) <= 0.000000000000005 && abs(digamma(2.0) - (1.0 - euler)) <= 0.000000000000005, "digamma(1) = -gamma_E, digamma(2) = 1 - gamma_E");
+out.check(abs(digamma(0.5) + euler + 2.0 * 0.6931471805599453) <= 0.00000000000001, "digamma(1/2) = -gamma_E - 2 log 2");
+out.check(bessel_j(0.0, 0.0) == 1.0 && abs(bessel_j(2.404825557695773, 0.0)) <= 0.000000000001, "J0(0) = 1 and J0 vanishes at its first zero");
+out.check(abs(wr + 2.0 / pi()) <= 0.00000000000001, "Bessel Wronskian J0 Y1 - J1 Y0 = -2/(pi x) at x = 1");
+# lgamma against reference values (log 9!, log 99!, lgamma(1000)), relative 1e-12, and gamma(10) = 9!.
+let lg_ref = parse_vec("12.801827480081469 359.1342053695754 5905.220423209181");
+let lg = vec().push(lgamma(10.0)).push(lgamma(100.0)).push(lgamma(1000.0));
+for (k in range(0, 3)) {
+  out.check(abs(lg.at(k) - lg_ref.at(k)) <= 0.000000000001 * lg_ref.at(k), fmt("lgamma reference value %d", k));
+}
+out.check(abs(gamma(10.0) - 362880.0) <= 0.000001, "gamma(10) = 9!");
+
+# FFT: impulse -> flat spectrum; constant -> DC only; cosine of 4 cycles -> two bins of height n/2; Parseval; inverse round trip.
+let n = 32;
+let cos_table = parse_vec("1 0.7071067811865476 0 -0.7071067811865476 -1 -0.7071067811865476 0 0.7071067811865476");
+let impulse = zeros(n).set(0, 1.0);
+let constant = rep(3.0, n);
+let cosine = vec();
+for (i in range(0, n)) {
+  cosine.push(cos_table.at(i % 8));
+}
+let f_imp = fft(impulse);
+let f_con = fft(constant);
+let f_cos = fft(cosine);
+fn power(f: CVec, k: int) -> float {
+  return f.re(k) * f.re(k) + f.im(k) * f.im(k);
+}
+out.print(fmt("fft(impulse): every bin = %.1f", f_imp.re(5)) + fmt("+%.1fi", f_imp.im(5)) + fmt(";  fft(3,3,...): bin 0 = %.1f", f_con.re(0)) + fmt(", bin 1 = %.3e", f_con.re(1)) + fmt(";  fft(cos 4 cycles): |X_4| = %.6f", f_cos.mod(4)) + fmt(", |X_28| = %.6f", f_cos.mod(28)) + fmt(", |X_1| = %.3e", f_cos.mod(1)));
+let flat = true;
+let dc_only = true;
+let two_bins = true;
+for (k in range(0, n)) {
+  if (abs(f_imp.re(k) - 1.0) > 0.000000000001 || abs(f_imp.im(k)) > 0.000000000001) {
+    flat = false;
+  }
+  if (k > 0 && power(f_con, k) > 0.000000000000001) {
+    dc_only = false;
+  }
+  if (k != 4 && k != 28 && power(f_cos, k) > 0.000000000000001) {
+    two_bins = false;
+  }
+}
+out.check(flat, "impulse spectrum is flat");
+out.check(dc_only, "constant has energy only at DC");
+out.check(two_bins, "cosine has energy only at bins 4 and 28");
+out.check(abs(f_con.re(0) - 3.0 * float(n)) <= 0.000000000001, "DC bin of the constant is 3 n");
+out.check(abs(sqrt(power(f_cos, 4)) - float(n) / 2.0) <= 0.000000000001 && abs(sqrt(power(f_cos, 28)) - float(n) / 2.0) <= 0.000000000001, "cosine bins have height n/2");
+# Linearity: fft(2 impulse + 3 cosine) equals 2 fft(impulse) + 3 fft(cosine) in every bin (real and imaginary parts).
+let f_combo = fft(2.0 * impulse + 3.0 * cosine);
+let linear = true;
+for (k in range(0, n)) {
+  if (abs(f_combo.re(k) - (2.0 * f_imp.re(k) + 3.0 * f_cos.re(k))) > 0.000000001 || abs(f_combo.im(k) - (2.0 * f_imp.im(k) + 3.0 * f_cos.im(k))) > 0.000000001) {
+    linear = false;
+  }
+}
+out.check(linear, "FFT is linear in every bin");
+# Parseval: sum |X_k|^2 = n sum x_i^2 (= n * 16 for the cosine).
+let pe = 0.0;
+for (k in range(0, n)) {
+  pe = pe + power(f_cos, k);
+}
+out.check(abs(pe - float(n) * 16.0) <= 0.000000001 && abs(pe - float(n) * cosine.dot(cosine)) <= 0.000000001, "Parseval: sum |X_k|^2 = n sum x^2 = 512");
+# Inverse transform of the spectrum's real part (the cosine spectrum is real) returns n times the signal: like R's
+# fft(inverse = TRUE), the transform does not normalise, so divide by n.
+let inv = cvec(f_cos.re_vec(), zeros(n)).fft(true);
+let round_trip = true;
+for (i in range(0, n)) {
+  if (abs(inv.re(i) / float(n) - cosine.at(i)) > 0.000000000001 || abs(inv.im(i)) > 0.000000001) {
+    round_trip = false;
+  }
+}
+out.check(round_trip, "inverse FFT / n returns the cosine");
+out.set("parseval", pe);
+out.set("c52_5", ch.at(3));
+end _dsl_
+
+values = rclidsl.check(rclidsl.run(p, "tut-special-fft"));
+println(sprintf("Checks passed: factorials, lgamma(10/100/1000) to 1e-12, gamma(1/2)=sqrt(pi), beta ratios, C(52,5)=%d, Pascal with C(11,4) from the host, digamma(1)=-gamma_E, Bessel Wronskian; FFT impulse/constant/cosine spectra, linearity, Parseval (%.6f), inverse round trip.", values.c52_5, values.parseval));

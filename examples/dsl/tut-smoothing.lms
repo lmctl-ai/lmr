@@ -1,0 +1,79 @@
+// access: write (build/dsl/tut-smoothing.dslb)
+// Topic: smoothing and interpolation measured against the true function (after: R ?smooth.spline, ?loess, ?spline, ?approx)
+// What it does: one _dsl_ chunk samples a cubic f(x) = x^3 - 3x with noise, smooths it with smooth_spline (GCV) and
+//   loess (span 0.4, degree 2), prints the error of each smoother against f on the grid and at new points, and checks
+//   that both at least halve the raw noise RMSE, that the smoothing spline predicts f at new x within 2 noise sd, that
+//   GCV picks a df in [3, 15], that spline_fun (fmm) reproduces a cubic exactly at midpoints and that approx_fun is exact
+//   at the knots and linear between them. Same checks as examples/tut-smoothing.lms. (The native loess uses exact local
+//   fits, R's surface = "direct", and the smoothing-spline lambda search is not R's spar scale; neither affects the
+//   checks, which are against the true f.)
+// Data: 61 points x = -2, -1.9333, ..., 2; y = f(x) + N(0, 0.3^2), drawn with the native generator from rng(91) (not R's
+//   stream, so the noise differs from the original's seed 91).
+// Usage: lmscript examples/dsl/tut-smoothing.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
+import "lib/rclidsl.lms";
+
+p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+fn f(x: float) -> float {
+  return x * x * x - 3.0 * x;
+}
+fn rmse(fitted: Vec, truth: Vec) -> float {
+  let d = fitted - truth;
+  return sqrt(d.dot(d) / float(d.len()));
+}
+let n = 61;
+let sd = 0.3;
+let e = rng(91).draw(norm(0.0, sd), n);
+let x = linspace(-2.0, 2.0, n);
+let fx = vec();
+for (i in range(0, n)) {
+  fx.push(f(x.at(i)));
+}
+let y = fx + e;
+let new_x = parse_vec("-1.75 -0.5 0.25 1.1 1.9");
+let ss = smooth_spline(x, y);
+let lo = loess(x, y, 0.4, 2);
+let noise_rmse = rmse(y, fx);
+let rmse_ss = rmse(ss.eval(x), fx);
+let rmse_lo = rmse(lo.fitted(), fx);
+out.print(fmt("noise sd %.2f", sd) + fmt(" (raw RMSE vs f %.4f)", noise_rmse) + fmt("; smoothing spline df=%.2f", ss.df()) + fmt(" lambda=%.4g", ss.lambda()) + fmt(" RMSE %.4f", rmse_ss) + fmt("; loess(span 0.4, degree 2) RMSE %.4f", rmse_lo));
+out.print("   x      f(x)    spline   loess");
+let worst_new = 0.0;
+for (j in range(0, new_x.len())) {
+  let t = new_x.at(j);
+  worst_new = max(worst_new, abs(ss.at(t) - f(t)));
+  out.print(fmt("%6.2f", t) + fmt("  %7.4f", f(t)) + fmt("  %7.4f", ss.at(t)) + fmt("  %7.4f", lo.at(t)));
+}
+# Interpolation through exact cubic samples at integer knots.
+let kx = parse_vec("-2 -1 0 1 2");
+let ky = vec();
+for (i in range(0, kx.len())) {
+  ky.push(f(kx.at(i)));
+}
+let mid = parse_vec("-1.5 -0.5 0.5 1.5");
+let sp = spline_fun(kx, ky, "fmm");
+let ap = approx_fun(kx, ky, "linear", 1);
+
+# Self-checks.
+out.check(rmse_ss <= 0.5 * noise_rmse, "smoothing spline at least halves the noise RMSE");
+out.check(rmse_lo <= 0.5 * noise_rmse, "loess at least halves the noise RMSE");
+out.check(worst_new <= 2.0 * sd, "spline prediction at new x within 2 noise sd of f");
+out.check(ss.df() >= 3.0 && ss.df() <= 15.0, "GCV chose a df in [3, 15]");
+# fmm end conditions fit a cubic through the end knots, so a cubic is interpolated exactly.
+for (j in range(0, mid.len())) {
+  out.check(abs(sp.at(mid.at(j)) - f(mid.at(j))) <= 0.000000001, fmt("fmm spline exact for a cubic at %.1f", mid.at(j)));
+}
+for (j in range(0, kx.len())) {
+  out.check(abs(ap.at(kx.at(j)) - ky.at(j)) <= 0.000000001, fmt("linear interpolation exact at knot %.0f", kx.at(j)));
+}
+for (j in range(0, mid.len())) {
+  let lin = (f(mid.at(j) - 0.5) + f(mid.at(j) + 0.5)) / 2.0;
+  out.check(abs(ap.at(mid.at(j)) - lin) <= 0.000000001, fmt("linear interpolation is the chord midpoint at %.1f", mid.at(j)));
+}
+out.set("rmse_spline", rmse_ss);
+out.set("rmse_loess", rmse_lo);
+out.set("rmse_noise", noise_rmse);
+out.set("worst_new", worst_new);
+end _dsl_
+
+v = rclidsl.check(rclidsl.run(p, "tut-smoothing"));
+println(sprintf("Checks passed: spline RMSE %.4f and loess RMSE %.4f vs raw %.4f; new-x error %.4f; fmm exact on a cubic; approx exact at knots and midpoints.", v.rmse_spline, v.rmse_loess, v.rmse_noise, v.worst_new));

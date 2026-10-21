@@ -1,0 +1,79 @@
+// access: write (build/dsl/: flow-cluster-*.dslb, flow-points.csv, flow-labels.csv)
+// Topic: choosing the number of clusters, then validating the partition with a second method.
+// What it does:
+//   Step 1 (DSL "scan"): simulates 4 seeded Gaussian clusters in 2-D (writes them to CSV) and runs k-means with
+//     nstart 10 for k = 1..8, publishing the total within-cluster sum of squares.
+//   Step 2 (lmscript): the elbow rule: the smallest k after which adding a cluster cuts the within-SS by less than 30%.
+//   Step 3 (DSL "validate", with ${k} substituted): final k-means, Ward hierarchical clustering cut at k, the Rand
+//     index between the two partitions (an O(n^2) loop in the chunk), cluster profiles, and labels written to CSV.
+//   Step 4 (lmscript): cluster sizes from the CSV.
+// Usage: lmscript examples/dsl/flow-cluster-k.lms   (cwd = repository root)
+import "lib/rclidsl.lms";
+
+scan = _dsl_ schema="../../native/schema/rcli.dsl.json";
+let r = rng(4242);
+let cx = parse_vec("0 7 0 7");
+let cy = parse_vec("0 0 7 7");
+let xs = vec();
+let ys = vec();
+for (g in range(0, 4)) {
+  xs.append(r.draw(norm(cx.at(g), 1.0), 50));
+  ys.append(r.draw(norm(cy.at(g), 1.0), 50));
+}
+let pts = frame().set("x", xs).set("y", ys);
+pts.write_csv("build/dsl/flow-points.csv");
+let wss = vec();
+for (k in range(1, 9)) {
+  wss.push(kmeans(pts, k, rng(k), 10).tot_withinss());
+}
+out.set("wss", wss);
+end _dsl_
+mkdir("build/dsl");
+s = rclidsl.check(rclidsl.run(scan, "flow-cluster-1"));
+if (!has_key(s, "wss")) { println("dry run: nothing executed"); exit(0); }
+
+wss = s.wss; k = len(wss);
+println(" k   within-SS   drop to k+1");
+for (i = 0; i < len(wss); i = i + 1) {
+  drop = i + 1 < len(wss) ? sprintf("%5.1f%%", 100 * (1 - wss[i + 1] / wss[i])) : "";
+  println(sprintf("%2d  %10.1f   %s", i + 1, wss[i], drop));
+}
+for (i = 0; i + 1 < len(wss); i = i + 1) { if (1 - wss[i + 1] / wss[i] < 0.3) { k = i + 1; break; } }
+println(sprintf("elbow: k = %d", k));
+if (k != 4) { println("the elbow rule did not find the 4 generating clusters"); exit(1); }
+
+validate = _dsl_ schema="../../native/schema/rcli.dsl.json";
+let pts = read_csv("build/dsl/flow-points.csv");
+let km = kmeans(pts, ${k}, rng(11), 25);
+let hc = hclust(pts, "ward.D2");
+let a = km.clusters();
+let b = hc.cut(${k});
+# Rand index: the share of point pairs on which the two partitions agree (same cluster in both, or different in both).
+let agree = 0;
+let pairs = 0;
+for (i in range(0, a.len())) {
+  for (j in range(i + 1, a.len())) {
+    let same_a = a.at(i) == a.at(j);
+    let same_b = b.at(i) == b.at(j);
+    if (same_a == same_b) {
+      agree = agree + 1;
+    }
+    pairs = pairs + 1;
+  }
+}
+let rand = float(agree) / float(pairs);
+out.print(fmt("k-means vs Ward (k=%d): ", ${k}) + fmt("Rand index %.4f", rand) + fmt("; between/total SS %.3f", km.betweenss() / km.totss()));
+for (c in range(1, ${k} + 1)) {
+  out.print(fmt("cluster %d: ", c) + fmt("n=%3d", km.size(c)) + fmt("  centre (%.2f, ", km.center(c, "x")) + fmt("%.2f)", km.center(c, "y")));
+}
+out.check(rand > 0.95, "k-means and Ward agree on more than 95% of pairs");
+out.check(km.betweenss() / km.totss() > 0.8, "clusters explain more than 80% of the variance");
+pts.set("kmeans", a).set("ward", b).write_csv("build/dsl/flow-labels.csv");
+out.set("rand", rand);
+end _dsl_
+v = rclidsl.check(rclidsl.run(validate, "flow-cluster-2"));
+
+rows = read_csv("build/dsl/flow-labels.csv");
+sizes = {};
+for (row in rows) { key = str(row.kmeans); sizes[key] = get(sizes, key, 0) + 1; }
+println(sprintf("Flow passed: k=%d by the elbow rule; Rand index vs Ward %.4f; k-means sizes %s (labels in build/dsl/flow-labels.csv).", k, v.rand, json_stringify(sizes)));

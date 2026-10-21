@@ -1,0 +1,77 @@
+// access: write (build/dsl/tut-timeseries.dslb)
+// Topic: seasonal decomposition, AR(1) fitting and forecasting with intervals (after: R ?stl, ?arima, ?predict.Arima, ?acf)
+// What it does: one _dsl_ chunk builds a seasonal series from a simulated AR(1) (arima_sim) plus a fixed 12-period cycle,
+//   shows the seasonality in the ACF (lag 12 above lag 6), decomposes it with stl_periodic and checks the recovered
+//   seasonal pattern, fits ARIMA(1,0,0) to the deseasonalised series, prints a 12-step forecast with 95% intervals from
+//   the normal quantile, and checks the AR coefficient against the generating 0.6, the intercept and sigma2, the PACF
+//   cut-off, and the forecast standard errors against the AR(1) variance formula to 1e-6. Same checks as
+//   examples/tut-timeseries.lms.
+// Data: 240 values of 0.6-AR(1) noise with sd 0.7 plus the cycle [-2,-1,1,3,4,2,-1,-3,-4,-2,1,2] repeated. The noise is
+//   drawn by the native generator with rng(73) (not R's stream, so the values differ from the original's seed 73).
+// Usage: lmscript examples/dsl/tut-timeseries.lms   (cwd = repository root; rcli-dsl on PATH or in build-native/bin)
+import "lib/rclidsl.lms";
+
+p = _dsl_ schema="../../native/schema/rcli.dsl.json";
+let phi = 0.6;
+let sd = 0.7;
+let n = 240;
+let period = 12;
+let pattern = parse_vec("-2 -1 1 3 4 2 -1 -3 -4 -2 1 2");
+let noise = arima_sim(rng(73), n, parse_vec("0.6"), vec(), sd);
+let x = vec();
+for (i in range(0, n)) {
+  x.push(noise.at(i) + pattern.at(i % period));
+}
+let acf = x.acf(24);
+out.print(fmt("raw series: ACF(6)=%.3f", acf.at(6)) + fmt("  ACF(12)=%.3f", acf.at(12)) + fmt("  ACF(24)=%.3f  (seasonal peaks at multiples of 12)", acf.at(24)));
+let st = stl_periodic(x, period);
+let seas = st.seasonal();
+let pmean = pattern.mean();
+out.print("month  true  stl seasonal");
+let worst = 0.0;
+for (m in range(0, period)) {
+  worst = max(worst, abs(seas.at(m) - (pattern.at(m) - pmean)));
+  out.print(fmt("%5d", m + 1) + fmt(" %5.1f", pattern.at(m) - pmean) + fmt(" %8.3f", seas.at(m)));
+}
+let deseason = x - seas;
+let fit = arima(1, 0, 0).fit(deseason);
+let phi_hat = fit.estimate("ar1");
+let se_phi = fit.se("ar1");
+let mu_hat = fit.estimate("intercept");
+let se_mu = fit.se("intercept");
+out.print(fmt("ARIMA(1,0,0) on the deseasonalised series: ar1 %.4f", phi_hat) + fmt(" (SE %.4f, true 0.6)", se_phi) + fmt(", intercept %.4f", mu_hat) + fmt(" (SE %.4f, true 0)", se_mu) + fmt(", sigma2 %.4f", fit.sigma2()) + fmt(" (true %.2f)", sd * sd) + fmt(", loglik %.2f", fit.loglik()) + fmt(", AIC %.2f", fit.aic()));
+let z = norm().q(0.975);
+let fc = fit.forecast(12);
+out.print("  h   forecast   95% interval          width");
+for (h in range(0, 12)) {
+  let lo = fc.mean_at(h) - z * fc.se_at(h);
+  let hi = fc.mean_at(h) + z * fc.se_at(h);
+  out.print(fmt("%3d", h + 1) + fmt("  %9.4f", fc.mean_at(h)) + fmt("   [%8.4f, ", lo) + fmt("%8.4f]", hi) + fmt("  %.4f", hi - lo));
+}
+let pacf = deseason.pacf(6);
+
+# Self-checks.
+out.check(acf.at(12) > acf.at(6) && acf.at(12) > 0.3, "seasonal ACF peak at lag 12 (above lag 6 and above 0.3)");
+# STL with a periodic window recovers the centred cycle to within the noise of a 20-cycle average of AR(1) values: the
+# stationary sd is 0.7 / sqrt(1 - 0.36) = 0.875, so 0.875 / sqrt(20) = 0.196 per month; 0.5 is about 2.5 of those.
+out.check(worst <= 0.5, fmt("STL seasonal pattern within 0.5 of the true cycle (worst %.3f)", worst));
+out.check(abs(phi_hat - phi) <= 3.0 * se_phi, "ar1 within 3 SE of 0.6");
+out.check(abs(mu_hat) <= 3.0 * se_mu, "intercept within 3 SE of 0");
+out.check(abs(fit.sigma2() - sd * sd) <= 0.3 * sd * sd, "sigma2 within 30% of 0.49");
+let band = 1.96 / sqrt(float(n));
+for (k in range(2, 7)) {
+  out.check(abs(pacf.at(k - 1)) <= band + 0.05, fmt("PACF cuts off after lag 1 (lag %d inside the band + 0.05)", k));
+}
+# Forecasts approach the intercept and the interval widths follow sqrt(sigma2 (1 - phi^(2h)) / (1 - phi^2)).
+out.check(abs(fc.mean_at(11) - mu_hat) <= abs(fc.mean_at(0) - mu_hat) + 0.000001, "forecasts approach the mean");
+for (h in range(1, 13)) {
+  let se = sqrt(fit.sigma2() * (1.0 - pow(phi_hat, 2.0 * float(h))) / (1.0 - phi_hat * phi_hat));
+  out.check(abs(fc.se_at(h - 1) - se) <= 0.000001, fmt("forecast SE matches the AR(1) formula at h = %d", h));
+}
+out.set("acf12", acf.at(12));
+out.set("stl_worst", worst);
+out.set("phi_hat", phi_hat);
+end _dsl_
+
+values = rclidsl.check(rclidsl.run(p, "tut-timeseries"));
+println(sprintf("Checks passed: ACF(12)=%.3f > ACF(6); STL cycle within %.3f; ar1=%.4f within 3 SE of 0.6; PACF cut-off; forecast SEs match the AR(1) formula.", values.acf12, values.stl_worst, values.phi_hat));

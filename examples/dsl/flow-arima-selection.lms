@@ -1,0 +1,87 @@
+// access: write (build/dsl/: flow-arima-*.dslb, flow-series.csv, flow-forecast.csv)
+// Topic: a two-stage forecasting task where lmscript makes the modelling decision between two native chunks.
+// What it does:
+//   Step 1 (DSL chunk "explore"): simulates a seeded AR(2) series, writes it to CSV, computes the PACF and the AIC of
+//     AR(p) for p = 0..5, and publishes them with out.set.
+//   Step 2 (lmscript): reads those values, applies two order-selection rules (minimum AIC; last PACF lag outside the
+//     95% band), prints the evidence and picks p.
+//   Step 3 (DSL chunk "fit", compiled with ${p} substituted): reloads the CSV, fits AR(p) by ML, checks that the
+//     residuals are white and that the coefficients cover the truth, forecasts 12 steps with 95% intervals, writes them
+//     to CSV.
+//   Step 4 (lmscript): reads the forecast CSV and prints the final table.
+// The decision is in lmscript, where it is easy to log, review or replace; the numerical work runs in one native
+// process per step, with no R and no per-call JSON round trip.
+// Usage: lmscript examples/dsl/flow-arima-selection.lms   (cwd = repository root)
+import "lib/rclidsl.lms";
+
+explore = _dsl_ schema="../../native/schema/rcli.dsl.json";
+let r = rng(2024);
+let x = arima_sim(r, 400, parse_vec("0.5 0.3"), vec(), 1.0);
+frame().set("t", seq_len(400)).set("x", x).write_csv("build/dsl/flow-series.csv");
+out.set("pacf", x.pacf(10));
+out.set("band", 1.96 / sqrt(400.0));
+let aics = vec();
+for (p in range(0, 6)) {
+  let m = arima(p, 0, 0).method("ML").fit(x);
+  aics.push(m.aic());
+}
+out.set("aic", aics);
+end _dsl_
+mkdir("build/dsl");
+step1 = rclidsl.check(rclidsl.run(explore, "flow-arima-1"));
+if (!has_key(step1, "aic")) { println("dry run: nothing executed"); exit(0); }
+
+// Step 2: the decision, in plain lmscript.
+aic = step1.aic; pacf = step1.pacf; band = step1.band;
+best = 0;
+for (p = 1; p < len(aic); p = p + 1) { if (aic[p] < aic[best]) { best = p; } }
+cut = 0;
+for (k = 0; k < len(pacf); k = k + 1) { if (abs(pacf[k]) > band) { cut = k + 1; } }
+println("order  AIC        PACF at that lag");
+for (p = 0; p < len(aic); p = p + 1) {
+  pv = p == 0 ? "" : sprintf("%.3f%s", pacf[p - 1], abs(pacf[p - 1]) > band ? "  *" : "");
+  println(sprintf("AR(%d)  %9.2f  %s", p, aic[p], pv));
+}
+println(sprintf("minimum AIC: AR(%d); last PACF lag outside +-%.3f: %d", best, band, cut));
+order = best;
+if (cut != best) { println(sprintf("the rules disagree; taking the AIC choice AR(%d)", best)); }
+
+// Step 3: fit the chosen order. ${order} becomes an int literal before compilation.
+fit = _dsl_ schema="../../native/schema/rcli.dsl.json";
+let x = read_csv("build/dsl/flow-series.csv").col("x");
+let m = arima(${order}, 0, 0).method("ML").fit(x);
+out.print(fmt("AR(%d) by ML: ", ${order}) + fmt("sigma2 %.4f", m.sigma2()) + fmt("  loglik %.2f", m.loglik()) + fmt("  AIC %.2f", m.aic()));
+for (i in range(0, m.n_coef())) {
+  out.print(fmt("  %-10s", m.name(i)) + fmt(" %8.4f", m.estimate(i)) + fmt("  (se %.4f)", m.se(i)));
+}
+# The generating model is AR(2) with (0.5, 0.3) and mean 0.
+if (m.has_coef("ar2")) {
+  out.check(abs(m.estimate("ar1") - 0.5) < 3.0 * m.se("ar1"), "ar1 within 3 SE of 0.5");
+  out.check(abs(m.estimate("ar2") - 0.3) < 3.0 * m.se("ar2"), "ar2 within 3 SE of 0.3");
+}
+let racf = m.residuals().acf(20);
+let band = 1.96 / sqrt(float(x.len()));
+let worst = 0.0;
+for (k in range(1, 21)) {
+  worst = max(worst, abs(racf.at(k)));
+}
+out.print(fmt("largest residual autocorrelation at lags 1..20: %.4f", worst) + fmt(" (band %.4f)", band));
+out.check(worst < band + 0.08, "residuals are white");
+let fc = m.forecast(12);
+let lower = vec();
+let upper = vec();
+for (h in range(0, 12)) {
+  lower.push(fc.lower(h, 0.95));
+  upper.push(fc.upper(h, 0.95));
+}
+frame().set("h", seq_len(12)).set("mean", fc.mean()).set("se", fc.se()).set("lower", lower).set("upper", upper).write_csv("build/dsl/flow-forecast.csv");
+out.check(fc.se_at(0) <= fc.se_at(11), "forecast uncertainty grows with the horizon");
+out.set("residual_acf_max", worst);
+end _dsl_
+step3 = rclidsl.check(rclidsl.run(fit, "flow-arima-2"));
+
+// Step 4: the report, from the CSV the native step wrote.
+rows = read_csv("build/dsl/flow-forecast.csv");
+println(" h   forecast   95% interval");
+for (row in rows) { println(sprintf("%2d  %8.4f   [%8.4f, %8.4f]", row.h, row.mean, row.lower, row.upper)); }
+println(sprintf("Flow passed: AR(%d) selected, residual ACF max %.3f, 12-step forecast written to build/dsl/flow-forecast.csv.", order, step3.residual_acf_max));
