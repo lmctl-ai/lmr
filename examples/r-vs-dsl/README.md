@@ -37,7 +37,7 @@ lm-mtcars: lmr agrees with R.
 
 ## Recipes
 
-Results are from R 4.3.3 and lmr 0.4.0, grouped by topic. "Numbers" counts every compared element; "worst" is the
+Results are from R 4.3.3 and lmr 0.4.1, grouped by topic. "Numbers" counts every compared element; "worst" is the
 largest `diff`.
 
 | Recipe | R | Numbers | Worst |

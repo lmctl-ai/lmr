@@ -15,7 +15,7 @@ native/scripts/run-examples.sh build-native/bin/lmr                      # all o
 newer). No checkout, build or schema file:
 
 ```
-p = _dsl_ cli="lmr" install="github:lmctl-ai/lmr@v0.4.0";
+p = _dsl_ cli="lmr" install="github:lmctl-ai/lmr@latest";
 ...
 end _dsl_
 savedsl(p, "job.dslb");
@@ -24,7 +24,7 @@ r = system ${dsl_cli(p)} --dsl job.dslb;
 
 - `cli="lmr"`: lmscript compiles against the bytes `lmr --dsl-schema --json` prints, so the bytecode is bound to the
   binary that will run it.
-- `install="github:lmctl-ai/lmr@v0.4.0"`: only when `lmr` is not on PATH, lmscript downloads that release's
+- `install="github:lmctl-ai/lmr@latest"`: only when `lmr` is not on PATH, lmscript downloads that release's
   `lmr-OS-ARCH[.exe]` once into its tool cache and checks it against the SHA-256 digest GitHub reports. Nothing is
   installed without this line.
 - `dsl_cli(p)`: the argv prefix of that exact binary.

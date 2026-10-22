@@ -88,7 +88,7 @@ jobs:
       - name: lmscript compiler (npm @lmctl-ai/lmctl, DSL v5)
         if: env.ONLY_OK == 'true'
         run: |
-          npm i -g @lmctl-ai/lmctl@0.2.359
+          npm i -g @lmctl-ai/lmctl@0.2.373
           # The DSL tests skip themselves without a compiler; CI must not.
           lmscript --version
           lmscript --dsl-signatures native/schema/lmr.dsl.json > /dev/null
@@ -99,9 +99,19 @@ jobs:
           cmake -S native -B build-native -G Ninja -DCMAKE_BUILD_TYPE=Release
           cmake --build build-native --parallel 4
 
+      - name: version and release tag guard
+        if: env.ONLY_OK == 'true'
+        run: python3 native/scripts/check-version.py build-native/bin/lmr
+
       - name: test
         if: env.ONLY_OK == 'true'
         run: ctest --test-dir build-native --output-on-failure --timeout 900
+
+      - name: install-enabled book examples and output checks
+        if: env.ONLY_OK == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 native/scripts/test-book-examples.py
 
       - name: linkage
         if: env.ONLY_OK == 'true'

@@ -40,3 +40,12 @@ Expression-taking operations use rcli's constrained expression grammar; none of 
 Two client-side limits shaped the recipes: `lmscript` types numeric params as numbers, so infinite integration bounds
 are written as wide finite ones, and arrays above roughly 100 KB are handed over as a temp file outside the shim's
 mount, so samples stay at a few thousand values.
+
+## Install-enabled book examples
+
+These compact examples use the published lmr release through the lmscript install contract. Each example checks its known answer in lmr before printing the result.
+The native/scripts/test-book-examples.py test also runs each example from a clean working directory and compares the printed result and saved text output byte for byte.
+
+- `normal-quantile.lms` Computes the standard-normal 97.5% quantile and checks the textbook value.
+- `linear-fit.lms` Fits an exact straight line and checks its intercept and slope.
+- `rosenbrock-minimum.lms` Minimizes Rosenbrock's function and checks convergence and the known minimum.

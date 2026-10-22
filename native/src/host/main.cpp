@@ -23,7 +23,7 @@
 #include "schema_embedded.hpp"
 
 #ifndef LMR_VERSION
-#define LMR_VERSION "0.4.0"
+#define LMR_VERSION "0.4.1"
 #endif
 
 namespace {
@@ -159,7 +159,7 @@ int main(int argc, char** argv) {
       "usage: lmr --dsl-schema [--json] | --dsl-signatures | --generate-schema | --version | --dsl FILE [FILE ...]\n";
   std::vector<std::string> args(argv + 1, argv + argc);
   if (args.size() == 1 && args[0] == "--version") {
-    std::cout << "lmr " << LMR_VERSION << " (dslvm bytecode v" << dslvm::VERSION << ", native core, no R runtime)\n";
+    std::cout << "lmr " << LMR_VERSION << "\n";
     return 0;
   }
   if (!args.empty() && (args[0] == "--dsl-schema" || args[0] == "--schema")) {

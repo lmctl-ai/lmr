@@ -12,6 +12,8 @@ Needs a DSL v5 lmscript ($LMSCRIPT_BIN or on PATH); exits 0 with a notice when n
 import concurrent.futures
 import json
 import os
+from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -859,7 +861,7 @@ case("cli: no arguments", None, args=[], code=2, err=("usage: lmr",))
 case("cli: unknown flag", None, args=["--frobnicate"], code=2, err=("usage",))
 case("cli: --dsl without files", None, args=["--dsl"], code=2, err=("usage",))
 case("cli: flag among files", None, args=["--dsl", "a.dslb", "--x"], code=2, err=("usage",))
-case("cli: version", None, args=["--version"], out=("lmr", "no R runtime"))
+case("cli: version", None, args=["--version"], out=("lmr",))
 case("cli: schema summary", None, args=["--dsl-schema"], out=("context out: Out", "Vec:", "fn lm(Frame, string) -> Lm"))
 case("cli: --schema alias", None, args=["--schema"], out=("context out: Out",))
 case("cli: dsl-schema json", None, args=["--dsl-schema", "--json"], out=('"dsl.schema": 2', '"name": "lmr"'))
@@ -939,6 +941,12 @@ def main():
     if not lmscript:
         print("lmscript not found: host tests skipped")
         return 0
+    cmake = Path(HERE).parent / "CMakeLists.txt"
+    project_version = re.search(r"^project\(lmr VERSION ([^ )]+)", cmake.read_text(), re.M).group(1)
+    version_result = subprocess.run([binary, "--version"], capture_output=True)
+    if version_result.returncode or version_result.stdout != f"lmr {project_version}\n".encode() or version_result.stderr:
+        print("FAIL cli: version bytes", repr(version_result.stdout), repr(version_result.stderr), version_result.returncode)
+        return 1
     cases = [c for c in CASES if not only or only in c.name]
     root = tempfile.mkdtemp(prefix="rcli-host-test-")
     failed = 0

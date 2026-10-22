@@ -2,14 +2,14 @@
 // What it does: the zero-setup way to use lmr from lmscript. No schema file and no manual install:
 //   - cli="lmr" makes lmscript ask the lmr binary for its schema (`lmr --dsl-schema --json`) and compile against exactly
 //     those bytes, so the bytecode is bound to the binary that will run it;
-//   - install="github:lmctl-ai/lmr@v0.4.0" says where lmr comes from when it is not on PATH: lmscript downloads the
+//   - install="github:lmctl-ai/lmr@latest" says where lmr comes from when it is not on PATH: lmscript downloads the
 //     release asset lmr-OS-ARCH[.exe] (linux/macos/windows, x64/arm64) once into its tool cache, verified against the
 //     SHA-256 digest GitHub reports, and uses it from then on;
 //   - dsl_cli(p) is the argv prefix of that exact binary, so `system ${dsl_cli(p)} --dsl FILE` runs it.
 // The program itself: a normal quantile, a root found by reverse communication and a straight-line fit, each with a
 //   known answer.
 // How to run: lmscript examples/dsl/install-and-run.lms   (works on a machine with only Node.js and lmscript installed)
-p = _dsl_ cli="lmr" install="github:lmctl-ai/lmr@v0.4.0";
+p = _dsl_ cli="lmr" install="github:lmctl-ai/lmr@latest";
 out.check_close(norm().q_vec(parse_vec("0.975")).at(0), 1.959963984540054, 0.00000000000001, "normal 97.5% quantile");
 let rt = uniroot(1.0, 2.0).tol(0.000000000001);
 while (rt.next()) {
