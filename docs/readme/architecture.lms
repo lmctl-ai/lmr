@@ -14,19 +14,19 @@ scene.rect(870.0, 133.0, 202.0, 142.0, "#fff0e9").set_attr("rx", "14");
 
 scene.circle(79.0, 166.0, 9.0, "#6548ad");
 scene.text(70.0, 211.0, 21.0, "LMScript", "#17283b").set_attr("font-weight", "700");
-scene.text(70.0, 242.0, 14.0, "typed values + checks", "#60748a");
+scene.text(70.0, 242.0, 17.0, "typed values + checks", "#60748a");
 
 scene.path("M 422 151 L 435 164 L 422 177 L 409 164 Z", "#236fbd", "none", 1.0);
 scene.text(344.0, 211.0, 21.0, "Embedded schema", "#17283b").set_attr("font-weight", "700");
-scene.text(344.0, 242.0, 14.0, "validated operations", "#60748a");
+scene.text(344.0, 242.0, 17.0, "validated operations", "#60748a");
 
 scene.rect(675.0, 153.0, 53.0, 24.0, "#4b9c7d").set_attr("rx", "6");
 scene.text(620.0, 211.0, 21.0, "Native lmr host", "#17283b").set_attr("font-weight", "700");
-scene.text(620.0, 242.0, 14.0, "C++17 · no R runtime", "#60748a");
+scene.text(620.0, 242.0, 17.0, "C++17 · no R runtime", "#60748a");
 
 scene.circle(903.0, 165.0, 9.0, "#d9694c");
 scene.text(894.0, 211.0, 21.0, "Results", "#17283b").set_attr("font-weight", "700");
-scene.text(894.0, 242.0, 14.0, "estimates + diagnostics", "#60748a");
+scene.text(894.0, 242.0, 15.0, "estimates + diagnostics", "#60748a");
 
 let a = scene.line(284.0, 204.0, 310.0, 204.0, "#236fbd", 2.5);
 let b = scene.line(558.0, 204.0, 584.0, 204.0, "#236fbd", 2.5);
@@ -34,8 +34,6 @@ let c = scene.line(832.0, 204.0, 858.0, 204.0, "#236fbd", 2.5);
 a.set_attr("marker-end", "arrow");
 b.set_attr("marker-end", "arrow");
 c.set_attr("marker-end", "arrow");
-scene.text(48.0, 319.0, 14.0, "Distributions · tests · regression · time series · optimization", "#60748a");
-scene.text(1066.0, 319.0, 12.0, "LOCAL", "#6548ad").set_attr("text-anchor", "end").set_attr("font-weight", "700");
 scene.render_png("build/rendered/readme-architecture.png", 1120, 360, 1);
 end _dsl_
 savedsl(p, "build/readme/architecture.dslb");

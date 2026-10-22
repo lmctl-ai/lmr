@@ -29,7 +29,7 @@ The displayed line uses coefficients returned by lmr. [Source](examples/linear-f
 
 ![BFGS reduces the Rosenbrock objective from 24.2 to below one millionth](docs/readme/rosenbrock-minimum.png)
 
-The vertical axis is log10 of the objective; lmr checks the minimum and convergence. [Source](examples/dsl/minimize-rosenbrock.lms) · [Example book](https://lmctl.com/tools/lmr/examples/rosenbrock-minimum.html)
+The vertical axis is log10 of the objective; lmr checks the minimum and convergence. [Source](examples/rosenbrock-minimum.lms) · [Example book](https://lmctl.com/tools/lmr/examples/rosenbrock-minimum.html)
 
 ## How it works
 
