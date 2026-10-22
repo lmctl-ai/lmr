@@ -1,0 +1,138 @@
+// One seeded Welch comparison; lmr supplies every plotted statistic.
+theme = ARGV.len() > 0 ? ARGV[0] : "light";
+if (theme != "light" && theme != "dark") { println("usage: lmscript docs/readme/hero.lms [light|dark]"); exit(2); }
+
+stats = _dsl_ cli="lmr" install="github:lmctl-ai/lmr@latest";
+let g = rng(77);
+let control = g.draw(norm(0.0, 1.0), 80);
+let treatment = g.draw(norm(0.55, 1.0), 80);
+let fit = test("t").x(treatment).y(control).var_equal(false).run();
+let mc = control.mean();
+let mt = treatment.mean();
+let sc = sqrt(control.var());
+let st = sqrt(treatment.var());
+let lo = mc - 3.4 * sc;
+let hi = mc + 3.4 * sc;
+let other_lo = mt - 3.4 * st;
+let other_hi = mt + 3.4 * st;
+let xlo = lo;
+let xhi = hi;
+if (other_lo < xlo) { xlo = other_lo; }
+if (other_hi > xhi) { xhi = other_hi; }
+let xs = vec();
+for (i in range(0, 121)) { xs.push(xlo + (xhi - xlo) * float(i) / 120.0); }
+let dc = norm(mc, sc).d_vec(xs);
+let dt = norm(mt, st).d_vec(xs);
+let peak = dc.at(0);
+for (i in range(0, 121)) {
+  if (dc.at(i) > peak) { peak = dc.at(i); }
+  if (dt.at(i) > peak) { peak = dt.at(i); }
+}
+out.check(fit.p_value() >= 0.0 && fit.p_value() <= 1.0, "Welch p-value is bounded");
+out.check(mc < mt, "seeded treatment mean exceeds control mean");
+out.check(mc > -0.155 && mc < -0.153, "seeded control mean is reproducible");
+out.check(mt > 0.532 && mt < 0.534, "seeded treatment mean is reproducible");
+out.check(fit.p_value() < 0.001, "the seeded group difference is detected");
+out.set("mean_control", mc);
+out.set("mean_treatment", mt);
+out.set("sd_control", sc);
+out.set("sd_treatment", st);
+out.set("t", fit.statistic());
+out.set("df", fit.df());
+out.set("p", fit.p_value());
+out.set("xs", xs);
+out.set("density_control", dc);
+out.set("density_treatment", dt);
+out.set("peak", peak);
+end _dsl_
+
+if (!file_exists("build")) { mkdir("build"); }
+if (!file_exists("build/readme")) { mkdir("build/readme"); }
+if (!file_exists("build/rendered")) { mkdir("build/rendered"); }
+savedsl(stats, "build/readme/hero-stats.dslb");
+run_stats = system ${dsl_cli(stats)} --dsl build/readme/hero-stats.dslb;
+if (run_stats.code != 0) { println(str(run_stats.stderr)); exit(run_stats.code); }
+values = json_parse(run_stats.stdout).result.values;
+
+mean_c = values.mean_control;
+mean_t = values.mean_treatment;
+sd_c = values.sd_control;
+sd_t = values.sd_treatment;
+xs = values.xs;
+densities_c = values.density_control;
+densities_t = values.density_treatment;
+max_density = values.peak;
+chart_left = 104.0;
+chart_top = 190.0;
+chart_width = 990.0;
+chart_height = 224.0;
+baseline = chart_top + chart_height;
+path_c = "";
+path_t = "";
+area_c = "M " + str(chart_left) + " " + str(baseline) + " ";
+area_t = "M " + str(chart_left) + " " + str(baseline) + " ";
+for (i in range(0, 121)) {
+  x = xs[i];
+  dc = densities_c[i];
+  dt = densities_t[i];
+  px = chart_left + (x - xs[0]) / (xs[120] - xs[0]) * chart_width;
+  py_c = baseline - dc / max_density * chart_height;
+  py_t = baseline - dt / max_density * chart_height;
+  path_c = path_c + (i == 0 ? "M " : " L ") + str(px) + " " + str(py_c);
+  path_t = path_t + (i == 0 ? "M " : " L ") + str(px) + " " + str(py_t);
+  area_c = area_c + "L " + str(px) + " " + str(py_c) + " ";
+  area_t = area_t + "L " + str(px) + " " + str(py_t) + " ";
+}
+area_c = area_c + "L " + str(chart_left + chart_width) + " " + str(baseline) + " Z";
+area_t = area_t + "L " + str(chart_left + chart_width) + " " + str(baseline) + " Z";
+p_label = sprintf("p = %.4f", values.p);
+stat_label = sprintf("Welch t = %.2f    df = %.1f", values.t, values.df);
+mean_c_label = sprintf("mean %.2f", mean_c);
+mean_t_label = sprintf("mean %.2f", mean_t);
+
+bg = ""; panel = ""; grid = ""; ink = ""; muted = ""; blue = "";
+coral = ""; accent = ""; pale_blue = ""; pale_coral = "";
+if (theme == "dark") {
+  bg = "#0b1422"; panel = "#121f31"; grid = "#2b3d54";
+  ink = "#f1f5fb"; muted = "#a6b5c8"; blue = "#75bdff";
+  coral = "#ff9b7c"; accent = "#c3a5ff"; pale_blue = "#273c55"; pale_coral = "#4a302e";
+} else {
+  bg = "#f4f7fb"; panel = "#ffffff"; grid = "#dce5ef";
+  ink = "#17283b"; muted = "#60748a"; blue = "#236fbd";
+  coral = "#d9694c"; accent = "#6548ad"; pale_blue = "#e9f3ff"; pale_coral = "#fff0e9";
+}
+
+draw = _dsl_ cli="lmdraw" install="github:lmctl-ai/lmdraw@latest";
+scene.canvas(1200, 520, ${bg});
+scene.text(58.0, 68.0, 16.0, "LMR  /  NATIVE STATISTICS", ${accent}).set_attr("font-weight", "700");
+scene.text(58.0, 118.0, 34.0, "Compare groups. Keep the evidence.", ${ink}).set_attr("font-weight", "700");
+scene.text(58.0, 151.0, 17.0, "A seeded Welch test, computed by lmr and rendered from its sample summaries.", ${muted});
+scene.rect(58.0, 174.0, 1084.0, 296.0, ${panel}).set_attr("rx", "16");
+scene.path(${area_c}, ${pale_blue}, "none", 1.0).set_attr("fill-opacity", "0.82");
+scene.path(${area_t}, ${pale_coral}, "none", 1.0).set_attr("fill-opacity", "0.82");
+scene.line(104.0, 414.0, 1094.0, 414.0, ${grid}, 1.5);
+scene.path(${path_c}, "none", ${blue}, 4.0);
+scene.path(${path_t}, "none", ${coral}, 4.0);
+let mcx = 104.0 + (${mean_c} - ${xs[0]}) / (${xs[120]} - ${xs[0]}) * 990.0;
+let mtx = 104.0 + (${mean_t} - ${xs[0]}) / (${xs[120]} - ${xs[0]}) * 990.0;
+let mean_line_c = scene.line(mcx, 236.0, mcx, 414.0, ${blue}, 1.5);
+let mean_line_t = scene.line(mtx, 236.0, mtx, 414.0, ${coral}, 1.5);
+mean_line_c.set_attr("stroke-dasharray", "6 7");
+mean_line_t.set_attr("stroke-dasharray", "6 7");
+scene.rect(820.0, 194.0, 286.0, 70.0, ${bg}).set_attr("rx", "12");
+scene.text(842.0, 225.0, 22.0, ${p_label}, ${ink}).set_attr("font-weight", "700");
+scene.text(842.0, 248.0, 13.0, ${stat_label}, ${muted});
+scene.circle(95.0, 440.0, 6.0, ${blue});
+scene.text(110.0, 446.0, 14.0, "Control", ${ink}).set_attr("font-weight", "600");
+scene.text(178.0, 446.0, 13.0, ${mean_c_label}, ${muted});
+scene.circle(326.0, 440.0, 6.0, ${coral});
+scene.text(341.0, 446.0, 14.0, "Treatment", ${ink}).set_attr("font-weight", "600");
+scene.text(433.0, 446.0, 13.0, ${mean_t_label}, ${muted});
+scene.text(58.0, 496.0, 13.0, "Seed 77  ·  80 observations per group  ·  distributions centered on lmr sample means", ${muted});
+scene.render_png("build/rendered/readme-hero.png", 1200, 520, 1);
+end _dsl_
+savedsl(draw, "build/readme/hero-draw.dslb");
+render = system ${dsl_cli(draw)} --dsl build/readme/hero-draw.dslb;
+if (render.code != 0) { println(str(render.stderr)); exit(render.code); }
+copy_file("build/rendered/readme-hero.png", "docs/readme/hero-" + theme + ".png");
+println(sprintf("Hero %s: p=%.4f, means %.3f / %.3f", theme, values.p, mean_c, mean_t));

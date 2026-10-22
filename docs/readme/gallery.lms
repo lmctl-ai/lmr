@@ -1,0 +1,145 @@
+// Compute example values with lmr, then draw a compact README gallery with lmdraw.
+stats = _dsl_ cli="lmr" install="github:lmctl-ai/lmr@latest";
+let q = norm().q(0.975);
+let xs = vec();
+for (i in range(0, 101)) { xs.push(-3.5 + float(i) * 7.0 / 100.0); }
+let dens = norm().d_vec(xs);
+out.check_close(q, 1.959963984540054, 0.000000000001, "normal 97.5% quantile");
+out.set("q", q);
+out.set("normal_x", xs);
+out.set("normal_density", dens);
+
+let x = parse_vec("0 1 2 3 4 5");
+let y = parse_vec("1 3 5 7 9 11");
+let fit = lm(frame().set("x", x).set("y", y), "y ~ x");
+out.check_close(fit.estimates().at(0), 1.0, 0.000000000001, "line-fit intercept is 1");
+out.check_close(fit.estimates().at(1), 2.0, 0.000000000001, "line-fit slope is 2");
+out.set("line_x", x);
+out.set("line_y", y);
+out.set("intercept", fit.estimates().at(0));
+out.set("slope", fit.estimates().at(1));
+
+fn rosen(a: float, b: float) -> float {
+  return 100.0 * pow(b - a * a, 2.0) + pow(1.0 - a, 2.0);
+}
+let opt = minimize(parse_vec("-1.2 1"), "BFGS").maxit(1000).reltol(0.00000001);
+while (opt.next()) { opt.tell(rosen(opt.x(0), opt.x(1))); }
+out.check(opt.convergence() == 0, "BFGS convergence");
+out.check_close(opt.par(0), 1.0, 0.005, "minimum a near 1");
+out.check_close(opt.par(1), 1.0, 0.005, "minimum b near 1");
+out.check(opt.value() <= 0.000001, "minimum objective below 1e-6");
+out.set("minimum_a", opt.par(0));
+out.set("minimum_b", opt.par(1));
+out.set("minimum_value", opt.value());
+out.set("start_value", rosen(-1.2, 1.0));
+out.set("log_start", log(rosen(-1.2, 1.0)) / log(10.0));
+out.set("log_minimum", log(opt.value()) / log(10.0));
+end _dsl_
+
+if (!file_exists("build")) { mkdir("build"); }
+if (!file_exists("build/readme")) { mkdir("build/readme"); }
+if (!file_exists("build/rendered")) { mkdir("build/rendered"); }
+savedsl(stats, "build/readme/gallery-stats.dslb");
+r = system ${dsl_cli(stats)} --dsl build/readme/gallery-stats.dslb;
+if (r.code != 0) { println(str(r.stderr)); exit(r.code); }
+v = json_parse(r.stdout).result.values;
+
+normal_path = "";
+normal_area = "M 54.0 278.0 ";
+normal_x = v.normal_x;
+normal_y = v.normal_density;
+for (i in range(0, 101)) {
+  px = 54.0 + (normal_x[i] + 3.5) / 7.0 * 752.0;
+  py = 278.0 - normal_y[i] / 0.42 * 152.0;
+  normal_path = normal_path + (i == 0 ? "M " : " L ") + str(px) + " " + str(py);
+  normal_area = normal_area + "L " + str(px) + " " + str(py) + " ";
+}
+normal_area = normal_area + "L 806.0 278.0 Z";
+q_text = sprintf("q(0.975) = %.5f", v.q);
+fit_text = sprintf("y = %.2f + %.2fx", v.intercept, v.slope);
+fit_y0 = 280.0 - v.intercept * 14.5;
+fit_y1 = 280.0 - (v.intercept + v.slope * 5.0) * 14.5;
+fit_line = "M 72.0 " + str(fit_y0) + " L 788.0 " + str(fit_y1);
+fit_points = "";
+fit_x = v.line_x;
+fit_y = v.line_y;
+for (i in range(0, 6)) {
+  px = 72.0 + fit_x[i] / 5.0 * 716.0;
+  py = 280.0 - fit_y[i] / 12.0 * 174.0;
+  let radius = 7.0;
+  fit_points = fit_points + "M " + str(px - radius) + " " + str(py) +
+    " A " + str(radius) + " " + str(radius) + " 0 1 0 " + str(px + radius) + " " + str(py) +
+    " A " + str(radius) + " " + str(radius) + " 0 1 0 " + str(px - radius) + " " + str(py) + " Z ";
+}
+start_height = (v.log_start + 8.0) / 10.0 * 142.0;
+minimum_height = (v.log_minimum + 8.0) / 10.0 * 142.0;
+minimum_text = sprintf("%.8f", v.minimum_value);
+start_text = sprintf("%.1f", v.start_value);
+minimum_ab = sprintf("(%.4f, %.4f)", v.minimum_a, v.minimum_b);
+
+draw = _dsl_ cli="lmdraw" install="github:lmctl-ai/lmdraw@latest";
+# Example 1: normal quantile from the tool distribution API.
+scene.canvas(860, 340, "#f4f7fb");
+scene.text(42.0, 43.0, 14.0, "EXAMPLE 01  /  DISTRIBUTIONS", "#6548ad").set_attr("font-weight", "700");
+scene.text(42.0, 78.0, 25.0, "The 97.5% normal quantile", "#17283b").set_attr("font-weight", "700");
+scene.text(42.0, 108.0, 14.0, "lmr computes the quantile; the curve shows its position.", "#60748a");
+scene.path(${normal_area}, "#dcecff", "none", 1.0);
+scene.line(54.0, 278.0, 806.0, 278.0, "#bdcbd9", 1.5);
+scene.path(${normal_path}, "none", "#236fbd", 3.5);
+let qline = scene.line(54.0 + (${v.q} + 3.5) / 7.0 * 752.0, 142.0, 54.0 + (${v.q} + 3.5) / 7.0 * 752.0, 278.0, "#d9694c", 2.0);
+qline.set_attr("stroke-dasharray", "6 6");
+scene.rect(570.0, 122.0, 228.0, 42.0, "#ffffff").set_attr("rx", "10");
+scene.text(588.0, 149.0, 16.0, ${q_text}, "#17283b").set_attr("font-weight", "700");
+scene.text(42.0, 320.0, 12.0, "Standard normal density  ·  expected value 1.9599639845", "#60748a");
+scene.render_png("build/rendered/readme-normal-quantile.png", 860, 340, 1);
+
+# Example 2: exact fit coefficients and the source observations.
+scene.canvas(860, 340, "#f4f7fb");
+scene.text(42.0, 43.0, 14.0, "EXAMPLE 02  /  LINEAR MODEL", "#6548ad").set_attr("font-weight", "700");
+scene.text(42.0, 78.0, 25.0, "Fit a line to observed points", "#17283b").set_attr("font-weight", "700");
+scene.text(42.0, 108.0, 14.0, "The line and equation use coefficients returned by lmr.", "#60748a");
+scene.line(72.0, 280.0, 788.0, 280.0, "#bdcbd9", 1.5);
+scene.line(72.0, 106.0, 72.0, 280.0, "#bdcbd9", 1.5);
+scene.path(${fit_line}, "none", "#236fbd", 3.5);
+scene.path(${fit_points}, "#d9694c", "#ffffff", 2.0);
+scene.rect(76.0, 119.0, 220.0, 42.0, "#ffffff").set_attr("rx", "10");
+scene.text(93.0, 147.0, 16.0, ${fit_text}, "#17283b").set_attr("font-weight", "700");
+scene.text(42.0, 320.0, 12.0, "Six observations  ·  fitted response at x=2 is checked against the data", "#60748a");
+scene.render_png("build/rendered/readme-linear-fit.png", 860, 340, 1);
+
+# Example 3: BFGS result shown on a labeled log10 objective scale.
+scene.canvas(860, 340, "#f4f7fb");
+scene.text(42.0, 43.0, 14.0, "EXAMPLE 03  /  OPTIMIZATION", "#6548ad").set_attr("font-weight", "700");
+scene.text(42.0, 78.0, 25.0, "Minimize the Rosenbrock function", "#17283b").set_attr("font-weight", "700");
+scene.text(42.0, 108.0, 14.0, "BFGS starts at (-1.2, 1.0) and checks the native minimum.", "#60748a");
+scene.line(140.0, 278.0, 790.0, 278.0, "#bdcbd9", 1.5);
+scene.line(140.0, 92.0, 140.0, 278.0, "#bdcbd9", 1.5);
+scene.line(140.0, 136.0, 790.0, 136.0, "#dce5ef", 1.0);
+scene.line(140.0, 164.0, 790.0, 164.0, "#dce5ef", 1.0);
+scene.line(140.0, 192.0, 790.0, 192.0, "#dce5ef", 1.0);
+scene.line(140.0, 221.0, 790.0, 221.0, "#dce5ef", 1.0);
+scene.line(140.0, 249.0, 790.0, 249.0, "#dce5ef", 1.0);
+scene.text(125.0, 141.0, 11.0, "2", "#60748a").set_attr("text-anchor", "end");
+scene.text(125.0, 169.0, 11.0, "0", "#60748a").set_attr("text-anchor", "end");
+scene.text(125.0, 197.0, 11.0, "-2", "#60748a").set_attr("text-anchor", "end");
+scene.text(125.0, 226.0, 11.0, "-4", "#60748a").set_attr("text-anchor", "end");
+scene.text(125.0, 254.0, 11.0, "-6", "#60748a").set_attr("text-anchor", "end");
+scene.text(125.0, 282.0, 11.0, "-8", "#60748a").set_attr("text-anchor", "end");
+scene.rect(265.0, 278.0 - ${start_height}, 145.0, ${start_height}, "#d9694c").set_attr("rx", "6");
+scene.rect(535.0, 278.0 - ${minimum_height}, 145.0, ${minimum_height}, "#4b9c7d").set_attr("rx", "6");
+scene.text(293.0, 305.0, 14.0, "Start", "#17283b").set_attr("font-weight", "700");
+scene.text(547.0, 305.0, 14.0, "BFGS minimum", "#17283b").set_attr("font-weight", "700");
+scene.text(289.0, 278.0 - ${start_height} - 10.0, 13.0, ${start_text}, "#17283b").set_attr("text-anchor", "middle");
+scene.text(607.0, 252.0, 13.0, ${minimum_text}, "#17283b").set_attr("text-anchor", "middle");
+scene.rect(480.0, 119.0, 302.0, 44.0, "#ffffff").set_attr("rx", "10");
+scene.text(498.0, 147.0, 15.0, ${minimum_ab}, "#17283b").set_attr("font-weight", "700");
+scene.text(42.0, 320.0, 12.0, "Vertical scale: log10(objective)  ·  reported minimum is below 1e-6", "#60748a");
+scene.render_png("build/rendered/readme-rosenbrock.png", 860, 340, 1);
+end _dsl_
+savedsl(draw, "build/readme/gallery-draw.dslb");
+render = system ${dsl_cli(draw)} --dsl build/readme/gallery-draw.dslb;
+if (render.code != 0) { println(str(render.stderr)); exit(render.code); }
+copy_file("build/rendered/readme-normal-quantile.png", "docs/readme/normal-quantile.png");
+copy_file("build/rendered/readme-linear-fit.png", "docs/readme/linear-fit.png");
+copy_file("build/rendered/readme-rosenbrock.png", "docs/readme/rosenbrock-minimum.png");
+println(sprintf("Gallery: q=%.5f, fit %.2f + %.2fx, minimum %s", v.q, v.intercept, v.slope, minimum_text));
