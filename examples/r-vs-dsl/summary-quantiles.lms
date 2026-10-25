@@ -6,7 +6,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let m = read_csv("examples/r-vs-dsl/data/mtcars.csv");
 let x = m.col("mpg");
 let wt = m.col("wt");
@@ -28,7 +28,7 @@ out.set("pearson", vec().push(x.cor(wt)).push(x.cor(hp)).push(wt.cor(hp)));
 out.set("spearman", vec().push(x.cor(wt, "spearman")).push(x.cor(hp, "spearman")).push(wt.cor(hp, "spearman")));
 out.set("kendall_mpg_wt", x.cor(wt, "kendall"));
 out.set("cov_mpg_wt", x.cov(wt));
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-summary-quantiles"));
 compare.finish("summary-quantiles", compare.report("summary-quantiles", got, "examples/r-vs-dsl/expected/summary-quantiles.json", 0.000000000001, {}));

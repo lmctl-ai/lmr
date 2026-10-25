@@ -9,7 +9,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let f = read_csv("examples/r-vs-dsl/data/faithful.csv");
 let m = read_csv("examples/r-vs-dsl/data/mtcars.csv");
 let mpg = m.col("mpg");
@@ -29,7 +29,7 @@ out.set("var_p", v.p_value());
 out.set("var_ci", vec().push(v.conf_low()).push(v.conf_high()));
 out.set("ks_d", k.statistic());
 out.set("ks_p", k.p_value());
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-normality-variance"));
 compare.finish("normality-variance", compare.report("normality-variance", got, "examples/r-vs-dsl/expected/normality-variance.json", 0.000000000001, {ks_p: 0.000000001}));

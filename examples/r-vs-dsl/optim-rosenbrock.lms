@@ -12,7 +12,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 fn rosen(a: float, b: float) -> float {
   return 100.0 * pow(b - a * a, 2.0) + pow(1.0 - a, 2.0);
 }
@@ -38,7 +38,7 @@ out.set("bfgs_value", bf.value());
 out.set("bfgs_fn_count", bf.fn_count());
 out.set("bfgs_gr_count", bf.gr_count());
 out.set("lbfgsb_par", lb.pars());
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-optim-rosenbrock"));
 compare.finish("optim-rosenbrock", compare.report("optim-rosenbrock", got, "examples/r-vs-dsl/expected/optim-rosenbrock.json", 0.000000000001, {bfgs_fn_count: 0.02, lbfgsb_par: 0.001}));

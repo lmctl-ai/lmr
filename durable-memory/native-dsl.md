@@ -1,9 +1,9 @@
-# Native rcli: `_dsl_` host on a C++17 core (no R, no Docker)
+# Native rcli: `_lmcode_` host on a C++17 core (no R, no Docker)
 
 Status (2026-10-20): implemented in `native/`. The owner asked for:
 1. a build with no Docker and no R runtime, using pure C/C++ libraries only, with no GUI or display code;
 2. a defined API to expose;
-3. a `_dsl_` version of every example;
+3. a `_lmcode_` version of every example;
 4. multi-step examples.
 
 This supersedes the Rust `lmnum` route in `native-plan.md` for rcli. That plan's op mapping, clean-room rules and
@@ -18,8 +18,19 @@ tolerance tiers still apply.
 - **`native/src/host/`: the DSL host `lmr`.** It follows the lmcad/lmhtml pattern.
   - `host.hpp` holds the arenas, the `Binder` (type-checks arguments, maps `rcli::Error` to `dslvm::Error`) and the
     `Driver`. `bind_<domain>.cpp` registers the API. `main.cpp` holds the CLI and generates the schema.
-- **`native/cpp/dslvm.hpp`: the vendored SDK.** It is pinned by `native/sdk.lock` and refreshed with
-  `native/scripts/sync-sdk.sh`. The source is `../poc/cpp-dsl-sdk` at commit ef86184, bytecode v5.
+- **`native/cpp/`: the vendored lmcode-cpp SDK** (github.com/lmctl-ai/lmcode-cpp, renamed from cpp-dsl-sdk on
+  2026-10-24): `dslvm.hpp`, the built-in std catalog `stdlib/*.hpp` that it includes, and the canonical
+  `std/lmcode-std.schema.json`. Every file's sha256 and the commit are pinned in `native/sdk.lock`; refresh with
+  `native/scripts/sync-sdk.sh` (checkout from `LMCODE_CPP`, `../lmcode-cpp` or `../poc/cpp-dsl-sdk`). Bytecode v5.
+- **lmcode std (72 signatures) comes from the SDK, not from lmr.** Every `dslvm::Registry` installs it: `str_*`,
+  `math_*`, `file_*`, and the types `StrList`, `IntList`, `FloatList`, `StrMap`. lmr does not register these; its own
+  StrList-returning methods allocate through `str_list(reg, ...)` and read with `strs_of(v)` (host.hpp). Std
+  collections live for one run, so they cannot be `keep()`-ed across chunks. The old lmr-only names are gone:
+  `strs()` is `str_list()`, `split` is `str_split`, `StrList.push` is `add`, `StrList.index` is `index_of`.
+  The compiler does not inject std yet, so `--generate-schema` writes the effective schema (host plus std)
+  from `reg.signatures()`; check-schema.sh checks that every canonical std signature is in it.
+- **Block spelling**: `_lmcode_ ... end _lmcode_` (the new name of `_dsl_`; same bytecode). The compiler accepts it from
+  lmscript 0.2.4xx (CI pins 0.2.419). Tool names keep `dsl`: `--dsl-schema`, `--dsl`, `savedsl`, `dsl_cli`, `.dslb`.
 - **`native/schema/lmr.dsl.json`: GENERATED from the registry.** Never edit it by hand. Change a `bind_*.cpp`, then run
   `native/scripts/update-schema.sh`. The ctest `schema_matches_registry` diffs the file, the embedded bytes, and
   `lmscript --dsl-signatures` against `lmr --dsl-signatures`.
@@ -37,11 +48,11 @@ tolerance tiers still apply.
 
 - **Home**: public at https://github.com/lmctl-ai/lmr since 2026-10-20 (moved from private `lmctlhq/rcli` and renamed).
 - **`.github/workflows/native.yml`**: modelled on lmctl-ai/lmhtml. It builds and runs ctest on linux-x64/arm64
-  (ubuntu-22.04), macos-arm64/x64 and windows-x64 (MinGW), with lmscript from npm `@lmctl-ai/lmctl@0.2.359`, and checks
+  (ubuntu-22.04), macos-arm64/x64 and windows-x64 (MinGW), with lmscript from npm `@lmctl-ai/lmctl@0.2.419`, and checks
   linkage. A `v*` tag attaches `lmr-<platform>`, the schema, LICENSE, notices and SHA256SUMS to the release.
   To release: bump `project(... VERSION)` in `native/CMakeLists.txt`, commit, then tag `vX.Y.Z` and push the tag.
   v0.1.0 was published on 2026-10-20. `ci.yml` is the older R-backed lmapi tool's workflow.
-- **`cli=` / `install=`**: lmscript's `_dsl_ cli="lmr" install="github:lmctl-ai/lmr@vX.Y.Z"` reads the schema from
+- **`cli=` / `install=`**: lmscript's `_lmcode_ cli="lmr" install="github:lmctl-ai/lmr@vX.Y.Z"` reads the schema from
   `lmr --dsl-schema --json` (the host flag; `--schema` is an alias) and, when `lmr` is not on PATH, downloads the
   release asset `lmr-OS-ARCH[.exe]`, so asset names must stay exactly that. `examples/dsl/install-and-run.lms` is the
   example; run-examples.sh puts the tested build first on PATH so it binds to that build. Bump its tag with each release.
@@ -107,7 +118,7 @@ R is GPL. The rules:
     `rcli::Error`.
   - Degenerate data (empty, n = 1, constant, all ties, separation, more columns than rows, extreme parameters).
   - Exact R answers and messages for degenerate cases.
-- **`host_test.py`** (ctest `host_bindings`): about 160 cases that compile small `_dsl_` chunks and run `lmr`. It
+- **`host_test.py`** (ctest `host_bindings`): about 160 cases that compile small `_lmcode_` chunks and run `lmr`. It
   asserts exit codes, the JSON result line, error messages and DSL line/column. It covers every binding family, CSV
   edge cases, `fmt`, keep/kept across chunks, the solver protocol and its misuse errors, nested and abandoned solvers,
   and the CLI. Filter with `-k substring`.

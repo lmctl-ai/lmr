@@ -8,7 +8,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let x = read_csv("examples/r-vs-dsl/data/Nile.csv").col("value");
 let fit = arima(1, 1, 1).fit(x);
 let ml = arima(1, 1, 1).method("ML").fit(x);
@@ -33,7 +33,7 @@ out.set("ml_coef", vec().push(ml.estimate(0)).push(ml.estimate(1)));
 out.set("css_coef", vec().push(css.estimate(0)).push(css.estimate(1)));
 out.set("css_sigma2", css.sigma2());
 out.set("forecast", fit.forecast(5).mean());
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-arima-nile-diagnostics"));
 compare.finish("arima-nile-diagnostics", compare.report("arima-nile-diagnostics", got, "examples/r-vs-dsl/expected/arima-nile-diagnostics.json", 0.000000001, {}));

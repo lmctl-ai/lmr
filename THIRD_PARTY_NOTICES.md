@@ -10,7 +10,8 @@ The worker uses base R and the recommended `stats` and `utils` packages shipped 
 
 The `lmr` release binaries contain no R code and do not use R at run time. They contain only this project's
 code, which is Copyright (c) 2026 Lattice Systems LLC under the MIT license (see LICENSE). That includes the
-vendored `native/cpp/dslvm.hpp` runtime from the cpp-dsl-sdk project (MIT).
+vendored `native/cpp/dslvm.hpp` runtime and its `native/cpp/stdlib/` standard library from the lmcode-cpp project
+(formerly cpp-dsl-sdk; MIT).
 
 - **Ported public-domain algorithms**: the numerical integration (`native/src/num/quad.cpp`) follows QUADPACK
   (Piessens, de Doncker-Kapenga, Überhuber and Kahaner, 1983), and the STL decomposition follows the netlib STL

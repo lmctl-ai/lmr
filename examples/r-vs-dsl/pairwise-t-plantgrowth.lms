@@ -8,11 +8,11 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let d = read_csv("examples/r-vs-dsl/data/PlantGrowth.csv");
 let g = d.text("group");
 let y = d.col("weight");
-let levels = split("ctrl,trt1,trt2", ",");
+let levels = str_split("ctrl,trt1,trt2", ",");
 let means = vec();
 let ns = vec();
 let t1 = vec();
@@ -56,7 +56,7 @@ out.print("Holm-adjusted p (trt1-ctrl, trt2-ctrl, trt2-trt1): " + holm.format("%
 out.set("holm", holm);
 out.set("bonferroni", bonf);
 out.set("unadjusted", raw);
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-pairwise-t-plantgrowth"));
 compare.finish("pairwise-t-plantgrowth", compare.report("pairwise-t-plantgrowth", got, "examples/r-vs-dsl/expected/pairwise-t-plantgrowth.json", 0.000000000001, {}));

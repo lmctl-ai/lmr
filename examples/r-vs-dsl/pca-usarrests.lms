@@ -7,7 +7,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let us = read_csv("examples/r-vs-dsl/data/USArrests.csv").select("Murder,Assault,UrbanPop,Rape");
 let pc = prcomp(us, true);
 out.print(pc.summary());
@@ -28,7 +28,7 @@ out.set("cumulative", pc.cumulative());
 out.set("iris_sdev", iris.sdev());
 out.set("iris_abs_pc1", iris.rotation().col(0).abs());
 out.set("mtcars_cor_eigenvalues", mt.cor().eigen().values());
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-pca-usarrests"));
 compare.finish("pca-usarrests", compare.report("pca-usarrests", got, "examples/r-vs-dsl/expected/pca-usarrests.json", 0.000000001, {proportion: 0.00001, cumulative: 0.00001}));

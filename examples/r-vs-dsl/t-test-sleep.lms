@@ -6,7 +6,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let d = read_csv("examples/r-vs-dsl/data/sleep.csv");
 let extra = d.col("extra");
 let group = d.col("group");
@@ -30,7 +30,7 @@ out.set("paired_df", pr.df());
 out.set("paired_p", pr.p_value());
 out.set("paired_ci", vec().push(pr.conf_low()).push(pr.conf_high()));
 out.set("paired_mean_diff", pr.estimate());
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-t-test-sleep"));
 compare.finish("t-test-sleep", compare.report("t-test-sleep", got, "examples/r-vs-dsl/expected/t-test-sleep.json", 0.000000000001, {}));

@@ -5,7 +5,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let m = read_csv("examples/r-vs-dsl/data/mtcars.csv");
 let cars = read_csv("examples/r-vs-dsl/data/cars.csv");
 let ia = lm(m, "mpg ~ wt * hp");
@@ -26,7 +26,7 @@ out.set("weighted_coef", wl.estimates());
 out.set("weighted_se", vec().push(wl.se(0)).push(wl.se(1)));
 out.set("weighted_sigma", wl.sigma());
 out.set("weighted_r2", wl.r_squared());
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-lm-interaction-weights"));
 compare.finish("lm-interaction-weights", compare.report("lm-interaction-weights", got, "examples/r-vs-dsl/expected/lm-interaction-weights.json", 0.000000000001, {}));

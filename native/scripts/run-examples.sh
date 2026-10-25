@@ -8,7 +8,7 @@ shift
 LMSCRIPT="${LMSCRIPT_BIN:-$(command -v lmscript || true)}"
 if [[ -z "$LMSCRIPT" ]]; then echo "lmscript not found: DSL examples skipped"; exit 0; fi
 export LMR_BIN="$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")"
-# First on PATH too, so `_dsl_ cli="lmr"` (install-and-run.lms) binds to this build instead of downloading a release.
+# First on PATH too, so `_lmcode_ cli="lmr"` (install-and-run.lms) binds to this build instead of downloading a release.
 export PATH="$(dirname "$LMR_BIN"):$PATH"
 files=("$@")
 [[ ${#files[@]} -gt 0 ]] || files=(examples/dsl/*.lms examples/r-vs-dsl/*.lms)

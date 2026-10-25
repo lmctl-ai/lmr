@@ -7,7 +7,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let fit = lm(read_csv("examples/r-vs-dsl/data/cars.csv"), "dist ~ speed");
 let nd = frame().set("speed", parse_vec("5 10 15 20 25"));
 let f = fit.predict(nd);
@@ -33,7 +33,7 @@ out.set("conf_lower", cl);
 out.set("conf_upper", cu);
 out.set("pred90_lower", pl);
 out.set("pred90_upper", pu);
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-lm-prediction-intervals"));
 compare.finish("lm-prediction-intervals", compare.report("lm-prediction-intervals", got, "examples/r-vs-dsl/expected/lm-prediction-intervals.json", 0.000000000001, {}));

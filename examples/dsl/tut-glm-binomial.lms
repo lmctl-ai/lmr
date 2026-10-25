@@ -1,6 +1,6 @@
 // access: write (build/dsl/tut-glm-binomial.dslb)
 // Topic: logistic regression with odds ratios and a likelihood-ratio test (after: R ?glm, ?predict.glm)
-// What it does: one _dsl_ chunk simulates a dose-response experiment with a known logit, fits a binomial GLM with the
+// What it does: one _lmcode_ chunk simulates a dose-response experiment with a known logit, fits a binomial GLM with the
 //   native glm, prints the coefficient table with odds ratios and 95% Wald intervals, tests the slope with the deviance
 //   likelihood-ratio statistic (chi-square(1) upper tail), and checks the fitted probability at the true ED50. Same checks
 //   as examples/tut-glm-binomial.lms. The DSL Glm has no "statistic_type" field; the original's "z statistics" check is
@@ -11,7 +11,7 @@
 // Usage: lmscript examples/dsl/tut-glm-binomial.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
 import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let b0 = -0.5;
 let b1 = 1.2;
 let n = 300;
@@ -63,7 +63,7 @@ out.set("lr_p_text", fmt("%.2e", lr_p));
 out.set("p_hat", p_hat);
 out.set("odds_ratio", exp(fit.estimate(1)));
 out.set("odds_ratio_true", exp(b1));
-end _dsl_
+end _lmcode_
 
 values = lmr.check(lmr.run(p, "tut-glm-binomial"));
 println(sprintf("Checks passed: truth inside both Wald intervals; LR p=%s; P(ED50)=%.3f; odds ratio per unit dose %.3f (true %.3f).", values.lr_p_text, values.p_hat, values.odds_ratio, values.odds_ratio_true));

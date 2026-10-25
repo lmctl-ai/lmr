@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
-project(lmr VERSION 0.4.1 LANGUAGES CXX)
-# The native rcli: a C++17 statistics core (standard library only) and the `_dsl_` bytecode host lmr.
+project(lmr VERSION 0.5.0 LANGUAGES CXX)
+# The native rcli: a C++17 statistics core (standard library only) and the `_lmcode_` bytecode host lmr.
 # No R, no Python, no Docker, no third-party libraries. The build is one executable: on Linux it links libstdc++ and
 # libgcc statically and glibc (libc, libm) dynamically (-DLMR_FULL_STATIC=ON links glibc too); on Windows (MinGW)
 # it links fully static by default, so no MinGW DLLs are needed; macOS links only its system libraries.

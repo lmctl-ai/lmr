@@ -7,7 +7,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let m = read_csv("examples/r-vs-dsl/data/mtcars.csv");
 fn count(a: Vec, va: float, b: Vec, vb: float) -> float {
   let n = 0.0;
@@ -48,7 +48,7 @@ out.set("fisher_odds_ratio", f2.estimate());
 out.set("fisher_ci", vec().push(f2.conf_low()).push(f2.conf_high()));
 out.set("yates_x2", c2.statistic());
 out.set("yates_p", c2.p_value());
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-contingency-mtcars"));
 compare.finish("contingency-mtcars", compare.report("contingency-mtcars", got, "examples/r-vs-dsl/expected/contingency-mtcars.json", 0.000000000001, {}));

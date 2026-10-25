@@ -12,7 +12,7 @@
 // Usage: lmscript examples/dsl/flow-dose-response.lms   (cwd = repository root)
 import "lib/lmr.lms";
 
-prepare = _dsl_ schema="../../native/schema/lmr.dsl.json";
+prepare = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let r = rng(5150);
 let logdose = vec();
 let trials = vec();
@@ -32,11 +32,11 @@ for (g in range(0, 8)) {
 let f = frame().set("logdose", logdose).set("trials", trials).set("prop", prop).drop_nan();
 out.print(fmt("%d dose groups after dropping the incomplete one", f.nrow()));
 keep("doses", f);
-end _dsl_
+end _lmcode_
 
-compare = _dsl_ schema="../../native/schema/lmr.dsl.json";
+compare = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let f = kept_frame("doses");
-let links = split("logit,probit,cloglog", ",");
+let links = str_split("logit,probit,cloglog", ",");
 let aic = vec();
 for (i in range(0, links.len())) {
   let m = glm(f, "prop ~ logdose", "binomial", links.at(i), f.col("trials"));
@@ -45,11 +45,11 @@ for (i in range(0, links.len())) {
 }
 keep("aic", aic);
 out.set("aic", aic);
-end _dsl_
+end _lmcode_
 
-ed50 = _dsl_ schema="../../native/schema/lmr.dsl.json";
+ed50 = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let f = kept_frame("doses");
-let links = split("logit,probit,cloglog", ",");
+let links = str_split("logit,probit,cloglog", ",");
 let best = kept_vec("aic").which_min();
 let link = links.at(best);
 let m = glm(f, "prop ~ logdose", "binomial", link, f.col("trials"));
@@ -83,7 +83,7 @@ out.check(ed90 > ed50, "ED90 above ED50");
 out.set("link", link);
 out.set("ed50", ed50);
 out.set("ed90", ed90);
-end _dsl_
+end _lmcode_
 
 paths = [lmr.save(prepare, "flow-dose-1"), lmr.save(compare, "flow-dose-2"), lmr.save(ed50, "flow-dose-3")];
 v = lmr.check(lmr.exec(paths));

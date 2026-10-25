@@ -6,7 +6,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let m = read_csv("examples/r-vs-dsl/data/mtcars.csv");
 let mpg = m.col("mpg");
 let wt = m.col("wt");
@@ -24,7 +24,7 @@ out.set("spearman_p", sp.p_value());
 out.set("kendall_tau", ke.estimate());
 out.set("kendall_z", ke.statistic());
 out.set("kendall_p", ke.p_value());
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-cor-test-mtcars"));
 compare.finish("cor-test-mtcars", compare.report("cor-test-mtcars", got, "examples/r-vs-dsl/expected/cor-test-mtcars.json", 0.000000000001, {}));

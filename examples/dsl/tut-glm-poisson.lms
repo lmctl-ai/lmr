@@ -1,6 +1,6 @@
 // access: write (build/dsl/tut-glm-poisson.dslb)
 // Topic: Poisson count regression with rate ratios and a dispersion check (after: R ?glm, Dobson's count examples)
-// What it does: one _dsl_ chunk fits count ~ dose with a log link (native glm) from examples/data/tut-counts.csv, prints the
+// What it does: one _lmcode_ chunk fits count ~ dose with a log link (native glm) from examples/data/tut-counts.csv, prints the
 //   coefficient table with rate ratios and 95% Wald intervals, checks the generating rates against the intervals, tests the
 //   dose effect with the deviance drop (chi-square(1) upper tail), checks the deviance/df ratio for overdispersion, and
 //   refits with the dose centred at 2 so that the intercept is log of the fitted mean at dose 2 with its own standard
@@ -11,7 +11,7 @@
 // Usage: lmscript examples/dsl/tut-glm-poisson.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
 import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let b0 = 0.3;
 let b1 = 0.5;
 let d = read_csv("examples/data/tut-counts.csv");
@@ -58,7 +58,7 @@ out.set("lr_p_text", fmt("%.2e", lr_p));
 out.set("dev_ratio", ratio);
 out.set("rate_ratio", exp(fit.estimate(1)));
 out.set("rate_ratio_true", exp(b1));
-end _dsl_
+end _lmcode_
 
 values = lmr.check(lmr.run(p, "tut-glm-poisson"));
 println(sprintf("Checks passed: truth inside both intervals; LR p=%s; deviance/df=%.3f; rate ratio per unit dose %.3f (true %.3f).", values.lr_p_text, values.dev_ratio, values.rate_ratio, values.rate_ratio_true));

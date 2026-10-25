@@ -17,7 +17,7 @@ round = 0;
 mkdir("build/dsl");
 while (tenths >= 30) {
   round = round + 1;
-  detect = _dsl_ schema="../../native/schema/lmr.dsl.json";
+  detect = _lmcode_ schema="../../native/schema/lmr.dsl.json";
   let r = rng(1999);
   let n = 120;
   let noise = arima_sim(r, n, parse_vec("0.4"), vec(), 0.5);
@@ -43,7 +43,7 @@ while (tenths >= 30) {
   frame().set("x", x).set("trend", s.trend()).set("seasonal", s.seasonal()).set("remainder", rem).set("weight", s.weights()).write_csv("build/dsl/flow-anomaly.csv");
   out.print(fmt("threshold %.1f MAD", threshold) + fmt(" (MAD %.3f): ", scale) + fmt("%d months flagged", flags.len()));
   out.set("flags", flags);
-end _dsl_
+end _lmcode_
   v = lmr.check(lmr.run(detect, "flow-anomaly"));
   if (!has_key(v, "flags")) { println("dry run: nothing executed"); exit(0); }
   found = v.flags;

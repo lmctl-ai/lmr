@@ -16,6 +16,10 @@ if [[ -n "$LMSCRIPT" ]]; then
   "$LMSCRIPT" --dsl-signatures "$SCHEMA" > "$WORK/compiler.txt"
   "$BIN" --dsl-signatures > "$WORK/host.txt"
   diff -u "$WORK/compiler.txt" "$WORK/host.txt" || { echo "compiler and host signatures differ" >&2; exit 1; }
+  # Until the compiler injects lmcode std itself, the schema carries it: every canonical std signature must be there.
+  "$LMSCRIPT" --dsl-signatures "$HERE/cpp/std/lmcode-std.schema.json" > "$WORK/std.txt"
+  missing="$(comm -23 <(sort "$WORK/std.txt") <(sort "$WORK/host.txt"))"
+  [[ -z "$missing" ]] || { echo "lmcode std signatures missing from the schema:" >&2; echo "$missing" >&2; exit 1; }
   echo "schema ok: $(wc -l < "$WORK/host.txt") signatures agree with $LMSCRIPT"
 else
   echo "schema ok (lmscript not found: compiler signature parity skipped)"

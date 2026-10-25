@@ -1,7 +1,7 @@
 // access: write (build/dsl/tut-cluster.dslb)
 // Topic: k-means and hierarchical clustering with recovery scoring (after: R ?kmeans, ?hclust, ?cutree; scikit-learn
 //   clustering guide)
-// What it does: one _dsl_ chunk draws three Gaussian clusters with known centres, runs kmeans (Hartigan-Wong, 10
+// What it does: one _lmcode_ chunk draws three Gaussian clusters with known centres, runs kmeans (Hartigan-Wong, 10
 //   restarts) and hclust (complete linkage, cut at 3), prints sizes, centres and the purity of each method against the
 //   true labels, and checks purity, centre recovery, the within-SS against the generating variance, well-formed labels
 //   and sizes, the dendrogram's last-merge gap, and that the same seed reproduces the k-means partition. Same checks as
@@ -11,7 +11,7 @@
 // Usage: lmscript examples/dsl/tut-cluster.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
 import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let ca = parse_vec("0 6 3");
 let cb = parse_vec("0 0 5");
 let m = 40;
@@ -116,7 +116,7 @@ out.set("purity_hclust", ph);
 out.set("worst_centre", worst_centre);
 out.set("wss_per_point", km.tot_withinss() / float(n));
 out.set("gap", heights.at(nh - 2) / heights.at(nh - 3));
-end _dsl_
+end _lmcode_
 
 v = lmr.check(lmr.run(p, "tut-cluster"));
 println(sprintf("Checks passed: purity %.3f / %.3f; worst centre error %.3f; within-SS per point %.3f; dendrogram gap %.2fx; seeded rerun identical.", v.purity_kmeans, v.purity_hclust, v.worst_centre, v.wss_per_point, v.gap));

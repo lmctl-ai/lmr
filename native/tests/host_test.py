@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Host-level tests for lmr: bindings, reverse-communication protocol, CSV, formatting, chunk state, CLI.
 
-Each case compiles a small `_dsl_` chunk with lmscript and runs it with lmr, then asserts the exit code, values
+Each case compiles a small `_lmcode_` chunk with lmscript and runs it with lmr, then asserts the exit code, values
 from the JSON result line, and substrings of stdout/stderr. Positive behaviour is mostly asserted inside the chunk with
 out.check (any failure gives exit 4 and names the check). Usage:
 
@@ -127,12 +127,28 @@ out.check(fmt("%g", 0.0001) == "0.0001" && fmt("x=%.1f%%", 12.34) == "x=12.3%", 
 out.check(fmt("[%-5s]", "ab") == "[ab   ]" && fmt("%s!", "hi") == "hi!", "fmt string");
 out.check(fmt("%d", 2.0) == "2", "fmt %d with an integral float");
 out.check(lpad("ab", 4) == "  ab" && rpad("ab", 4) == "ab  " && lpad("abcdef", 2) == "abcdef", "pad");
-let parts = split("a,,b,", ",");
+let parts = str_split("a,,b,", ",");
 out.check(parts.len() == 4 && parts.at(1) == "" && parts.at(3) == "", "split keeps empty fields");
-out.check(split("a::b", "::").join("|") == "a|b", "multi-char separator");
-out.check(parts.contains("b") && parts.index("b") == 2 && parts.index("zz") == -1, "contains index");
-out.check(strs().push("x").push("y").join("") == "xy", "strs push join");
+out.check(str_split("a::b", "::").join("|") == "a|b", "multi-char separator");
+out.check(parts.contains("b") && parts.index_of("b") == 2 && parts.index_of("zz") == -1, "contains index");
+out.check(str_list().add("x").add("y").join("") == "xy", "std str_list add join");
 """)
+
+case("lmcode std is provided by the runtime", r"""
+out.check(str_trim("  a b ") == "a b" && str_upper("ab") == "AB" && str_replace("a-b-c", "-", "+") == "a+b+c", "str");
+out.check(str_starts_with("lmr", "lm") && str_find("abc", "c") == 2 && str_to_int("42") == 42, "str parse");
+out.check(math_sqrt(16.0) == 4.0 && math_max(3, 7) == 7 && math_round(2.5) == 3.0, "math");
+let m = str_map().set("k", "v").set("j", "w");
+out.check(m.len() == 2 && m.get("k") == "v" && m.get_or("zz", "d") == "d" && m.key_at(1) == "j", "StrMap");
+let il = int_list().add(3).add(5);
+let fl = float_list().add(0.5).set(0, 1.5);
+out.check(il.len() == 2 && il.at(1) == 5 && fl.at(0) == 1.5, "IntList and FloatList");
+let names = read_csv("in.csv").names();
+out.check(names.index_of("y") >= 0 && names.add("extra").len() == names.len(), "host StrList is a std StrList");
+file_write("std.txt", "a,b,");
+file_append("std.txt", "c");
+out.check(file_exists("std.txt") && file_read("std.txt") == "a,b,c" && file_lines("std.txt").len() == 1, "file");
+""", files={"in.csv": "x,y\n1,2\n"})
 
 for spec, why in [("%d %d", "exactly one conversion"), ("%n", "unsupported conversion"), ("plain", "no conversion"),
                   ("%5000f", "width too large"), ("%.300f", "precision too large"), ("%x", "unsupported conversion")]:
@@ -159,7 +175,7 @@ out.check(f.text("score").at(1) == "NA", "numeric column as text");
 """, files={"in.csv": CSV})
 
 case("write_csv round trip", r"""
-let f = frame().set("x", parse_vec("1 NaN 0.1")).set("s", split("a,b c|q\"t|", "|"));
+let f = frame().set("x", parse_vec("1 NaN 0.1")).set("s", str_split("a,b c|q\"t|", "|"));
 f.write_csv("sub/out.csv");
 let g = read_csv("sub/out.csv");
 out.check(g.nrow() == 3 && is_nan(g.col("x").at(1)) && g.col("x").at(2) == 0.1, "numbers round trip exactly");
@@ -167,7 +183,7 @@ out.check(g.text("s").at(0) == "a,b c" && g.text("s").at(1) == "q\"t" && g.text(
 """, files={"sub/.keep": ""})
 
 case("frame operations", r"""
-let f = frame().set("a", parse_vec("1 2 3 4")).set("b", parse_vec("5 NaN 7 8")).set("t", split("w,x,y,z", ","));
+let f = frame().set("a", parse_vec("1 2 3 4")).set("b", parse_vec("5 NaN 7 8")).set("t", str_split("w,x,y,z", ","));
 out.check(f.select("b, a").names().join(",") == "b,a", "select order");
 out.check(f.where(parse_vec("0 1 1 0")).text("t").join("") == "xy", "where");
 out.check(f.drop_nan().nrow() == 3, "drop_nan");
@@ -187,7 +203,7 @@ for body, msg in [
     ('frame().set("a", vec().push(1.0)).write_csv("/tmp/x.csv");', "must be relative"),
     ('frame().set("a", vec().push(1.0)).write_csv("../x.csv");', "must not contain '..'"),
     ('frame().set("a", vec().push(1.0)).write_csv("dir/");', "names a directory"),
-    ('let f = frame().set("t", split("a", ",")); out.print(str(f.col("t").len()));', "is text (use Frame.text)"),
+    ('let f = frame().set("t", str_split("a", ",")); out.print(str(f.col("t").len()));', "is text (use Frame.text)"),
     ('let f = frame().set("a", parse_vec("1 2")); out.print(str(f.col("b").len()));', "no column 'b' (columns: a)"),
     ('let f = frame().set("a", parse_vec("1 2")).set("b", parse_vec("1"));', "has 1 rows; the frame has 2"),
     ('let f = frame().set("a", parse_vec("1 2")).select("a,,b");', "empty column name"),
@@ -214,7 +230,7 @@ for body, msg in [
     ("out.print(linspace(0.0, 1.0, 1).str());", "linspace: n must be between 2"),
     ("out.print(parse_vec(\"1 2\").diff(0).str());", "lag must be at least 1"),
     ("out.print(str(vec().which_min()));", "no non-NaN values"),
-    ("out.print(split(\"a\", \"\").join(\"\"));", "separator must not be empty"),
+    ("out.print(str_split(\"a\", \"\").join(\"\"));", "str_split: separator must not be empty"),
     ("out.print(lpad(\"a\", 5000));", "lpad: width too large"),
 ]:
     case("vec error: " + msg, body, code=3, out=(msg,))
@@ -226,7 +242,7 @@ out.set("a", 2);
 out.set("s", "q\"uote\n");
 out.set("t", true);
 out.set("v", parse_vec("1 NaN Inf"));
-out.set("l", split("x,y", ","));
+out.set("l", str_split("x,y", ","));
 out.set("b", 3.25);
 """, values={"b": 3.25, "a": 2, "s": "q\"uote\n", "t": True, "v": [1, None, None], "l": ["x", "y"]})
 case("out.print goes to stderr only", 'out.print("hello report");', err=("hello report",))
@@ -242,7 +258,7 @@ case("check_close reports actual and expected", 'out.check_close(1.0, 2.0, 0.5, 
 case("check_close rejects NaN", 'out.check_close(nan(), 1.0, 1.0, "nan actual");', code=4, err=("nan actual",))
 case("out.fail stops with exit 4", 'out.fail("stop here"); out.print("not reached");', code=4,
      out=('"phase": "run"', '"code": "APP_FAIL"', "stop here"))
-# The wrapper's `p = _dsl_` line is line 1 of the compiled file, so the body's second line is source line 3.
+# The wrapper's `p = _lmcode_` line is line 1 of the compiled file, so the body's second line is source line 3.
 case("host errors carry the dsl line", 'let v = vec();\nout.print(str(v.at(3)));', code=3,
      out=('"code": "RUN_HOST"', '"line": 3', '"column": 17', "dsl line 3:17: Vec.at"))
 case("failures() counts", 'out.check(false, "x"); out.set("n", out.failures());', code=4)
@@ -425,7 +441,7 @@ for body, msg in [
 
 # ---------------------------------------------------------------- models through Frames
 case("lm with NA rows, weights and predict", r"""
-let f = frame().set("y", parse_vec("1 3 NaN 7 9 12")).set("x", parse_vec("0 1 2 3 4 5")).set("t", split("a,b,c,d,e,f", ","));
+let f = frame().set("y", parse_vec("1 3 NaN 7 9 12")).set("x", parse_vec("0 1 2 3 4 5")).set("t", str_split("a,b,c,d,e,f", ","));
 let m = lm(f, "y ~ x");
 out.check(m.n() == 5 && m.df_residual() == 3, "NA row dropped (na.omit)");
 out.check(m.has_coef("x") && !m.has_coef("t"), "text column not used");
@@ -448,8 +464,8 @@ out.check(m.residuals("pearson").len() == 10, "pearson residuals");
 """)
 for body, msg in [
     ('let m = lm(frame().set("y", parse_vec("1 2")), "y ~ z");', "z"),
-    ('let m = lm(frame().set("y", parse_vec("1 2 3")).set("t", split("a,b,c", ",")), "t ~ y");', "the response 't' is a factor (text)"),
-    ('let m = lm(frame().set("y", parse_vec("1 2")).set("t", split("a,a", ",")), "y ~ t");', "contrasts can be applied only to factors with 2 or more levels"),
+    ('let m = lm(frame().set("y", parse_vec("1 2 3")).set("t", str_split("a,b,c", ",")), "t ~ y");', "the response 't' is a factor (text)"),
+    ('let m = lm(frame().set("y", parse_vec("1 2")).set("t", str_split("a,a", ",")), "y ~ t");', "contrasts can be applied only to factors with 2 or more levels"),
     ('let m = lm(frame().set("y", parse_vec("1 2")), "y ~ x", parse_vec("1"));', "weights have 1 values"),
     ('let m = glm(frame().set("y", parse_vec("1 2")).set("x", parse_vec("1 2")), "y ~ x", "nonsense");', "family"),
     ('let m = glm(frame().set("y", parse_vec("1 2")).set("x", parse_vec("1 2")), "y ~ x", "poisson", "log", vec(), parse_vec("1"));', "offset has 1 values"),
@@ -599,7 +615,7 @@ let hm = hclust(f, "single", "manhattan");
 out.check(abs(hm.height(0) - 0.1) < 0.000000001, "manhattan distance");
 """)
 for body, msg in [
-    ('let k = kmeans(frame().set("t", split("a,b", ",")), 1, rng(1));', "is text; select the numeric columns"),
+    ('let k = kmeans(frame().set("t", str_split("a,b", ",")), 1, rng(1));', "is text; select the numeric columns"),
     ('let k = kmeans(frame().set("x", parse_vec("1 NaN")), 1, rng(1));', "missing values"),
     ('let k = kmeans(frame(), 1, rng(1));', "the frame is empty"),
     ('let k = kmeans(frame().set("x", parse_vec("1 2")), 0, rng(1));', "k must be at least 1"),
@@ -658,14 +674,14 @@ for body, msg in [
     ('let m = matrix(parse_vec("1 2 3 4"), 2, false).mul(matrix(parse_vec("1 2 3"), 3, false));', "non-conformable"),
     ('let m = matrix(parse_vec("1 2 3 4"), 2, false).at(2, 0);', "out of range"),
     ('let p = prcomp(frame().set("a", parse_vec("1 1 1")).set("b", parse_vec("1 2 3")), true);', "cannot rescale a constant/zero column"),
-    ('let m = as_matrix(frame().set("t", split("a,b", ",")));', "is text; select the numeric columns"),
+    ('let m = as_matrix(frame().set("t", str_split("a,b", ",")));', "is text; select the numeric columns"),
     ('let m = matrix(parse_vec("1 2 2 1"), 2, false).chol();', "not positive"),
 ]:
     case("matrix error: " + msg, body, code=3, out=(msg,))
 
 # ---------------------------------------------------------------- factors and anova
 case("factor formulas and anova", r"""
-let f = frame().set("y", parse_vec("1 2 3 5 4 6 8 9")).set("g", split("a,a,b,b,c,c,a,b", ","))
+let f = frame().set("y", parse_vec("1 2 3 5 4 6 8 9")).set("g", str_split("a,a,b,b,c,c,a,b", ","))
   .set("d", parse_vec("1 2 1 2 1 2 1 2"));
 let m = lm(f, "y ~ g + factor(d)");
 out.check(m.n_coef() == 4 && m.name(1) == "gb" && m.name(3) == "factor(d)2", "R's column names");
@@ -679,10 +695,10 @@ let n = anova(small, m);
 out.check(n.n_rows() == 2 && n.at(1, "Df") == 1.0, "nested comparison");
 let g = glm(f, "y ~ g", "poisson");
 out.check(g.anova("Chisq").at("g", "Df") == 2.0, "analysis of deviance");
-out.check(m.predict(frame().set("g", split("c", ",")).set("d", parse_vec("2"))).len() == 1, "predict with factor levels");
+out.check(m.predict(frame().set("g", str_split("c", ",")).set("d", parse_vec("2"))).len() == 1, "predict with factor levels");
 """)
 for body, msg in [
-    ('let m = lm(frame().set("y", parse_vec("1 2 3")).set("g", split("a,b,a", ",")), "y ~ g"); let p = m.predict(frame().set("g", split("z", ",")));', "has new level z"),
+    ('let m = lm(frame().set("y", parse_vec("1 2 3")).set("g", str_split("a,b,a", ",")), "y ~ g"); let p = m.predict(frame().set("g", str_split("z", ",")));', "has new level z"),
     ('let m = lm(frame().set("y", parse_vec("1 2 3")).set("x", parse_vec("1 2 3")), "y ~ x"); let a = m.anova().at("nope", "Df");', "nope"),
 ]:
     case("factor error: " + msg, body, code=3, out=(msg,))
@@ -693,7 +709,7 @@ let x = parse_vec("1 2 3 4 5 6 7 8 9 10 11 12");
 let g = parse_vec("1 1 1 1 2 2 2 2 3 3 3 3");
 let k = test("kruskal").x(x).groups(g).run();
 out.check(k.method() == "Kruskal-Wallis rank sum test" && k.df() == 2.0 && k.p_value() < 0.02, "kruskal");
-let s = test("kruskal").x(x).groups(split("b,b,b,b,a,a,a,a,c,c,c,c", ",")).run();
+let s = test("kruskal").x(x).groups(str_split("b,b,b,b,a,a,a,a,c,c,c,c", ",")).run();
 out.check(s.statistic() == k.statistic(), "text groups");
 out.check(test("bartlett").x(x.pow(2.0)).groups(g).run().p_value() < 1.0, "bartlett");
 out.check(test("fligner").x(x).groups(g).run().statistic_name() == "Fligner-Killeen:med chi-squared", "fligner");
@@ -876,7 +892,7 @@ def compile_chunk(lmscript, body, path):
     src = path + ".lms"
     with open(src, "w", encoding="utf-8") as f:
         # Forward slashes: a Windows path's backslashes would be escapes inside the lmscript string literals.
-        f.write('p = _dsl_ schema="%s";\n%s\nend _dsl_\nsavedsl(p, "%s");\n' % (SCHEMA.replace("\\", "/"), body, path.replace("\\", "/")))
+        f.write('p = _lmcode_ schema="%s";\n%s\nend _lmcode_\nsavedsl(p, "%s");\n' % (SCHEMA.replace("\\", "/"), body, path.replace("\\", "/")))
     r = subprocess.run([lmscript, src], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
     if r.returncode != 0:
         raise RuntimeError("compile failed:\n" + r.stdout + r.stderr)

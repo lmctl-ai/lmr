@@ -7,7 +7,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let d = frame().set("counts", parse_vec("18 17 15 20 10 20 25 13 12"))
   .set("outcome2", parse_vec("0 1 0 0 1 0 0 1 0")).set("outcome3", parse_vec("0 0 1 0 0 1 0 0 1"))
   .set("treatment2", parse_vec("0 0 0 1 1 1 0 0 0")).set("treatment3", parse_vec("0 0 0 0 0 0 1 1 1"));
@@ -30,7 +30,7 @@ out.set("null_deviance", fit.null_deviance());
 out.set("aic", fit.aic());
 out.set("fitted", fit.fitted());
 out.set("deviance_residuals", fit.residuals("deviance"));
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-glm-dobson-poisson"));
 compare.finish("glm-dobson-poisson", compare.report("glm-dobson-poisson", got, "examples/r-vs-dsl/expected/glm-dobson-poisson.json", 0.000000000001, {}));

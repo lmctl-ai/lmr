@@ -8,7 +8,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let d = read_csv("examples/r-vs-dsl/data/Puromycin.csv");
 let state = d.text("state");
 let mask = vec();
@@ -36,7 +36,7 @@ out.set("p_value", pv);
 out.set("sigma", m.sigma());
 out.set("rss", m.rss());
 out.set("fitted", m.fitted());
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-nls-puromycin"));
 compare.finish("nls-puromycin", compare.report("nls-puromycin", got, "examples/r-vs-dsl/expected/nls-puromycin.json", 0.000001, {}));

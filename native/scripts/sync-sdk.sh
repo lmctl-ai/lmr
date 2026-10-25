@@ -1,22 +1,47 @@
 #!/usr/bin/env bash
-# Vendor the single-source cpp-dsl-sdk header and pin both its commit and content hash.
+# Vendor lmcode-cpp (formerly cpp-dsl-sdk): the single-source runtime header, the built-in std catalog it includes
+# (stdlib/*.hpp) and the canonical std schema, pinning the commit and every file's content hash in sdk.lock.
+#   scripts/sync-sdk.sh            copy from a checkout (LMCODE_CPP, or ../lmcode-cpp, or ../poc/cpp-dsl-sdk) at origin/main
+#   scripts/sync-sdk.sh --verify   fail when a vendored file differs from sdk.lock
 set -eu
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SDK="${CPP_DSL_SDK:-$HERE/../../poc/cpp-dsl-sdk}"
 LOCK="$HERE/sdk.lock"
-HEADER="$HERE/cpp/dslvm.hpp"
+FILES="include/dslvm.hpp:cpp/dslvm.hpp
+stdlib/std.hpp:cpp/stdlib/std.hpp
+stdlib/string.hpp:cpp/stdlib/string.hpp
+stdlib/math.hpp:cpp/stdlib/math.hpp
+stdlib/collections.hpp:cpp/stdlib/collections.hpp
+stdlib/file.hpp:cpp/stdlib/file.hpp
+std/lmcode-std.schema.json:cpp/std/lmcode-std.schema.json"
 hash() { sha256sum "$1" | cut -c1-64; }
 if [ "${1:-}" = "--verify" ]; then
   [ -f "$LOCK" ] || { echo "sdk.lock missing" >&2; exit 1; }
-  want="$(sed -n 's/^sha256=//p' "$LOCK")"
-  have="$(hash "$HEADER")"
-  [ "$want" = "$have" ] || { echo "cpp/dslvm.hpp sha256 $have differs from sdk.lock $want: run scripts/sync-sdk.sh" >&2; exit 1; }
-  echo "cpp/dslvm.hpp matches sdk.lock ($(sed -n 's/^commit=//p' "$LOCK"))"
+  bad=0
+  while IFS=: read -r _ dst; do
+    want="$(sed -n "s|^sha256 $dst=||p" "$LOCK")"
+    have="$(hash "$HERE/$dst" 2>/dev/null || echo missing)"
+    [ -n "$want" ] && [ "$want" = "$have" ] || { echo "$dst sha256 $have differs from sdk.lock '${want}': run scripts/sync-sdk.sh" >&2; bad=1; }
+  done <<< "$FILES"
+  [ "$bad" = 0 ] || exit 1
+  echo "vendored lmcode-cpp files match sdk.lock ($(sed -n 's/^commit=//p' "$LOCK"))"
   exit 0
 fi
-[ -f "$SDK/include/dslvm.hpp" ] || { echo "cpp-dsl-sdk checkout not found at $SDK (set CPP_DSL_SDK)" >&2; exit 1; }
-ref="${CPP_DSL_SDK_REF:-origin/main}"
+SDK="${LMCODE_CPP:-}"
+if [ -z "$SDK" ]; then
+  for c in "$HERE/../../lmcode-cpp" "$HERE/../../poc/lmcode-cpp" "$HERE/../../poc/cpp-dsl-sdk"; do
+    [ -f "$c/include/dslvm.hpp" ] && { SDK="$c"; break; }
+  done
+fi
+[ -n "$SDK" ] && [ -f "$SDK/include/dslvm.hpp" ] || { echo "lmcode-cpp checkout not found (set LMCODE_CPP)" >&2; exit 1; }
+ref="${LMCODE_CPP_REF:-origin/main}"
 commit="$(git -C "$SDK" rev-parse "$ref")"
-git -C "$SDK" show "$commit:include/dslvm.hpp" > "$HEADER"
-printf 'repo=https://github.com/lmctl-ai/cpp-dsl-sdk\ncommit=%s\nsha256=%s\n' "$commit" "$(hash "$HEADER")" > "$LOCK"
-echo "synced cpp/dslvm.hpp from cpp-dsl-sdk $commit"
+{
+  printf 'repo=https://github.com/lmctl-ai/lmcode-cpp\ncommit=%s\n' "$commit"
+  while IFS=: read -r src dst; do
+    mkdir -p "$(dirname "$HERE/$dst")"
+    git -C "$SDK" show "$commit:$src" > "$HERE/$dst"
+    printf 'sha256 %s=%s\n' "$dst" "$(hash "$HERE/$dst")"
+  done <<< "$FILES"
+} > "$LOCK.tmp"
+mv "$LOCK.tmp" "$LOCK"
+echo "synced lmcode-cpp $commit"

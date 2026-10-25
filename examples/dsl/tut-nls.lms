@@ -1,6 +1,6 @@
 // access: write (build/dsl/tut-nls.dslb)
 // Topic: nonlinear least squares with confidence intervals (after: R ?nls, ?confint.nls, the Michaelis-Menten example)
-// What it does: one _dsl_ chunk simulates enzyme-kinetics data y = Vmax x / (Km + x) + noise, fits the curve with the
+// What it does: one _lmcode_ chunk simulates enzyme-kinetics data y = Vmax x / (Km + x) + noise, fits the curve with the
 //   native nls (default Gauss-Newton and the bounded port algorithm; the model is written in the chunk and evaluated by
 //   reverse communication), prints the parameter table with t-based 95% intervals, checks that Vmax and Km are recovered
 //   inside the intervals, that the residual sigma matches the noise level, that the fitted curve tracks the true curve,
@@ -12,7 +12,7 @@
 // Usage: lmscript examples/dsl/tut-nls.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
 import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let vmax = 5.0;
 let km = 1.5;
 let noise = 0.05;
@@ -81,7 +81,7 @@ out.set("km", m.estimate(1));
 out.set("sigma", m.sigma());
 out.set("worst", worst);
 out.set("port_iterations", port.iterations());
-end _dsl_
+end _lmcode_
 
 values = lmr.check(lmr.run(p, "tut-nls"));
 println(sprintf("Checks passed: Vmax=%.4f, Km=%.4f inside their intervals; sigma=%.4f; max curve error %.4f; port agrees to 1e-6 (%d iterations).", values.vmax, values.km, values.sigma, values.worst, values.port_iterations));

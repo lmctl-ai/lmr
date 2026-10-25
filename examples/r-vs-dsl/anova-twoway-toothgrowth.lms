@@ -8,7 +8,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let d = read_csv("examples/r-vs-dsl/data/ToothGrowth.csv");
 let supp = d.text("supp");
 let dose = d.col("dose");
@@ -37,7 +37,7 @@ for (i in range(0, 3)) {
   fv.push(ms.at(i) / ms.at(3));
   pv.push(f_dist(dfs.at(i), dfr).p_upper(fv.at(i)));
 }
-let names = split("supp,dose,supp:dose", ",");
+let names = str_split("supp,dose,supp:dose", ",");
 for (i in range(0, 3)) {
   out.print(rpad(names.at(i), 10) + fmt(" Df %1.0f", dfs.at(i)) + fmt("  Sum Sq %8.2f", ss.at(i)) + fmt("  F %7.3f", fv.at(i)) + fmt("  p %.3g", pv.at(i)));
 }
@@ -58,7 +58,7 @@ out.set("mean_sq", ms);
 out.set("f_value", fv);
 out.set("p_value", pv);
 out.set("cell_means", cells);
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-anova-twoway-toothgrowth"));
 compare.finish("anova-twoway-toothgrowth", compare.report("anova-twoway-toothgrowth", got, "examples/r-vs-dsl/expected/anova-twoway-toothgrowth.json", 0.000000000001, {}));

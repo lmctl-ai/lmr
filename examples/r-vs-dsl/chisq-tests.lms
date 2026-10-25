@@ -6,7 +6,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let a = test("chisq").table(parse_vec("762 327 468 484 239 477"), 2, true).run();
 let g = test("chisq").counts(parse_vec("89 37 30 28 2")).probs(parse_vec("0.40 0.20 0.20 0.15 0.05")).run();
 let k = test("chisq").table(parse_vec("12 5 7 7"), 2, false).run();
@@ -20,7 +20,7 @@ out.set("gof_x2", g.statistic());
 out.set("gof_p", g.p_value());
 out.set("yates_x2", k.statistic());
 out.set("yates_p", k.p_value());
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-chisq-tests"));
 compare.finish("chisq-tests", compare.report("chisq-tests", got, "examples/r-vs-dsl/expected/chisq-tests.json", 0.000000000001, {}));

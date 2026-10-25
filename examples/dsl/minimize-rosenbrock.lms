@@ -1,6 +1,6 @@
 // access: write (build/dsl/minimize-rosenbrock.dslb)
 // Topic: unconstrained minimisation of Rosenbrock's banana function with BFGS (after: R ?optim)
-// What it does: one _dsl_ chunk minimises 100 (b - a^2)^2 + (1 - a)^2 from (-1.2, 1) with the native BFGS (maxit 1000,
+// What it does: one _lmcode_ chunk minimises 100 (b - a^2)^2 + (1 - a)^2 from (-1.2, 1) with the native BFGS (maxit 1000,
 //   reltol 1e-8); the objective is ordinary DSL code fed to the optimiser by reverse communication. It checks the known
 //   minimum (1, 1): parameters within 0.005 and objective below 1e-6, the same tolerances as
 //   examples/minimize-rosenbrock.lms (formerly an R-oracle fixture; the minimum is known analytically, so no R is needed).
@@ -8,7 +8,7 @@
 // Usage: lmscript examples/dsl/minimize-rosenbrock.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
 import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 fn rosen(a: float, b: float) -> float {
   return 100.0 * pow(b - a * a, 2.0) + pow(1.0 - a, 2.0);
 }
@@ -24,7 +24,7 @@ out.check(o.value() <= 0.000001, "objective below 1e-6");
 out.set("a", o.par(0));
 out.set("b", o.par(1));
 out.set("value", o.value());
-end _dsl_
+end _lmcode_
 
 values = lmr.check(lmr.run(p, "minimize-rosenbrock"));
 println(sprintf("Checks passed: Rosenbrock minimum at a=%.6f b=%.6f (within 0.005 of (1, 1)), value %.8f below 1e-6.", values.a, values.b, values.value));

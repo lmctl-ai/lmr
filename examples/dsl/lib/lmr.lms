@@ -1,4 +1,4 @@
-// lmr: compile-and-run helpers shared by the _dsl_ examples.
+// lmr: compile-and-run helpers shared by the _lmcode_ examples.
 //   lmr.binary()            -> path of lmr ($LMR_BIN, then PATH, then build-native/bin/lmr)
 //   lmr.save(dsl, name)     -> writes build/dsl/NAME.dslb and returns the path
 //   lmr.exec(paths)         -> runs the bytecode files in ONE lmr process (shared host state);

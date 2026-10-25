@@ -14,7 +14,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let cars = read_csv("examples/r-vs-dsl/data/cars.csv");
 let speed = cars.col("speed");
 let stop = cars.col("dist");
@@ -34,7 +34,7 @@ out.set("loess_default_fitted", lo.fitted());
 out.set("spline_fmm", spline_fun(x, y, "fmm").eval(xx));
 out.set("spline_natural", spline_fun(x, y, "natural").eval(xx));
 out.set("approx_linear", approx_fun(x, y).eval(xx));
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-smoothing-cars"));
 compare.finish("smoothing-cars", compare.report("smoothing-cars", got, "examples/r-vs-dsl/expected/smoothing-cars.json", 0.000000000001, {ss_fit_at: 0.0001, ss_df: 0.000000001, loess_default_fitted: 0.05}));

@@ -1,6 +1,6 @@
 // access: write (build/dsl/tut-special-fft.dslb)
 // Topic: special functions and the discrete Fourier transform checked against identities (after: R ?Special, ?besselJ, ?fft)
-// What it does: one _dsl_ chunk evaluates gamma, lgamma, beta, choose, digamma and Bessel functions and checks the
+// What it does: one _lmcode_ chunk evaluates gamma, lgamma, beta, choose, digamma and Bessel functions and checks the
 //   classical identities (n! recursion, lgamma against log n!, beta = gamma ratio, Pascal's rule with C(11,4) computed by
 //   the host, Euler's constant, J0(0) = 1 and the Bessel Wronskian), then transforms an impulse, a constant and a pure
 //   cosine with fft and checks the spectra, linearity (fft(2 impulse + 3 cosine) = 2 fft(impulse) + 3 fft(cosine) bin by
@@ -10,7 +10,7 @@
 // Usage: lmscript examples/dsl/tut-special-fft.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
 import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let euler = 0.5772156649015329;
 let sp = sqrt(pi());
 let g = vec();
@@ -111,7 +111,7 @@ for (i in range(0, n)) {
 out.check(round_trip, "inverse FFT / n returns the cosine");
 out.set("parseval", pe);
 out.set("c52_5", ch.at(3));
-end _dsl_
+end _lmcode_
 
 values = lmr.check(lmr.run(p, "tut-special-fft"));
 println(sprintf("Checks passed: factorials, lgamma(10/100/1000) to 1e-12, gamma(1/2)=sqrt(pi), beta ratios, C(52,5)=%d, Pascal with C(11,4) from the host, digamma(1)=-gamma_E, Bessel Wronskian; FFT impulse/constant/cosine spectra, linearity, Parseval (%.6f), inverse round trip.", values.c52_5, values.parseval));

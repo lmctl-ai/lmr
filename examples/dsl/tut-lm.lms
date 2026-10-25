@@ -1,6 +1,6 @@
 // access: write (build/dsl/tut-lm.dslb)
 // Topic: multiple regression with a coefficient table and residual diagnostics (after: R ?lm, ?summary.lm, ?confint)
-// What it does: one _dsl_ chunk fits mpg ~ weight + power from examples/data/tut-vehicles.csv with the native lm, prints
+// What it does: one _lmcode_ chunk fits mpg ~ weight + power from examples/data/tut-vehicles.csv with the native lm, prints
 //   the coefficient table with t intervals, checks that the generating parameters lie inside the intervals, that the
 //   residuals sum to zero and reproduce sigma and R^2, that they pass Shapiro-Wilk, and that a collinear copy of weight is
 //   reported as aliased with the rank unchanged. Same checks as examples/tut-lm.lms, but every step runs inside one
@@ -9,7 +9,7 @@
 // Usage: lmscript examples/dsl/tut-lm.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
 import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let d = read_csv("examples/data/tut-vehicles.csv");
 let fit = lm(d, "mpg ~ weight + power");
 out.print(fmt("n=%d", fit.n()) + fmt("  rank=%d", fit.rank()) + fmt("  df=%d", fit.df_residual()) + fmt("  sigma=%.4f (true 1.2)", fit.sigma()) + fmt("  R^2=%.4f", fit.r_squared()));
@@ -48,7 +48,7 @@ for (i in range(0, 3)) {
 out.set("estimates", fit.estimates());
 out.set("sigma", fit.sigma());
 out.set("r_squared", fit.r_squared());
-end _dsl_
+end _lmcode_
 
 values = lmr.check(lmr.run(p, "tut-lm"));
 println(sprintf("Checks passed: truth inside every 95%% CI; sigma=%.4f; R^2=%.4f; aliasing detected.", values.sigma, values.r_squared));

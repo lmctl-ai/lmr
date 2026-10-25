@@ -128,6 +128,10 @@ T& self(void* p) { return *static_cast<T*>(p); }
 template <class T>
 T& obj(const Value& v) { return *static_cast<T*>(v.obj); }
 
+// StrList is lmcode std's built-in type: the registry owns its storage for the duration of one run.
+inline Value str_list(const dslvm::Registry& reg, Strs v) { return Value::object("StrList", reg.std_collections().make_str_list(std::move(v))); }
+inline Strs& strs_of(const Value& v) { return static_cast<dslvm::stdlib::StrList*>(v.obj)->items; }
+
 inline int64_t as_index(int64_t i, size_t n, const char* what) {
   if (i < 0 || static_cast<uint64_t>(i) >= n)
     throw dslvm::Error(std::string(what) + ": index " + std::to_string(i) + " out of range 0.." + std::to_string(static_cast<int64_t>(n) - 1));
@@ -142,7 +146,7 @@ std::string format_number(const std::string& spec, double v);         // one pri
 std::string format_string(const std::string& spec, const std::string& s);  // one %s conversion
 
 // Registration entry points, one per domain (bind_*.cpp).
-void bind_core(Binder& b);     // Out, Vec, StrList, Frame, math, formatting, keep/kept
+void bind_core(Binder& b);     // Out, Vec, Frame, math, formatting, keep/kept
 void bind_dist(Binder& b);     // Dist, Rng, special functions
 void bind_stats(Binder& b);    // quantiles, hypothesis tests, FFT
 void bind_models(Binder& b);   // lm, glm, nls

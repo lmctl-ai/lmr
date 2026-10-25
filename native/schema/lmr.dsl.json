@@ -109,6 +109,17 @@
         "vectors": [{"params": [], "returns": "Mat"}]
       }
     },
+    "FloatList": {
+      "methods": {
+        "add": [{"params": ["float"], "returns": "FloatList"}],
+        "at": [{"params": ["int"], "returns": "float"}],
+        "clear": [{"params": [], "returns": "FloatList"}],
+        "contains": [{"params": ["float"], "returns": "bool"}],
+        "index_of": [{"params": ["float"], "returns": "int"}],
+        "len": [{"params": [], "returns": "int"}],
+        "set": [{"params": ["int", "float"], "returns": "FloatList"}]
+      }
+    },
     "Forecast": {
       "methods": {
         "len": [{"params": [], "returns": "int"}],
@@ -221,6 +232,17 @@
         "statistic": [{"params": [], "returns": "float"}],
         "statistic_name": [{"params": [], "returns": "string"}],
         "summary": [{"params": [], "returns": "string"}]
+      }
+    },
+    "IntList": {
+      "methods": {
+        "add": [{"params": ["int"], "returns": "IntList"}],
+        "at": [{"params": ["int"], "returns": "int"}],
+        "clear": [{"params": [], "returns": "IntList"}],
+        "contains": [{"params": ["int"], "returns": "bool"}],
+        "index_of": [{"params": ["int"], "returns": "int"}],
+        "len": [{"params": [], "returns": "int"}],
+        "set": [{"params": ["int", "int"], "returns": "IntList"}]
       }
     },
     "Integral": {
@@ -521,12 +543,26 @@
     },
     "StrList": {
       "methods": {
+        "add": [{"params": ["string"], "returns": "StrList"}],
         "at": [{"params": ["int"], "returns": "string"}],
+        "clear": [{"params": [], "returns": "StrList"}],
         "contains": [{"params": ["string"], "returns": "bool"}],
-        "index": [{"params": ["string"], "returns": "int"}],
+        "index_of": [{"params": ["string"], "returns": "int"}],
         "join": [{"params": ["string"], "returns": "string"}],
         "len": [{"params": [], "returns": "int"}],
-        "push": [{"params": ["string"], "returns": "StrList"}]
+        "set": [{"params": ["int", "string"], "returns": "StrList"}]
+      }
+    },
+    "StrMap": {
+      "methods": {
+        "clear": [{"params": [], "returns": "StrMap"}],
+        "get": [{"params": ["string"], "returns": "string"}],
+        "get_or": [{"params": ["string", "string"], "returns": "string"}],
+        "has": [{"params": ["string"], "returns": "bool"}],
+        "key_at": [{"params": ["int"], "returns": "string"}],
+        "len": [{"params": [], "returns": "int"}],
+        "remove": [{"params": ["string"], "returns": "bool"}],
+        "set": [{"params": ["string", "string"], "returns": "StrMap"}]
       }
     },
     "Svd": {
@@ -688,6 +724,12 @@
      {"params": ["float", "float", "float"], "returns": "Dist"}],
     "factorial": [{"params": ["float"], "returns": "float"}],
     "fft": [{"params": ["Vec"], "returns": "CVec"}],
+    "file_append": [{"params": ["string", "string"], "returns": "void"}],
+    "file_exists": [{"params": ["string"], "returns": "bool"}],
+    "file_lines": [{"params": ["string"], "returns": "StrList"}],
+    "file_read": [{"params": ["string"], "returns": "string"}],
+    "file_write": [{"params": ["string", "string"], "returns": "void"}],
+    "float_list": [{"params": [], "returns": "FloatList"}],
     "fmt": [{"params": ["string", "float"], "returns": "string"},
      {"params": ["string", "int"], "returns": "string"},
      {"params": ["string", "string"], "returns": "string"}],
@@ -709,6 +751,7 @@
     "hyper": [{"params": ["int", "int", "int"], "returns": "Dist"}],
     "identity": [{"params": ["int"], "returns": "Mat"}],
     "inf": [{"params": [], "returns": "float"}],
+    "int_list": [{"params": [], "returns": "IntList"}],
     "integrate": [{"params": ["float", "float"], "returns": "Integral"}],
     "is_finite": [{"params": ["float"], "returns": "bool"}],
     "is_kept": [{"params": ["string"], "returns": "bool"}],
@@ -739,6 +782,22 @@
     "logis": [{"params": ["float", "float"], "returns": "Dist"}],
     "lpad": [{"params": ["string", "int"], "returns": "string"}],
     "mahalanobis": [{"params": ["Mat", "Vec", "Mat"], "returns": "Vec"}],
+    "math_abs": [{"params": ["float"], "returns": "float"},
+     {"params": ["int"], "returns": "int"}],
+    "math_ceil": [{"params": ["float"], "returns": "float"},
+     {"params": ["int"], "returns": "int"}],
+    "math_floor": [{"params": ["float"], "returns": "float"},
+     {"params": ["int"], "returns": "int"}],
+    "math_max": [{"params": ["float", "float"], "returns": "float"},
+     {"params": ["int", "int"], "returns": "int"}],
+    "math_min": [{"params": ["float", "float"], "returns": "float"},
+     {"params": ["int", "int"], "returns": "int"}],
+    "math_pow": [{"params": ["float", "float"], "returns": "float"},
+     {"params": ["int", "int"], "returns": "int"}],
+    "math_round": [{"params": ["float"], "returns": "float"},
+     {"params": ["int"], "returns": "int"}],
+    "math_sqrt": [{"params": ["float"], "returns": "float"},
+     {"params": ["int"], "returns": "int"}],
     "matrix": [{"params": ["Vec", "int", "bool"], "returns": "Mat"}],
     "minimize": [{"params": ["Vec", "string"], "returns": "Minimizer"}],
     "nan": [{"params": [], "returns": "float"}],
@@ -770,12 +829,29 @@
     "smooth_spline_lambda": [{"params": ["Vec", "Vec", "float"], "returns": "SmoothSpline"}],
     "spline_fun": [{"params": ["Vec", "Vec"], "returns": "Spline"},
      {"params": ["Vec", "Vec", "string"], "returns": "Spline"}],
-    "split": [{"params": ["string", "string"], "returns": "StrList"}],
     "stl": [{"params": ["Vec", "int", "int"], "returns": "Stl"},
      {"params": ["Vec", "int", "int", "bool"], "returns": "Stl"}],
     "stl_periodic": [{"params": ["Vec", "int"], "returns": "Stl"},
      {"params": ["Vec", "int", "bool"], "returns": "Stl"}],
-    "strs": [{"params": [], "returns": "StrList"}],
+    "str_contains": [{"params": ["string", "string"], "returns": "bool"}],
+    "str_ends_with": [{"params": ["string", "string"], "returns": "bool"}],
+    "str_find": [{"params": ["string", "string"], "returns": "int"}],
+    "str_is_float": [{"params": ["string"], "returns": "bool"}],
+    "str_is_int": [{"params": ["string"], "returns": "bool"}],
+    "str_len": [{"params": ["string"], "returns": "int"}],
+    "str_list": [{"params": [], "returns": "StrList"}],
+    "str_lower": [{"params": ["string"], "returns": "string"}],
+    "str_map": [{"params": [], "returns": "StrMap"}],
+    "str_match": [{"params": ["string", "string"], "returns": "bool"}],
+    "str_repeat": [{"params": ["string", "int"], "returns": "string"}],
+    "str_replace": [{"params": ["string", "string", "string"], "returns": "string"}],
+    "str_split": [{"params": ["string", "string"], "returns": "StrList"}],
+    "str_starts_with": [{"params": ["string", "string"], "returns": "bool"}],
+    "str_substr": [{"params": ["string", "int", "int"], "returns": "string"}],
+    "str_to_float": [{"params": ["string"], "returns": "float"}],
+    "str_to_int": [{"params": ["string"], "returns": "int"}],
+    "str_trim": [{"params": ["string"], "returns": "string"}],
+    "str_upper": [{"params": ["string"], "returns": "string"}],
     "t_dist": [{"params": ["float"], "returns": "Dist"},
      {"params": ["float", "float"], "returns": "Dist"}],
     "tan": [{"params": ["float"], "returns": "float"}],

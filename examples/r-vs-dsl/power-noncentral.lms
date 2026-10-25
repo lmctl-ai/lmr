@@ -10,7 +10,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 fn power_two_sample(n: float, delta: float, sd: float, alpha: float) -> float {
   let df = 2.0 * (n - 1.0);
   let ncp = sqrt(n / 2.0) * delta / sd;
@@ -46,7 +46,7 @@ out.set("qchisq_ncp", chisq(3.0, 5.0).q(0.95));
 out.set("dchisq_ncp", chisq(4.0, 2.0).d(4.0));
 out.set("pf_ncp", f_dist(3.0, 20.0, 4.0).p_vec(parse_vec("1 2 4")));
 out.set("qf_ncp", f_dist(2.0, 30.0, 3.0).q(0.9));
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-power-noncentral"));
 compare.finish("power-noncentral", compare.report("power-noncentral", got, "examples/r-vs-dsl/expected/power-noncentral.json", 0.00000001, {n_for_power90: 0.0001, prop_n_for_power90: 0.0001}));

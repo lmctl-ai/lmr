@@ -6,7 +6,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let fit = glm(read_csv("examples/r-vs-dsl/data/mtcars.csv"), "vs ~ mpg + am", "binomial");
 let orv = vec();
 let lo = vec();
@@ -23,7 +23,7 @@ out.set("or_lower", lo);
 out.set("or_upper", hi);
 out.set("lr_statistic", lr);
 out.set("lr_p", chisq(float(fit.df_null() - fit.df_residual())).p_upper(lr));
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-logistic-odds-ratios"));
 compare.finish("logistic-odds-ratios", compare.report("logistic-odds-ratios", got, "examples/r-vs-dsl/expected/logistic-odds-ratios.json", 0.000000000001, {}));

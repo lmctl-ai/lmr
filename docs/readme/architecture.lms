@@ -2,7 +2,7 @@
 if (!file_exists("build")) { mkdir("build"); }
 if (!file_exists("build/readme")) { mkdir("build/readme"); }
 if (!file_exists("build/rendered")) { mkdir("build/rendered"); }
-p = _dsl_ cli="lmdraw" install="github:lmctl-ai/lmdraw@latest";
+p = _lmcode_ cli="lmdraw" install="github:lmctl-ai/lmdraw@latest";
 scene.canvas(1120, 360, "#f4f7fb");
 scene.text(48.0, 53.0, 15.0, "HOW LMR RUNS", "#6548ad").set_attr("font-weight", "700");
 scene.text(48.0, 91.0, 27.0, "One typed program. A native statistical result.", "#17283b").set_attr("font-weight", "700");
@@ -35,7 +35,7 @@ a.set_attr("marker-end", "arrow");
 b.set_attr("marker-end", "arrow");
 c.set_attr("marker-end", "arrow");
 scene.render_png("build/rendered/readme-architecture.png", 1120, 360, 1);
-end _dsl_
+end _lmcode_
 savedsl(p, "build/readme/architecture.dslb");
 r = system ${dsl_cli(p)} --dsl build/readme/architecture.dslb;
 if (r.code != 0) { println(str(r.stderr)); exit(r.code); }

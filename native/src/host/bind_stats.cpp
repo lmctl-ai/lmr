@@ -196,9 +196,9 @@ void bind_stats(Binder& b) {
   setter("trials", "Vec", [](TestSpec& s, const Value& v) { s.trials = obj<Vec>(v); });
   setter("groups", "Vec", [](TestSpec& s, const Value& v) { s.groups = obj<Vec>(v); });
   // Text labels become codes in sorted (byte) order, as R orders the levels of a character vector in the C locale.
-  setter("groups", "StrList", [](TestSpec& s, const Value& v) { s.groups = level_codes(obj<Strs>(v)); });
+  setter("groups", "StrList", [](TestSpec& s, const Value& v) { s.groups = level_codes(strs_of(v)); });
   setter("blocks", "Vec", [](TestSpec& s, const Value& v) { s.blocks = obj<Vec>(v); });
-  setter("blocks", "StrList", [](TestSpec& s, const Value& v) { s.blocks = level_codes(obj<Strs>(v)); });
+  setter("blocks", "StrList", [](TestSpec& s, const Value& v) { s.blocks = level_codes(strs_of(v)); });
   b.m("Test", "table", {"Vec", "int", "bool"}, "Test", [](void* s, A& a) {
     const Vec& v = obj<Vec>(a[0]);
     int64_t nr = a[1].i;

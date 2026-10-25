@@ -1,7 +1,7 @@
 // access: write (build/dsl/tut-tests.dslb)
 // Topic: classical hypothesis tests on data built to have known outcomes (after: R ?t.test, ?wilcox.test, ?chisq.test,
 //   ?fisher.test, ?binom.test, ?shapiro.test, ?cor.test, ?var.test)
-// What it does: one _dsl_ chunk runs ten native tests covering eight test types and checks each against what the
+// What it does: one _lmcode_ chunk runs ten native tests covering eight test types and checks each against what the
 //   construction guarantees: a shifted normal sample is detected by t and Wilcoxon and the true shift sits in the t
 //   interval; equal variances are not rejected; a balanced 2x2 table gives chi^2 = 0, p = 1 exactly; a diagonal table is
 //   rejected by chi-square and Fisher; 60/100 successes give the exact two-sided binomial p = 0.05688793; a correlated
@@ -11,7 +11,7 @@
 // Usage: lmscript examples/dsl/tut-tests.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
 import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let shift = 0.8;
 let sd = 0.7;
 let n = 30;
@@ -77,7 +77,7 @@ out.set("r", cr.estimate(0));
 out.set("rho_true", rho_true);
 out.set("sw_n_p", sw_n.p_value());
 out.set("sw_e_p", fmt("%.2e", sw_e.p_value()));
-end _dsl_
+end _lmcode_
 
 values = lmr.check(lmr.run(p, "tut-tests"));
 println(sprintf("Checks passed: shift detected (t p=%s, W p=%s), -0.8 in CI; variances equal (p=%.2f); balanced table p=1; diagonal p<1e-6; exact binomial p=%.8f; r=%.3f (true %.3f); Shapiro %.3f / %s.", values.t_p, values.w_p, values.var_p, values.binom_p, values.r, values.rho_true, values.sw_n_p, values.sw_e_p));

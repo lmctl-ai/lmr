@@ -1,6 +1,6 @@
 // access: write (build/dsl/tut-timeseries.dslb)
 // Topic: seasonal decomposition, AR(1) fitting and forecasting with intervals (after: R ?stl, ?arima, ?predict.Arima, ?acf)
-// What it does: one _dsl_ chunk builds a seasonal series from a simulated AR(1) (arima_sim) plus a fixed 12-period cycle,
+// What it does: one _lmcode_ chunk builds a seasonal series from a simulated AR(1) (arima_sim) plus a fixed 12-period cycle,
 //   shows the seasonality in the ACF (lag 12 above lag 6), decomposes it with stl_periodic and checks the recovered
 //   seasonal pattern, fits ARIMA(1,0,0) to the deseasonalised series, prints a 12-step forecast with 95% intervals from
 //   the normal quantile, and checks the AR coefficient against the generating 0.6, the intercept and sigma2, the PACF
@@ -11,7 +11,7 @@
 // Usage: lmscript examples/dsl/tut-timeseries.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
 import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let phi = 0.6;
 let sd = 0.7;
 let n = 240;
@@ -71,7 +71,7 @@ for (h in range(1, 13)) {
 out.set("acf12", acf.at(12));
 out.set("stl_worst", worst);
 out.set("phi_hat", phi_hat);
-end _dsl_
+end _lmcode_
 
 values = lmr.check(lmr.run(p, "tut-timeseries"));
 println(sprintf("Checks passed: ACF(12)=%.3f > ACF(6); STL cycle within %.3f; ar1=%.4f within 3 SE of 0.6; PACF cut-off; forecast SEs match the AR(1) formula.", values.acf12, values.stl_worst, values.phi_hat));

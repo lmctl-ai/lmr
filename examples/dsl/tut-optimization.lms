@@ -1,7 +1,7 @@
 // access: write (build/dsl/tut-optimization.dslb)
 // Topic: optimisation, root finding and quadrature with analytic cross-checks (after: R ?optim, ?optimize, ?uniroot,
 //   ?integrate; scipy-lectures optimisation chapter)
-// What it does: one _dsl_ chunk minimises Rosenbrock's function with four methods (minimize: Nelder-Mead, BFGS, CG,
+// What it does: one _lmcode_ chunk minimises Rosenbrock's function with four methods (minimize: Nelder-Mead, BFGS, CG,
 //   L-BFGS-B) and a bounded L-BFGS-B run whose bound is active, checks the numerical Hessian of a quadratic, maximises a
 //   scalar function with optimize, brackets sqrt(2) with uniroot and integrates three functions with known closed forms
 //   (integrate), printing every result next to its exact value. Every objective and integrand is DSL code driven by
@@ -11,7 +11,7 @@
 // Usage: lmscript examples/dsl/tut-optimization.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
 import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 fn rosen(a: float, b: float) -> float {
   return pow(1.0 - a, 2.0) + 100.0 * pow(b - a * a, 2.0);
 }
@@ -19,7 +19,7 @@ fn quad(a: float, b: float) -> float {
   return 2.0 * pow(a - 1.0, 2.0) + 3.0 * pow(b + 2.0, 2.0) + a * b;
 }
 out.print("method        a          b          f(a,b)        fn   conv");
-let methods = split("Nelder-Mead,BFGS,CG,L-BFGS-B", ",");
+let methods = str_split("Nelder-Mead,BFGS,CG,L-BFGS-B", ",");
 for (i in range(0, methods.len())) {
   let o = minimize(parse_vec("-1.2 1"), methods.at(i)).maxit(5000);
   while (o.next()) {
@@ -63,9 +63,9 @@ out.check(abs(om.objective() - exp(-1.0)) <= 0.000000001, "optimize: maximum 1/e
 out.check(abs(rt.root() - sqrt(2.0)) <= 0.000000001, "uniroot: sqrt(2) within 1e-9");
 # Self-check 5: quadrature against closed forms, within a fixed 1e-10 (relative to max(1, |exact|)) and within the
 # reported absolute error plus 1e-10; the fixed bound matters because the error estimate can be loose.
-let names = split("x^2,1/(1+x^2),exp(-x^2)", ",");
+let names = str_split("x^2,1/(1+x^2),exp(-x^2)", ",");
 let exacts = parse_vec("0 0 0").set(0, 1.0 / 3.0).set(1, pi() / 4.0).set(2, sqrt(pi()) / 2.0);
-let labels = split("1/3,pi/4,sqrt(pi)/2", ",");
+let labels = str_split("1/3,pi/4,sqrt(pi)/2", ",");
 let uppers = parse_vec("1 1 0").set(2, inf());
 for (c in range(0, 3)) {
   let g = integrate(0.0, uppers.at(c)).rel_tol(0.000000000001);
@@ -87,7 +87,7 @@ for (c in range(0, 3)) {
 out.set("bounded_a", bd.par(0));
 out.set("root", rt.root());
 out.set("hessian_11", q.hessian(1, 1));
-end _dsl_
+end _lmcode_
 
 values = lmr.check(lmr.run(p, "tut-optimization"));
 println(sprintf("Checks passed: four optim methods reach (1,1); active bound gives a=%.6f; Hessian [[4,1],[1,%.4f]]; optimize, uniroot (root %.12f) and three integrals match closed forms.", values.bounded_a, values.hessian_11, values.root));

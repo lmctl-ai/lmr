@@ -6,7 +6,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let nottem = read_csv("examples/r-vs-dsl/data/nottem.csv").col("value");
 let co2 = read_csv("examples/r-vs-dsl/data/co2.csv").col("value").log();
 let a = stl_periodic(nottem, 12);
@@ -17,7 +17,7 @@ out.set("nottem_trend", a.trend());
 out.set("nottem_remainder", a.remainder());
 out.set("co2_seasonal", b.seasonal());
 out.set("co2_trend", b.trend());
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-stl-decomposition"));
 compare.finish("stl-decomposition", compare.report("stl-decomposition", got, "examples/r-vs-dsl/expected/stl-decomposition.json", 0.000000000001, {}));

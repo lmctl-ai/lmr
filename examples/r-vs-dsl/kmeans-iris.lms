@@ -7,7 +7,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let d = read_csv("examples/r-vs-dsl/data/iris.csv").select("Sepal.Length,Sepal.Width,Petal.Length,Petal.Width");
 let km = kmeans(d, 3, rng(42), 25);
 let sizes = vec();
@@ -29,7 +29,7 @@ out.set("tot_withinss", km.tot_withinss());
 out.set("betweenss", km.betweenss());
 out.set("totss", km.totss());
 out.set("sepal_length_centre_by_size", sl);
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-kmeans-iris"));
 compare.finish("kmeans-iris", compare.report("kmeans-iris", got, "examples/r-vs-dsl/expected/kmeans-iris.json", 0.000000000001, {}));

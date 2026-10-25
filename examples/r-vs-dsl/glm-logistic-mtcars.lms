@@ -6,7 +6,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let d = read_csv("examples/r-vs-dsl/data/mtcars.csv");
 let fit = glm(d, "am ~ wt + hp", "binomial");
 out.print(fit.coef_table());
@@ -29,7 +29,7 @@ out.set("aic", fit.aic());
 out.set("iterations", fit.iter());
 out.set("predict_response", fit.predict(nd, "response"));
 out.set("fitted", fit.fitted());
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-glm-logistic-mtcars"));
 compare.finish("glm-logistic-mtcars", compare.report("glm-logistic-mtcars", got, "examples/r-vs-dsl/expected/glm-logistic-mtcars.json", 0.0000000001, {}));

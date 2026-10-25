@@ -1,6 +1,6 @@
-# rcli `_dsl_` API (native, no R)
+# rcli `_lmcode_` API (native, no R)
 
-`lmr` is a single executable (no R runtime; it needs only the system glibc) that runs lmscript `_dsl_` bytecode against a native C++17 statistics core.
+`lmr` is a single executable (no R runtime; it needs only the system glibc) that runs lmscript `_lmcode_` bytecode against a native C++17 statistics core.
 It needs no R, Python, Docker or third-party libraries. It replaces the R-backed operations of `rcli` with an
 object API. A script describes a whole multi-step analysis in one typed chunk; lmscript compiles that chunk once, and
 the host runs it in one process.
@@ -20,7 +20,7 @@ it against the host registry and against `lmscript --dsl-signatures`. This page 
 
 The schema-module form (`import "cli.schema.dev.json" as rcli; rcli.fit_lm({...})`) costs a process start, a JSON
 encode/decode of every array, and (formerly) an R start per call. A tutorial with ten tests made ten round trips. A
-`_dsl_` chunk is compiled and type-checked by lmscript before anything runs, then executed in one process. Vectors stay
+`_lmcode_` chunk is compiled and type-checked by lmscript before anything runs, then executed in one process. Vectors stay
 native, so loops over observations (simulating data, residual checks, bootstraps) run at bytecode speed. Objectives,
 integrands and model curves are written in the chunk itself (see "Reverse communication"), so no expression-string
 grammar is needed.
@@ -81,7 +81,9 @@ refuses stale bytecode with `LOAD_SCHEMA_MISMATCH`.
 
 ### `StrList`, `Frame`
 
-- **StrList**: `strs()`, `split(text, sep)`, then `len`, `at`, `push`, `join(sep)`, `contains`, `index` (-1 when absent).
+- **StrList** is lmcode std's built-in list, provided by the runtime (lmr does not register it): `str_list()`,
+  `str_split(text, sep)`, then `len`, `at`, `add`, `set`, `join(sep)`, `contains`, `index_of` (-1 when absent), `clear`.
+  A StrList lives for one chunk run: it cannot be `keep()`-ed. See [lmcode std](#lmcode-std) for the rest of std.
 - **Frame**: `read_csv(path)` (RFC 4180; a column is numeric when every cell is a number or NA/empty) and `frame()`.
   Methods: `nrow`, `ncol`, `names`, `has`, `is_text`, `col(name) -> Vec`, `text(name) -> StrList`,
   `set(name, Vec|StrList)`, `select("a,b")`, `drop(name)`, `where(mask)`, `head(k)`, `drop_nan`, `write_csv(path)`.
@@ -286,9 +288,25 @@ without a `tell`, reading results early, or setting options after the start. A n
 with `ier` 6 and a message rather than an error, so a chunk can test for it. If a chunk abandons a solver part way
 through, the worker is cancelled cleanly when the host exits.
 
+## lmcode std
+
+The runtime (lmcode-cpp) installs the 72-signature lmcode std in every host, so these work in any lmr chunk without lmr
+registering them. lmr's schema includes their declarations until the compiler adds them itself. Full reference:
+[lmcode-cpp docs/std.md](https://github.com/lmctl-ai/lmcode-cpp/blob/main/docs/std.md).
+
+| Group | Names |
+|---|---|
+| strings (bytes, not UTF-8 aware) | `str_len`, `str_lower`, `str_upper`, `str_trim`, `str_substr`, `str_find`, `str_contains`, `str_starts_with`, `str_ends_with`, `str_match` (glob), `str_replace`, `str_repeat`, `str_split`, `str_to_int`, `str_is_int`, `str_to_float`, `str_is_float` |
+| math (int and float overloads) | `math_abs`, `math_ceil`, `math_floor`, `math_round`, `math_sqrt`, `math_pow`, `math_min`, `math_max` |
+| collections | `str_list()`, `int_list()`, `float_list()`: `len`, `at`, `add`, `set`, `contains`, `index_of`, `clear` (StrList also `join`); `str_map()`: `len`, `has`, `get`, `get_or`, `set`, `key_at`, `remove`, `clear` (insertion order) |
+| files (raw bytes, native paths) | `file_read`, `file_write`, `file_append`, `file_exists`, `file_lines` |
+
+Std collections belong to one chunk run; `keep()` takes only `Vec` and `Frame`. lmr's own methods that return a
+`StrList` (`Frame.names`, `Frame.text`, `Lm.names`, `Anova.columns`, ...) return this std type.
+
 ## Mapping from the old R-backed operations
 
-| `rcli` op (R) | `_dsl_` API |
+| `rcli` op (R) | `_lmcode_` API |
 |---|---|
 | `dist_quantile` / `dist_density` / `dist_probability` | `Dist.q` / `d` / `p` (+ `_upper`, `log_`, `_vec`) |
 | `rng_draw`, `rng_sample` | `Rng.draw(dist, n)`, `Rng.sample` |

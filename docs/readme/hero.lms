@@ -2,7 +2,7 @@
 theme = ARGV.len() > 0 ? ARGV[0] : "light";
 if (theme != "light" && theme != "dark") { println("usage: lmscript docs/readme/hero.lms [light|dark]"); exit(2); }
 
-stats = _dsl_ cli="lmr" install="github:lmctl-ai/lmr@latest";
+stats = _lmcode_ cli="lmr" install="github:lmctl-ai/lmr@latest";
 let g = rng(77);
 let control = g.draw(norm(0.0, 1.0), 80);
 let treatment = g.draw(norm(0.55, 1.0), 80);
@@ -44,7 +44,7 @@ out.set("xs", xs);
 out.set("density_control", dc);
 out.set("density_treatment", dt);
 out.set("peak", peak);
-end _dsl_
+end _lmcode_
 
 if (!file_exists("build")) { mkdir("build"); }
 if (!file_exists("build/readme")) { mkdir("build/readme"); }
@@ -102,7 +102,7 @@ if (theme == "dark") {
   coral = "#d9694c"; accent = "#6548ad"; pale_blue = "#e9f3ff"; pale_coral = "#fff0e9";
 }
 
-draw = _dsl_ cli="lmdraw" install="github:lmctl-ai/lmdraw@latest";
+draw = _lmcode_ cli="lmdraw" install="github:lmctl-ai/lmdraw@latest";
 scene.canvas(1200, 520, ${bg});
 scene.text(58.0, 68.0, 16.0, "LMR  /  NATIVE STATISTICS", ${accent}).set_attr("font-weight", "700");
 scene.text(58.0, 118.0, 34.0, "Compare groups. Keep the evidence.", ${ink}).set_attr("font-weight", "700");
@@ -129,7 +129,7 @@ scene.circle(326.0, 440.0, 6.0, ${coral});
 scene.text(341.0, 446.0, 18.0, "Treatment", ${ink}).set_attr("font-weight", "600");
 scene.text(470.0, 446.0, 18.0, ${mean_t_label}, ${muted});
 scene.render_png("build/rendered/readme-hero.png", 1200, 520, 1);
-end _dsl_
+end _lmcode_
 savedsl(draw, "build/readme/hero-draw.dslb");
 render = system ${dsl_cli(draw)} --dsl build/readme/hero-draw.dslb;
 if (render.code != 0) { println(str(render.stderr)); exit(render.code); }

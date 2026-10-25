@@ -14,7 +14,7 @@
 // Usage: lmscript examples/dsl/flow-arima-selection.lms   (cwd = repository root)
 import "lib/lmr.lms";
 
-explore = _dsl_ schema="../../native/schema/lmr.dsl.json";
+explore = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let r = rng(2024);
 let x = arima_sim(r, 400, parse_vec("0.5 0.3"), vec(), 1.0);
 frame().set("t", seq_len(400)).set("x", x).write_csv("build/dsl/flow-series.csv");
@@ -26,7 +26,7 @@ for (p in range(0, 6)) {
   aics.push(m.aic());
 }
 out.set("aic", aics);
-end _dsl_
+end _lmcode_
 mkdir("build/dsl");
 step1 = lmr.check(lmr.run(explore, "flow-arima-1"));
 if (!has_key(step1, "aic")) { println("dry run: nothing executed"); exit(0); }
@@ -47,7 +47,7 @@ order = best;
 if (cut != best) { println(sprintf("the rules disagree; taking the AIC choice AR(%d)", best)); }
 
 // Step 3: fit the chosen order. ${order} becomes an int literal before compilation.
-fit = _dsl_ schema="../../native/schema/lmr.dsl.json";
+fit = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let x = read_csv("build/dsl/flow-series.csv").col("x");
 let m = arima(${order}, 0, 0).method("ML").fit(x);
 out.print(fmt("AR(%d) by ML: ", ${order}) + fmt("sigma2 %.4f", m.sigma2()) + fmt("  loglik %.2f", m.loglik()) + fmt("  AIC %.2f", m.aic()));
@@ -77,7 +77,7 @@ for (h in range(0, 12)) {
 frame().set("h", seq_len(12)).set("mean", fc.mean()).set("se", fc.se()).set("lower", lower).set("upper", upper).write_csv("build/dsl/flow-forecast.csv");
 out.check(fc.se_at(0) <= fc.se_at(11), "forecast uncertainty grows with the horizon");
 out.set("residual_acf_max", worst);
-end _dsl_
+end _lmcode_
 step3 = lmr.check(lmr.run(fit, "flow-arima-2"));
 
 // Step 4: the report, from the CSV the native step wrote.

@@ -6,7 +6,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let m = read_csv("examples/r-vs-dsl/data/mtcars.csv");
 let lg = glm(m, "am ~ wt", "binomial", "logit");
 let pr = glm(m, "am ~ wt", "binomial", "probit");
@@ -27,7 +27,7 @@ out.set("grouped_coef", gr.estimates());
 out.set("grouped_se", vec().push(gr.se(0)).push(gr.se(1)));
 out.set("grouped_deviance", gr.deviance());
 out.set("grouped_ld50", -gr.estimate(0) / gr.estimate(1));
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-glm-binomial-links"));
 compare.finish("glm-binomial-links", compare.report("glm-binomial-links", got, "examples/r-vs-dsl/expected/glm-binomial-links.json", 0.000000000001, {}));

@@ -1,6 +1,6 @@
-# `_dsl_` examples (native lmr, no R)
+# `_lmcode_` examples (native lmr, no R)
 
-Every recipe here compiles one or more lmscript `_dsl_` chunks against `native/schema/lmr.dsl.json` and runs them with
+Every recipe here compiles one or more lmscript `_lmcode_` chunks against `native/schema/lmr.dsl.json` and runs them with
 the single-executable `lmr` host. No R, Docker or Python is involved. The API is in [docs/dsl-api.md](../../docs/dsl-api.md).
 
 ```sh
@@ -11,13 +11,13 @@ native/scripts/run-examples.sh build-native/bin/lmr                      # all o
 
 ## Zero setup: `cli=` and `install=`
 
-[`install-and-run.lms`](install-and-run.lms) needs only Node.js and lmscript (`npm i -g @lmctl-ai/lmctl`, 0.2.359 or
+[`install-and-run.lms`](install-and-run.lms) needs only Node.js and lmscript (`npm i -g @lmctl-ai/lmctl`, 0.2.419 or
 newer). No checkout, build or schema file:
 
 ```
-p = _dsl_ cli="lmr" install="github:lmctl-ai/lmr@latest";
+p = _lmcode_ cli="lmr" install="github:lmctl-ai/lmr@latest";
 ...
-end _dsl_
+end _lmcode_
 savedsl(p, "job.dslb");
 r = system ${dsl_cli(p)} --dsl job.dslb;
 ```
@@ -39,11 +39,11 @@ the bytecode to `build/dsl/NAME.dslb`. You can also run a saved chunk directly w
 
 ## Ports of the tutorial recipes
 
-Each `tut-*.lms` and the three small recipes (`fit-and-forecast`, `fit-curve`, `minimize-rosenbrock`) is a `_dsl_`
+Each `tut-*.lms` and the three small recipes (`fit-and-forecast`, `fit-curve`, `minimize-rosenbrock`) is a `_lmcode_`
 version of the recipe with the same name in `examples/`. Each keeps the same topic, data and self-checks. The
 differences:
 
-- **One chunk instead of a round trip per call.** The analysis is a typed `_dsl_` chunk that runs in one native
+- **One chunk instead of a round trip per call.** The analysis is a typed `_lmcode_` chunk that runs in one native
   process. The original made one schema-module call (one R process) per step.
 - **Functions are DSL code.** Objectives, integrands and nonlinear models are written in the chunk and driven by
   reverse communication. The original passed expression strings.

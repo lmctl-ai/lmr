@@ -7,7 +7,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let d = read_csv("examples/r-vs-dsl/data/warpbreaks.csv");
 let wool = d.text("wool");
 let tension = d.text("tension");
@@ -36,7 +36,7 @@ out.set("deviance", fit.deviance());
 out.set("null_deviance", fit.null_deviance());
 out.set("aic", fit.aic());
 out.set("dispersion_pearson", pr.dot(pr) / float(fit.df_residual()));
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-glm-poisson-warpbreaks"));
 compare.finish("glm-poisson-warpbreaks", compare.report("glm-poisson-warpbreaks", got, "examples/r-vs-dsl/expected/glm-poisson-warpbreaks.json", 0.0000000001, {}));

@@ -1,4 +1,4 @@
-// Out (the context object), Vec, StrList, Frame, math and formatting functions, keep/kept across chunks.
+// Out (the context object), Vec, Frame, math and formatting functions, keep/kept across chunks.
 #include <algorithm>
 #include <cstdio>
 #include <iostream>
@@ -13,7 +13,7 @@ namespace rcli::host {
 namespace {
 
 Vec& V(const Value& v) { return obj<Vec>(v); }
-Strs& S(const Value& v) { return obj<Strs>(v); }
+Strs& S(const Value& v) { return strs_of(v); }
 
 void same_length(const Vec& a, const Vec& b, const char* what) {
   if (a.size() != b.size())
@@ -95,7 +95,7 @@ Strs split_names(const std::string& list) {
 void bind_core(Binder& b) {
   Host& h = b.host;
   auto vec = [&h](Vec v) { return h.hold("Vec", std::move(v)); };
-  auto strs = [&h](Strs v) { return h.hold("StrList", std::move(v)); };
+  auto strs = [&b](Strs v) { return str_list(b.reg, std::move(v)); };
   auto frame = [&h](Frame f) { return h.hold("Frame", std::move(f)); };
   using A = Args;
 
@@ -376,41 +376,6 @@ void bind_core(Binder& b) {
   b.op("Vec", "r+", "add");
   b.op("Vec", "r-", "rsub");
   b.op("Vec", "r*", "mul");
-
-  // ---- StrList ----
-  b.fn("strs", {}, "StrList", [strs](A&) { return strs({}); });
-  b.fn("split", {"string", "string"}, "StrList", [strs](A& a) {
-    if (a[1].s.empty()) throw dslvm::Error("split: separator must not be empty");
-    Strs out;
-    size_t pos = 0;
-    for (;;) {
-      size_t k = a[0].s.find(a[1].s, pos);
-      if (k == std::string::npos) { out.push_back(a[0].s.substr(pos)); break; }
-      out.push_back(a[0].s.substr(pos, k - pos));
-      pos = k + a[1].s.size();
-    }
-    return strs(out);
-  });
-  b.m("StrList", "len", {}, "int", [](void* s, A&) { return Value::integer(static_cast<int64_t>(self<Strs>(s).size())); });
-  b.m("StrList", "at", {"int"}, "string", [](void* s, A& a) {
-    auto& v = self<Strs>(s);
-    return Value::string(v[static_cast<size_t>(as_index(a[0].i, v.size(), "StrList.at"))]);
-  });
-  b.m("StrList", "push", {"string"}, "StrList", [](void* s, A& a) { self<Strs>(s).push_back(a[0].s); return Value::object("StrList", s); });
-  b.m("StrList", "join", {"string"}, "string", [](void* s, A& a) {
-    std::string out;
-    for (size_t i = 0; i < self<Strs>(s).size(); ++i) out += (i ? a[0].s : "") + self<Strs>(s)[i];
-    return Value::string(out);
-  });
-  b.m("StrList", "contains", {"string"}, "bool", [](void* s, A& a) {
-    auto& v = self<Strs>(s);
-    return Value::boolean(std::find(v.begin(), v.end(), a[0].s) != v.end());
-  });
-  b.m("StrList", "index", {"string"}, "int", [](void* s, A& a) {
-    auto& v = self<Strs>(s);
-    auto it = std::find(v.begin(), v.end(), a[0].s);
-    return Value::integer(it == v.end() ? -1 : static_cast<int64_t>(it - v.begin()));
-  });
 
   // ---- Frame ----
   b.fn("read_csv", {"string"}, "Frame", [frame](A& a) { return frame(read_csv(a[0].s)); });

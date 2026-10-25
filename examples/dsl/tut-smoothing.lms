@@ -1,6 +1,6 @@
 // access: write (build/dsl/tut-smoothing.dslb)
 // Topic: smoothing and interpolation measured against the true function (after: R ?smooth.spline, ?loess, ?spline, ?approx)
-// What it does: one _dsl_ chunk samples a cubic f(x) = x^3 - 3x with noise, smooths it with smooth_spline (GCV) and
+// What it does: one _lmcode_ chunk samples a cubic f(x) = x^3 - 3x with noise, smooths it with smooth_spline (GCV) and
 //   loess (span 0.4, degree 2), prints the error of each smoother against f on the grid and at new points, and checks
 //   that both at least halve the raw noise RMSE, that the smoothing spline predicts f at new x within 2 noise sd, that
 //   GCV picks a df in [3, 15], that spline_fun (fmm) reproduces a cubic exactly at midpoints and that approx_fun is exact
@@ -12,7 +12,7 @@
 // Usage: lmscript examples/dsl/tut-smoothing.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
 import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 fn f(x: float) -> float {
   return x * x * x - 3.0 * x;
 }
@@ -73,7 +73,7 @@ out.set("rmse_spline", rmse_ss);
 out.set("rmse_loess", rmse_lo);
 out.set("rmse_noise", noise_rmse);
 out.set("worst_new", worst_new);
-end _dsl_
+end _lmcode_
 
 v = lmr.check(lmr.run(p, "tut-smoothing"));
 println(sprintf("Checks passed: spline RMSE %.4f and loess RMSE %.4f vs raw %.4f; new-x error %.4f; fmm exact on a cubic; approx exact at knots and midpoints.", v.rmse_spline, v.rmse_loess, v.rmse_noise, v.worst_new));

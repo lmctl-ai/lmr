@@ -7,10 +7,10 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let raw = read_csv("examples/r-vs-dsl/data/USArrests.csv");
 let d = frame();
-let cols = split("Murder,Assault,UrbanPop,Rape", ",");
+let cols = str_split("Murder,Assault,UrbanPop,Rape", ",");
 for (i in range(0, cols.len())) {
   d.set(cols.at(i), raw.col(cols.at(i)).standardize());
 }
@@ -32,7 +32,7 @@ out.set("complete_cut4", cut);
 out.set("complete_cut4_sizes", sizes);
 out.set("average_heights", ha.heights());
 out.set("average_cut4", ha.cut(4));
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-hclust-usarrests"));
 compare.finish("hclust-usarrests", compare.report("hclust-usarrests", got, "examples/r-vs-dsl/expected/hclust-usarrests.json", 0.000000000001, {}));

@@ -1,7 +1,7 @@
 // access: write (build/dsl/tut-distributions.dslb)
 // Topic: distribution functions, quantile tables and seeded simulation (after: R ?Distributions, ?qnorm, ?quantile, ?set.seed;
 //   scipy-lectures statistics chapter)
-// What it does: one _dsl_ chunk prints a quantile table for the normal, t, chi-square and binomial laws against textbook
+// What it does: one _lmcode_ chunk prints a quantile table for the normal, t, chi-square and binomial laws against textbook
 //   values, checks p(q(p)) round trips, the binomial quantile definition and the identity qchisq(1-a, 1) = qnorm(1-a/2)^2,
 //   integrates the normal density to 1 over the whole real line (integrate with -inf()/inf(), the density written in the
 //   chunk; the original used [-40, 40] because its client could not pass infinite bounds), and summarises a seeded
@@ -11,7 +11,7 @@
 // Usage: lmscript examples/dsl/tut-distributions.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
 import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let ps = parse_vec("0.005 0.025 0.05 0.5 0.95 0.975 0.995");
 let bd = binom(20, 0.3);
 let qn = norm().q_vec(ps);
@@ -67,7 +67,7 @@ out.check(abs(sq.at(1) - mu) <= 0.15 && abs(sq.at(0) - lo_th) <= 0.3 && abs(sq.a
 out.check((x - again).abs().max() == 0.0, "seed 42 reproduces every draw");
 out.set("xbar", xbar);
 out.set("area", area.value());
-end _dsl_
+end _lmcode_
 
 values = lmr.check(lmr.run(p, "tut-distributions"));
 println(sprintf("Checks passed: reference quantiles to 1e-9; chi-square(1) = normal^2; p(q(p)) round trips; density integrates to 1 (%.12f); sample mean %.4f within 3 SE; seed 42 reproducible.", values.area, values.xbar));

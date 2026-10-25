@@ -7,7 +7,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let raw = read_csv("examples/r-vs-dsl/data/eurodist.csv");
 let cities = raw.text("city");
 let d = as_matrix(raw.drop("city"));
@@ -34,7 +34,7 @@ out.set("gof", m.gof());
 out.set("mahalanobis", d2);
 out.set("mahalanobis_max", d2.max());
 out.set("cor_matrix", se.cor().values());
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-mds-mahalanobis"));
 compare.finish("mds-mahalanobis", compare.report("mds-mahalanobis", got, "examples/r-vs-dsl/expected/mds-mahalanobis.json", 0.000000001, {}));

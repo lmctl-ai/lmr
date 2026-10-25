@@ -6,7 +6,7 @@ It is solved twice:
 
 - **R**: `r/NAME.R` is the recipe as you would write it in R. It saves R's results with full precision to
   `expected/NAME.json`.
-- **lmr**: `NAME.lms` solves the same problem on the same data in a `_dsl_` chunk run by the native `lmr` binary, then
+- **lmr**: `NAME.lms` solves the same problem on the same data in a `_lmcode_` chunk run by the native `lmr` binary, then
   prints R's value and lmr's value side by side and checks each one against a stated tolerance.
 
 R is only needed to regenerate the expected results. Running the comparison needs only lmscript and `lmr`.
@@ -37,7 +37,7 @@ lm-mtcars: lmr agrees with R.
 
 ## Recipes
 
-Results are from R 4.3.3 and lmr 0.4.1, grouped by topic. "Numbers" counts every compared element; "worst" is the
+Results are from R 4.3.3 and lmr 0.5.0, grouped by topic. "Numbers" counts every compared element; "worst" is the
 largest `diff`.
 
 | Recipe | R | Numbers | Worst |

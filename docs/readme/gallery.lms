@@ -1,5 +1,5 @@
 // Compute example values with lmr, then draw a compact README gallery with lmdraw.
-stats = _dsl_ cli="lmr" install="github:lmctl-ai/lmr@latest";
+stats = _lmcode_ cli="lmr" install="github:lmctl-ai/lmr@latest";
 let q = norm().q(0.975);
 let xs = vec();
 for (i in range(0, 101)) { xs.push(-3.5 + float(i) * 7.0 / 100.0); }
@@ -34,7 +34,7 @@ out.set("minimum_value", opt.value());
 out.set("start_value", rosen(-1.2, 1.0));
 out.set("log_start", log(rosen(-1.2, 1.0)) / log(10.0));
 out.set("log_minimum", log(opt.value()) / log(10.0));
-end _dsl_
+end _lmcode_
 
 if (!file_exists("build")) { mkdir("build"); }
 if (!file_exists("build/readme")) { mkdir("build/readme"); }
@@ -77,7 +77,7 @@ minimum_text = sprintf("%.8f", v.minimum_value);
 start_text = sprintf("%.1f", v.start_value);
 minimum_ab = sprintf("(%.4f, %.4f)", v.minimum_a, v.minimum_b);
 
-draw = _dsl_ cli="lmdraw" install="github:lmctl-ai/lmdraw@latest";
+draw = _lmcode_ cli="lmdraw" install="github:lmctl-ai/lmdraw@latest";
 # Example 1: normal quantile from the tool distribution API.
 scene.canvas(860, 340, "#f4f7fb");
 scene.text(42.0, 43.0, 14.0, "EXAMPLE 01  /  DISTRIBUTIONS", "#6548ad").set_attr("font-weight", "700");
@@ -132,7 +132,7 @@ scene.text(607.5, 252.0, 18.0, ${minimum_text}, "#17283b").set_attr("text-anchor
 scene.rect(480.0, 119.0, 302.0, 44.0, "#ffffff").set_attr("rx", "10");
 scene.text(498.0, 147.0, 15.0, ${minimum_ab}, "#17283b").set_attr("font-weight", "700");
 scene.render_png("build/rendered/readme-rosenbrock.png", 860, 340, 1);
-end _dsl_
+end _lmcode_
 savedsl(draw, "build/readme/gallery-draw.dslb");
 render = system ${dsl_cli(draw)} --dsl build/readme/gallery-draw.dslb;
 if (render.code != 0) { println(str(render.stderr)); exit(render.code); }

@@ -9,11 +9,11 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let d = read_csv("examples/r-vs-dsl/data/warpbreaks.csv");
 let t = d.text("tension");
 let y = d.col("breaks");
-let levels = split("L,M,H", ",");
+let levels = str_split("L,M,H", ",");
 let means = vec();
 let ns = vec();
 for (k in range(0, 3)) {
@@ -53,7 +53,7 @@ out.set("ptukey", tukey(3.0, 51.0).p_vec(parse_vec("1 2 3.5 5")));
 out.set("ptukey_inf_df", tukey(4.0, inf()).p(3.0));
 out.set("qtukey", tukey(3.0, 51.0).q_vec(parse_vec("0.9 0.95 0.99")));
 out.set("qtukey_k5", tukey(5.0, 20.0).q(0.95));
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-tukey-hsd"));
 compare.finish("tukey-hsd", compare.report("tukey-hsd", got, "examples/r-vs-dsl/expected/tukey-hsd.json", 0.0000001, {}));

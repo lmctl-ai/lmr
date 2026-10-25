@@ -1,7 +1,7 @@
 // access: write (build/dsl/tut-integrate.dslb)
 // Topic: numerical integration against closed forms, including singular, infinite and divergent cases (after: R ?integrate,
 //   ?uniroot, ?optimize; numerical-analysis quadrature exercises)
-// What it does: one _dsl_ chunk integrates seven functions with the native integrate (QUADPACK; the integrands are written
+// What it does: one _lmcode_ chunk integrates seven functions with the native integrate (QUADPACK; the integrands are written
 //   in the chunk and evaluated by reverse communication) and prints each value next to its closed form, verifying the
 //   error estimate brackets the truth. The Gamma integral runs over [0, inf()) and the Gaussian over (-inf(), inf()):
 //   the original used [0, 200] and [-40, 40] only because its client could not pass infinite bounds. It then shows the
@@ -13,7 +13,7 @@
 // Usage: lmscript examples/dsl/tut-integrate.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
 import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 # The seven integrands, selected by case number (the DSL has no function values).
 fn f(c: int, x: float) -> float {
   let v = x * x * x - 3.0 * x;
@@ -32,8 +32,8 @@ fn f(c: int, x: float) -> float {
   }
   return v;
 }
-let names = split("sin(x)|4/(1+x^2)|x^2*exp(-x)|1/sqrt(x)|exp(-x^2/2)|log(x)|x^3-3*x", "|");
-let notes = split("2|pi|Gamma(3) = 2|2 (integrable singularity)|sqrt(2 pi)|-1 (log singularity)|0 (odd function)", "|");
+let names = str_split("sin(x)|4/(1+x^2)|x^2*exp(-x)|1/sqrt(x)|exp(-x^2/2)|log(x)|x^3-3*x", "|");
+let notes = str_split("2|pi|Gamma(3) = 2|2 (integrable singularity)|sqrt(2 pi)|-1 (log singularity)|0 (odd function)", "|");
 let lower = vec().push(0.0).push(0.0).push(0.0).push(0.0).push(-inf()).push(0.0).push(-2.0);
 let upper = vec().push(pi()).push(1.0).push(inf()).push(1.0).push(inf()).push(1.0).push(2.0);
 let exact = vec().push(2.0).push(pi()).push(2.0).push(2.0).push(sqrt(2.0 * pi())).push(-1.0).push(0.0);
@@ -86,7 +86,7 @@ out.check_close(mx.objective(), 1.0, 0.000000001, "max of sin is 1");
 out.set("root", rt.root());
 out.set("argmax", mx.argmin());
 out.set("div_message", dv.message());
-end _dsl_
+end _lmcode_
 
 values = lmr.check(lmr.run(p, "tut-integrate"));
 println(sprintf("Checks passed: seven integrals (two over infinite ranges) within 1e-10 of their closed forms and inside their error bounds; divergence ('%s') and non-finite integrands flagged; Gamma(3) = 2, Gamma(1/2)^2 = pi; cos root %.12f and sin maximum %.9f at pi/2.", values.div_message, values.root, values.argmax));

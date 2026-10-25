@@ -7,7 +7,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let i1 = integrate(-1.96, 1.96);
 while (i1.next()) {
   i1.tell(norm().d(i1.x()));
@@ -39,7 +39,7 @@ out.set("uniroot_root", u.root());
 out.set("uniroot_iter", u.iter());
 out.set("optimize_minimum", o.argmin());
 out.set("optimize_objective", o.objective());
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-integrate-roots"));
 compare.finish("integrate-roots", compare.report("integrate-roots", got, "examples/r-vs-dsl/expected/integrate-roots.json", 0.000000000001, {}));

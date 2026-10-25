@@ -8,7 +8,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let d = read_csv("examples/r-vs-dsl/data/PlantGrowth.csv");
 let g = d.text("group");
 let t1 = vec();
@@ -42,7 +42,7 @@ out.set("p_value", fit.f_p_value());
 out.set("group_means", vec().push(y.where(ctrl).mean()).push(y.where(t1).mean()).push(y.where(t2).mean()));
 out.set("coefficients", fit.estimates());
 out.set("coef_p_values", pv);
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-anova-plantgrowth"));
 compare.finish("anova-plantgrowth", compare.report("anova-plantgrowth", got, "examples/r-vs-dsl/expected/anova-plantgrowth.json", 0.000000000001, {}));

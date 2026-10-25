@@ -1,8 +1,8 @@
-// lmr: runs lmscript `_dsl_` bytecode against the native statistics core (no R, no Python, no Docker).
+// lmr: runs lmscript `_lmcode_` bytecode against the native statistics core (no R, no Python, no Docker).
 //
 //   lmr --dsl-schema           compact summary of the API (context, functions, types)
-//   lmr --dsl-schema --json    the embedded schema bytes: what lmscript's `_dsl_ cli="lmr"` reads and compiles against
-//                              (or save them for `_dsl_ schema="..."`); --schema is an older alias
+//   lmr --dsl-schema --json    the embedded schema bytes: what lmscript's `_lmcode_ cli="lmr"` reads and compiles against
+//                              (or save them for `_lmcode_ schema="..."`); --schema is an older alias
 //   lmr --dsl-signatures       canonical registry signatures (diffed against `lmscript --dsl-signatures`)
 //   lmr --generate-schema      the schema JSON derived from the registry (maintenance: scripts/update-schema.sh)
 //   lmr --dsl A.dslb [B.dslb]  load and verify every file, then run them in order with shared host state
@@ -23,7 +23,7 @@
 #include "schema_embedded.hpp"
 
 #ifndef LMR_VERSION
-#define LMR_VERSION "0.4.1"
+#define LMR_VERSION "0.5.0"
 #endif
 
 namespace {

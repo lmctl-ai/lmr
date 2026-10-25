@@ -7,7 +7,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let d = read_csv("examples/r-vs-dsl/data/mtcars.csv");
 let fit = lm(d, "mpg ~ wt + hp");
 out.print(fit.coef_table());
@@ -41,7 +41,7 @@ out.set("bic", fit.bic());
 out.set("predict", fit.predict(nd));
 out.set("predict_se", fit.predict_se(nd));
 out.set("residuals", fit.residuals());
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-lm-mtcars"));
 compare.finish("lm-mtcars", compare.report("lm-mtcars", got, "examples/r-vs-dsl/expected/lm-mtcars.json", 0.000000000001, {}));

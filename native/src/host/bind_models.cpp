@@ -128,7 +128,7 @@ void bind_coefs(Binder& b, const std::string& type, std::function<const CoefTabl
     const CoefTable& t = table(self<T>(s));
     return Value::string(t.names[static_cast<size_t>(as_index(a[0].i, t.names.size(), (type + ".name").c_str()))]);
   });
-  b.m(type, "names", {}, "StrList", [table, &h](void* s, A&) { return h.hold("StrList", table(self<T>(s)).names); });
+  b.m(type, "names", {}, "StrList", [table, &b](void* s, A&) { return str_list(b.reg, table(self<T>(s)).names); });
   b.m(type, "has_coef", {"string"}, "bool", [table](void* s, A& a) { return Value::boolean(table(self<T>(s)).index(a[0].s) >= 0); });
   auto field = [&b, table, type](const char* name, Vec CoefTable::*member) {
     for (const char* key : {"int", "string"}) {
@@ -435,7 +435,7 @@ void bind_models(Binder& b) {
     auto& t = self<AnovaTable>(s);
     return Value::string(t.row_names[static_cast<size_t>(as_index(a[0].i, t.row_names.size(), "Anova.row_name"))]);
   });
-  b.m("Anova", "columns", {}, "StrList", [&h](void* s, A&) { return h.hold("StrList", self<AnovaTable>(s).col_names); });
+  b.m("Anova", "columns", {}, "StrList", [&b](void* s, A&) { return str_list(b.reg, self<AnovaTable>(s).col_names); });
   b.m("Anova", "col", {"string"}, "Vec", [vec](void* s, A& a) { return vec(self<AnovaTable>(s).col(a[0].s)); });
   b.m("Anova", "at", {"string", "string"}, "float", [](void* s, A& a) { return Value::real(self<AnovaTable>(s).at(a[0].s, a[1].s)); });
   b.m("Anova", "at", {"int", "string"}, "float", [](void* s, A& a) {

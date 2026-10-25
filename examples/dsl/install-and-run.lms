@@ -9,7 +9,7 @@
 // The program itself: a normal quantile, a root found by reverse communication and a straight-line fit, each with a
 //   known answer.
 // How to run: lmscript examples/dsl/install-and-run.lms   (works on a machine with only Node.js and lmscript installed)
-p = _dsl_ cli="lmr" install="github:lmctl-ai/lmr@latest";
+p = _lmcode_ cli="lmr" install="github:lmctl-ai/lmr@latest";
 out.check_close(norm().q_vec(parse_vec("0.975")).at(0), 1.959963984540054, 0.00000000000001, "normal 97.5% quantile");
 let rt = uniroot(1.0, 2.0).tol(0.000000000001);
 while (rt.next()) {
@@ -21,7 +21,7 @@ let fit = lm(frame().set("x", x).set("y", x * 2.0 + 1.0), "y ~ x");
 out.check_close(fit.estimates().at(0), 1.0, 0.000000000001, "intercept of y = 1 + 2x");
 out.check_close(fit.estimates().at(1), 2.0, 0.000000000001, "slope of y = 1 + 2x");
 out.set("root", rt.root());
-end _dsl_
+end _lmcode_
 
 file = "install-and-run.dslb";
 savedsl(p, file);

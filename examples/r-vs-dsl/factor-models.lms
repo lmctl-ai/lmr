@@ -11,7 +11,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let tg = lm(read_csv("examples/r-vs-dsl/data/ToothGrowth.csv"), "len ~ supp * factor(dose)");
 let at = tg.anova();
 out.print(tg.coef_table());
@@ -41,7 +41,7 @@ out.set("warp_resid_dev", ad.col("Resid. Dev"));
 out.set("warp_p", ad.col("Pr(>Chi)").tail(3));
 out.set("plant_coef", pg.estimates());
 out.set("plant_anova_f", pg.anova().at("group", "F value"));
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-factor-models"));
 compare.finish("factor-models", compare.report("factor-models", got, "examples/r-vs-dsl/expected/factor-models.json", 0.000000001, {}));

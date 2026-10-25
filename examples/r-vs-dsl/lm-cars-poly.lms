@@ -6,7 +6,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let d = read_csv("examples/r-vs-dsl/data/cars.csv");
 let fit = lm(d, "dist ~ speed + I(speed^2)");
 out.print(fit.coef_table());
@@ -26,7 +26,7 @@ out.set("f_statistic", fit.f_statistic());
 out.set("predict", fit.predict(nd));
 out.set("predict_se", fit.predict_se(nd));
 out.set("fitted", fit.fitted());
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-lm-cars-poly"));
 compare.finish("lm-cars-poly", compare.report("lm-cars-poly", got, "examples/r-vs-dsl/expected/lm-cars-poly.json", 0.000000000001, {}));

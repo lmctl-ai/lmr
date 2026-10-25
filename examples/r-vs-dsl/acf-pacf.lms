@@ -5,7 +5,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let lh = read_csv("examples/r-vs-dsl/data/lh.csv").col("value");
 let nile = read_csv("examples/r-vs-dsl/data/Nile.csv").col("value");
 out.print("lh acf lags 1-5: " + lh.acf(16).slice(1, 6).format("%.4f", ", "));
@@ -13,7 +13,7 @@ out.set("lh_acf", lh.acf(16));
 out.set("lh_pacf", lh.pacf(16));
 out.set("nile_acf_20", nile.acf(20));
 out.set("nile_pacf_20", nile.pacf(20));
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-acf-pacf"));
 compare.finish("acf-pacf", compare.report("acf-pacf", got, "examples/r-vs-dsl/expected/acf-pacf.json", 0.000000000001, {}));

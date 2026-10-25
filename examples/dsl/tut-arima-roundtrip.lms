@@ -1,6 +1,6 @@
 // access: write (build/dsl/tut-arima-roundtrip.dslb)
 // Topic: ARMA simulation and estimation round trip with residual diagnostics (after: R ?arima.sim, ?arima, ?tsdiag)
-// What it does: one _dsl_ chunk simulates an ARMA(1,1) with arima_sim, fits ARIMA(1,0,1) by exact ML and prints the
+// What it does: one _lmcode_ chunk simulates an ARMA(1,1) with arima_sim, fits ARIMA(1,0,1) by exact ML and prints the
 //   coefficient table against the generating values, then checks the estimates within 2.5 SE, the innovation variance,
 //   whiteness of the residuals (largest ACF at lags 1-10 inside the band plus 0.05), that the residual mean square
 //   matches sigma2, a 6-step forecast whose standard errors start at sqrt(sigma2), never shrink and follow the psi-weight
@@ -11,7 +11,7 @@
 // Usage: lmscript examples/dsl/tut-arima-roundtrip.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
 import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let ar = 0.7;
 let ma = -0.4;
 let sd = 1.5;
@@ -80,7 +80,7 @@ out.set("ar1", fit.estimate("ar1"));
 out.set("ma1", fit.estimate("ma1"));
 out.set("sigma2", fit.sigma2());
 out.set("resid_acf_max", worst);
-end _dsl_
+end _lmcode_
 
 v = lmr.check(lmr.run(p, "tut-arima-roundtrip"));
 println(sprintf("Checks passed: ar1=%.3f ma1=%.3f within 2.5 SE of (0.7, -0.4); sigma2=%.3f; residual ACF max %.3f; forecast SEs follow the psi weights; seed reproducible.", v.ar1, v.ma1, v.sigma2, v.resid_acf_max));

@@ -1,6 +1,6 @@
 // access: write (build/dsl/tut-pacf-order.dslb)
 // Topic: identifying the AR order from the PACF and from AIC (after: R ?pacf, ?ar, the Box-Jenkins identification step)
-// What it does: one _dsl_ chunk simulates an AR(2) process with arima_sim, prints the ACF and PACF with the
+// What it does: one _lmcode_ chunk simulates an AR(2) process with arima_sim, prints the ACF and PACF with the
 //   1.96/sqrt(n) band, fits AR(1), AR(2) and AR(3) by maximum likelihood and prints their AIC, then checks that the PACF
 //   is outside the band at lags 1-2 and inside the plain 1.96/sqrt(n) band at lags 3-8, that AIC picks order 2, that the
 //   AR(2) coefficients are within 3 SE of the generating values, that the theoretical lag-1 ACF phi1/(1-phi2) matches
@@ -11,7 +11,7 @@
 // Usage: lmscript examples/dsl/tut-pacf-order.lms   (cwd = repository root; lmr on PATH or in build-native/bin)
 import "lib/lmr.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let phi = parse_vec("0.5 0.3");
 let n = 400;
 let x = arima_sim(rng(2024), n, phi, vec(), 1.0);
@@ -63,7 +63,7 @@ out.set("ar2", ar2.estimate(1));
 out.set("acf1", acf.at(1));
 out.set("rho1_hat", rho1_hat);
 out.set("rho1", rho1);
-end _dsl_
+end _lmcode_
 
 v = lmr.check(lmr.run(p, "tut-pacf-order"));
 println(sprintf("Checks passed: PACF cuts off after lag 2; AIC %.2f < %.2f, %.2f; ar1=%.3f ar2=%.3f within 3 SE of (0.5, 0.3); ACF(1)=%.3f vs fitted %.3f (generating %.3f).", v.aic[1], v.aic[0], v.aic[2], v.ar1, v.ar2, v.acf1, v.rho1_hat, v.rho1));

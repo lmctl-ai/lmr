@@ -7,7 +7,7 @@
 import "../dsl/lib/lmr.lms";
 import "lib/compare.lms";
 
-p = _dsl_ schema="../../native/schema/lmr.dsl.json";
+p = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let d = frame().set("u", parse_vec("5 10 15 20 30 40 60 80 100"))
   .set("lot1", parse_vec("118 58 42 35 27 25 21 19 18")).set("lot2", parse_vec("69 35 26 21 18 16 13 12 12"));
 let f1 = glm(d, "lot1 ~ log(u)", "Gamma");
@@ -28,7 +28,7 @@ out.set("lot1_aic", f1.aic());
 out.set("lot2_estimate", f2.estimates());
 out.set("lot2_dispersion", f2.dispersion());
 out.set("lot2_aic", f2.aic());
-end _dsl_
+end _lmcode_
 
 got = lmr.check(lmr.run(p, "rvd-glm-gamma-clotting"));
 compare.finish("glm-gamma-clotting", compare.report("glm-gamma-clotting", got, "examples/r-vs-dsl/expected/glm-gamma-clotting.json", 0.000000000001, {}));
