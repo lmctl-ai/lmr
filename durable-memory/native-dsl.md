@@ -18,10 +18,10 @@ tolerance tiers still apply.
 - **`native/src/host/`: the DSL host `lmr`.** It follows the lmcad/lmhtml pattern.
   - `host.hpp` holds the arenas, the `Binder` (type-checks arguments, maps `rcli::Error` to `dslvm::Error`) and the
     `Driver`. `bind_<domain>.cpp` registers the API. `main.cpp` holds the CLI and generates the schema.
-- **`native/cpp/`: the vendored lmcode-cpp SDK** (github.com/lmctl-ai/lmcode-cpp, renamed from cpp-dsl-sdk on
+- **`native/cpp/`: the vendored lmcode-cpp SDK** (github.com/lmctl-ai/lmcode-cpp,
   2026-10-24): `dslvm.hpp`, the built-in std catalog `stdlib/*.hpp` that it includes, and the canonical
   `std/lmcode-std.schema.json`. Every file's sha256 and the commit are pinned in `native/sdk.lock`; refresh with
-  `native/scripts/sync-sdk.sh` (checkout from `LMCODE_CPP`, `../lmcode-cpp` or `../poc/cpp-dsl-sdk`). Bytecode v5.
+  `native/scripts/sync-sdk.sh` (checkout from `LMCODE_CPP` or `../lmcode-cpp`). Bytecode v5.
 - **lmcode std (72 signatures) comes from the SDK, not from lmr.** Every `dslvm::Registry` installs it: `str_*`,
   `math_*`, `file_*`, and the types `StrList`, `IntList`, `FloatList`, `StrMap`. lmr does not register these; its own
   StrList-returning methods allocate through `str_list(reg, ...)` and read with `strs_of(v)` (host.hpp). Std

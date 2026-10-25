@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Vendor lmcode-cpp (formerly cpp-dsl-sdk): the single-source runtime header, the built-in std catalog it includes
+# Vendor lmcode-cpp: the single-source runtime header, the built-in std catalog it includes
 # (stdlib/*.hpp) and the canonical std schema, pinning the commit and every file's content hash in sdk.lock.
-#   scripts/sync-sdk.sh            copy from a checkout (LMCODE_CPP, or ../lmcode-cpp, or ../poc/cpp-dsl-sdk) at origin/main
+#   scripts/sync-sdk.sh            copy from a checkout (LMCODE_CPP or ../lmcode-cpp) at origin/main
 #   scripts/sync-sdk.sh --verify   fail when a vendored file differs from sdk.lock
 set -eu
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -28,7 +28,7 @@ if [ "${1:-}" = "--verify" ]; then
 fi
 SDK="${LMCODE_CPP:-}"
 if [ -z "$SDK" ]; then
-  for c in "$HERE/../../lmcode-cpp" "$HERE/../../poc/lmcode-cpp" "$HERE/../../poc/cpp-dsl-sdk"; do
+  for c in "$HERE/../../lmcode-cpp" "$HERE/../../poc/lmcode-cpp"; do
     [ -f "$c/include/dslvm.hpp" ] && { SDK="$c"; break; }
   done
 fi

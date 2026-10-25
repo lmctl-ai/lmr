@@ -2,7 +2,7 @@
 
 - Adopt lmcode-cpp (renamed from cpp-dsl-sdk). Its built-in lmcode std (72 signatures: `str_*`, `math_*`, `file_*`, `StrList`, `IntList`, `FloatList`, `StrMap`) is available in every chunk without lmr registering it; the schema carries the std declarations until the compiler injects them.
 - `StrList` is now std's type. Renamed lmr-only names: `strs()` → `str_list()`, `split` → `str_split`, `StrList.push` → `add`, `StrList.index` → `index_of`.
-- Blocks are spelled `_lmcode_ ... end _lmcode_` (same bytecode as `_dsl_`); needs lmscript 0.2.419 or newer.
+- Blocks are spelled `_lmcode_ ... end _lmcode_` (same bytecode as `_dsl_`); needs lmscript 0.2.420 or newer.
 
 ## Unreleased
 
