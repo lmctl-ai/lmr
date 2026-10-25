@@ -85,6 +85,10 @@ std::string generate_schema(const dslvm::Registry& reg, const OperatorTable& ops
   std::map<std::string, std::string> context;
   for (const auto& s : reg.signatures()) {
     Parsed p = parse_signature(s);
+    // The lmcode registry now supplies these standard StrList methods itself.
+    // Keep the other standard declarations in the schema for compiler parity.
+    if (p.kind == "method" && p.type == "StrList" &&
+        (p.name == "len" || p.name == "at" || p.name == "contains" || p.name == "join")) continue;
     if (p.kind == "context") context[p.name] = p.type;
     else if (p.kind == "fn") functions[p.name].push_back(p);
     else types[p.type][p.name].push_back(p);
