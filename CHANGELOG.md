@@ -1,3 +1,7 @@
+## 0.5.1
+
+- Omit built-in StrList methods from the generated host schema; the lmcode standard registry provides them by default.
+
 ## 0.5.0
 
 - Adopt lmcode-cpp (renamed from cpp-dsl-sdk). Its built-in lmcode std (72 signatures: `str_*`, `math_*`, `file_*`, `StrList`, `IntList`, `FloatList`, `StrMap`) is available in every chunk without lmr registering it; the schema carries the std declarations until the compiler injects them.
