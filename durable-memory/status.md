@@ -12,7 +12,7 @@
   - **Host**: the single-executable `_lmcode_` host `lmr` (lmcode-cpp bytecode v5), exposing 546 signatures.
   - **Build**: `cmake -S native -B build-native -G Ninja && cmake --build build-native && (cd build-native && ctest)`.
     All 16 ctest targets pass: 12 module unit tests, `test_edge`, the host suite `host_test.py`, schema parity with
-    `lmscript --dsl-signatures`, and all 22 DSL examples. They are also clean under ASan/UBSan. Testing details and
+    `lmscript --lmcode-signatures`, and all 22 DSL examples. They are also clean under ASan/UBSan. Testing details and
     the bugs fixed are in native-dsl.md ("Tests").
 - `examples/`: 14 `tut-*.lms` tutorial conversions for the R-backed tool.
   - They use `tut-vehicles.csv` and `scripts/generate-tutorial-data.py`, and each recipe asserts a known answer.

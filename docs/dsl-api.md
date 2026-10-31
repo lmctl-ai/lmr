@@ -7,14 +7,14 @@ the host runs it in one process.
 
 ```
 lmscript examples/dsl/tut-lm.lms             # compiles the chunk to build/dsl/tut-lm.dslb, runs lmr, checks
-lmr --dsl build/dsl/a.dslb build/dsl/b.dslb  # several chunks, one process, shared host state
-lmr --dsl-schema                             # every signature, grouped by type
-lmr --dsl-schema --json > lmr.dsl.json       # the schema the compiler needs (byte-identical to native/schema/)
+lmr --lmcode build/dsl/a.dslb build/dsl/b.dslb  # several chunks, one process, shared host state
+lmr --lmcode-schema                             # every signature, grouped by type
+lmr --lmcode-schema --json > lmr.dsl.json       # the schema the compiler needs (byte-identical to native/schema/)
 ```
 
 The machine-checked list of all signatures is `native/schema/lmr.dsl.json`. The test `schema_matches_registry` checks
-it against the host registry and against `lmscript --dsl-signatures`. This page explains the design and each type;
-`lmr --dsl-schema` prints the full list (`--schema` is an older alias).
+it against the host registry and against `lmscript --lmcode-signatures`. This page explains the design and each type;
+`lmr --lmcode-schema` prints the full list (`--schema` is an older alias).
 
 ## Why a DSL rather than one process per call
 
@@ -32,7 +32,7 @@ grammar is needed.
 | stdout | exactly one JSON line: `{"ok": true, "result": {"values": {...}, "checks": N, "failures": 0}}` or `{"ok": false, "phase": "load"/"run"/"app", "code": ..., "message": ..., "line": L, "column": C}` |
 | stderr | the chunk's `out.print` text, then `CHECK FAILED: ...` lines |
 | exit | 0 ok; 2 usage; 3 load or run error (bad bytecode, schema mismatch, host error such as a singular fit); 4 application failure (`out.fail`, or any failed `out.check`/`out.check_close`) |
-| state | `--dsl A B C` loads and verifies every file first, then runs them in order. Objects stored with `keep(name, obj)` stay reachable from later chunks through `kept_vec`/`kept_frame` |
+| state | `--lmcode A B C` loads and verifies every file first, then runs them in order. Objects stored with `keep(name, obj)` stay reachable from later chunks through `kept_vec`/`kept_frame` |
 | files | `read_csv` reads any path; `Frame.write_csv` writes only relative paths below the working directory (no `..`), atomically |
 | numbers | IEEE binary64; NaN is R's NA. JSON output writes NaN/Inf as `null` |
 
@@ -88,7 +88,7 @@ refuses stale bytecode with `LOAD_SCHEMA_MISMATCH`.
   Methods: `nrow`, `ncol`, `names`, `has`, `is_text`, `col(name) -> Vec`, `text(name) -> StrList`,
   `set(name, Vec|StrList)`, `select("a,b")`, `drop(name)`, `where(mask)`, `head(k)`, `drop_nan`, `write_csv(path)`.
 - **Keeping objects**: `keep(name, Vec|Frame)`, `kept_vec(name)`, `kept_frame(name)`, `is_kept(name)` carry objects
-  across chunks of one `--dsl` run.
+  across chunks of one `--lmcode` run.
 
 ### Math functions
 

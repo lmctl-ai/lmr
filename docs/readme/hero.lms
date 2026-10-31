@@ -50,7 +50,7 @@ if (!file_exists("build")) { mkdir("build"); }
 if (!file_exists("build/readme")) { mkdir("build/readme"); }
 if (!file_exists("build/rendered")) { mkdir("build/rendered"); }
 savedsl(stats, "build/readme/hero-stats.dslb");
-run_stats = system ${dsl_cli(stats)} --dsl build/readme/hero-stats.dslb;
+run_stats = system ${dsl_cli(stats)} --lmcode build/readme/hero-stats.dslb;
 if (run_stats.code != 0) { println(str(run_stats.stderr)); exit(run_stats.code); }
 values = json_parse(run_stats.stdout).result.values;
 
@@ -131,7 +131,7 @@ scene.text(470.0, 446.0, 18.0, ${mean_t_label}, ${muted});
 scene.render_png("build/rendered/readme-hero.png", 1200, 520, 1);
 end _lmcode_
 savedsl(draw, "build/readme/hero-draw.dslb");
-render = system ${dsl_cli(draw)} --dsl build/readme/hero-draw.dslb;
+render = system ${dsl_cli(draw)} --lmcode build/readme/hero-draw.dslb;
 if (render.code != 0) { println(str(render.stderr)); exit(render.code); }
 copy_file("build/rendered/readme-hero.png", "docs/readme/hero-" + theme + ".png");
 println(sprintf("Hero %s: p=%.4f, means %.3f / %.3f", theme, values.p, mean_c, mean_t));

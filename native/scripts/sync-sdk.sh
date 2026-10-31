@@ -12,6 +12,11 @@ stdlib/string.hpp:cpp/stdlib/string.hpp
 stdlib/math.hpp:cpp/stdlib/math.hpp
 stdlib/collections.hpp:cpp/stdlib/collections.hpp
 stdlib/file.hpp:cpp/stdlib/file.hpp
+stdlib/containers.hpp:cpp/stdlib/containers.hpp
+stdlib/encoding.hpp:cpp/stdlib/encoding.hpp
+stdlib/json.hpp:cpp/stdlib/json.hpp
+stdlib/result.hpp:cpp/stdlib/result.hpp
+stdlib/result_json.hpp:cpp/stdlib/result_json.hpp
 std/lmcode-std.schema.json:cpp/std/lmcode-std.schema.json"
 hash() { sha256sum "$1" | cut -c1-64; }
 if [ "${1:-}" = "--verify" ]; then

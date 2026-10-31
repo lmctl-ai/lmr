@@ -79,6 +79,8 @@ if(BUILD_TESTING)
     COMMAND "${LMR_BASH}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-schema.sh" $<TARGET_FILE:lmr>)
   find_package(Python3 COMPONENTS Interpreter)
   if(Python3_FOUND)
+    add_test(NAME host_flag_cutover
+      COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/tests/check-host-flags.py" "${LMR_SCHEMA}" $<TARGET_FILE:lmr>)
     add_test(NAME host_bindings
       COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/tests/host_test.py" $<TARGET_FILE:lmr>)
     set_tests_properties(host_bindings PROPERTIES TIMEOUT 900)

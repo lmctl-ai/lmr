@@ -1,11 +1,11 @@
 // lmr: runs lmscript `_lmcode_` bytecode against the native statistics core (no R, no Python, no Docker).
 //
-//   lmr --dsl-schema           compact summary of the API (context, functions, types)
-//   lmr --dsl-schema --json    the embedded schema bytes: what lmscript's `_lmcode_ cli="lmr"` reads and compiles against
+//   lmr --lmcode-schema           compact summary of the API (context, functions, types)
+//   lmr --lmcode-schema --json    the embedded schema bytes: what lmscript's `_lmcode_ cli="lmr"` reads and compiles against
 //                              (or save them for `_lmcode_ schema="..."`); --schema is an older alias
-//   lmr --dsl-signatures       canonical registry signatures (diffed against `lmscript --dsl-signatures`)
+//   lmr --lmcode-signatures       canonical registry signatures (diffed against `lmscript --lmcode-signatures`)
 //   lmr --generate-schema      the schema JSON derived from the registry (maintenance: scripts/update-schema.sh)
-//   lmr --dsl A.dslb [B.dslb]  load and verify every file, then run them in order with shared host state
+//   lmr --lmcode A.dslb [B.dslb]  load and verify every file, then run them in order with shared host state
 //   lmr --version
 //
 // Exit codes: 0 ok, 2 usage, 3 load/run error, 4 application failure (out.fail or failed out.check calls).
@@ -160,13 +160,13 @@ int main(int argc, char** argv) {
     return 3;
   }
   const std::string usage =
-      "usage: lmr --dsl-schema [--json] | --dsl-signatures | --generate-schema | --version | --dsl FILE [FILE ...]\n";
+      "usage: lmr --lmcode-schema [--json] | --lmcode-signatures | --generate-schema | --version | --lmcode FILE [FILE ...]\n";
   std::vector<std::string> args(argv + 1, argv + argc);
   if (args.size() == 1 && args[0] == "--version") {
     std::cout << "lmr " << LMR_VERSION << "\n";
     return 0;
   }
-  if (!args.empty() && (args[0] == "--dsl-schema" || args[0] == "--schema")) {
+  if (!args.empty() && (args[0] == "--lmcode-schema" || args[0] == "--schema")) {
     if (args.size() == 1) { print_summary(reg); return std::cout ? 0 : 4; }
     if (args.size() == 2 && args[1] == "--json") {
       std::cout.write(reinterpret_cast<const char*>(rcli::embedded_schema), static_cast<std::streamsize>(rcli::embedded_schema_size));
@@ -175,7 +175,7 @@ int main(int argc, char** argv) {
     std::cerr << usage;
     return 2;
   }
-  if (args.size() == 1 && args[0] == "--dsl-signatures") {
+  if (args.size() == 1 && args[0] == "--lmcode-signatures") {
     for (const auto& s : reg.signatures()) std::cout << s << "\n";
     return 0;
   }
@@ -183,7 +183,7 @@ int main(int argc, char** argv) {
     std::cout << generate_schema(reg, ops);
     return 0;
   }
-  if (args.size() < 2 || args[0] != "--dsl") {
+  if (args.size() < 2 || args[0] != "--lmcode") {
     std::cerr << usage;
     return 2;
   }

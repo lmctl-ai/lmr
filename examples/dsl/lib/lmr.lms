@@ -25,7 +25,7 @@ function save(dsl, name) {
 }
 
 function exec(paths) {
-  argv = concat([binary(), "--dsl"], paths);
+  argv = concat([binary(), "--lmcode"], paths);
   r = system(argv, {timeoutMs: 600000});
   if (r.code == null) { return {code: 0, ok: true, values: {}, simulated: true}; }
   if (r.stderr != "") { printf("%s", r.stderr); }

@@ -19,10 +19,10 @@ p = _lmcode_ cli="lmr" install="github:lmctl-ai/lmr@latest";
 ...
 end _lmcode_
 savedsl(p, "job.dslb");
-r = system ${dsl_cli(p)} --dsl job.dslb;
+r = system ${dsl_cli(p)} --lmcode job.dslb;
 ```
 
-- `cli="lmr"`: lmscript compiles against the bytes `lmr --dsl-schema --json` prints, so the bytecode is bound to the
+- `cli="lmr"`: lmscript compiles against the bytes `lmr --lmcode-schema --json` prints, so the bytecode is bound to the
   binary that will run it.
 - `install="github:lmctl-ai/lmr@latest"`: only when `lmr` is not on PATH, lmscript downloads that release's
   `lmr-OS-ARCH[.exe]` once into its tool cache and checks it against the SHA-256 digest GitHub reports. Nothing is
@@ -34,7 +34,7 @@ build.
 
 `lib/lmr.lms` finds the binary: `$LMR_BIN`, then `lmr` on PATH, then `build-native/bin/lmr`. It writes
 the bytecode to `build/dsl/NAME.dslb`. You can also run a saved chunk directly with
-`build-native/bin/lmr --dsl build/dsl/tut-lm.dslb`. Each recipe exits 0 only when every self-check holds. A failed
+`build-native/bin/lmr --lmcode build/dsl/tut-lm.dslb`. Each recipe exits 0 only when every self-check holds. A failed
 `out.check` makes `lmr` exit 4, and the recipe passes that code on.
 
 ## Ports of the tutorial recipes

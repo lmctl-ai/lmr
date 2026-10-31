@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs every examples/dsl/*.lms and examples/r-vs-dsl/*.lms against the given lmr (cwd must be the repository root)
 # and reports each result.
-# Needs a DSL v5 lmscript compiler on PATH or in $LMSCRIPT_BIN; without one the test is skipped (exit 0 with a notice).
+# Needs a lmcode v6 lmscript compiler on PATH or in $LMSCRIPT_BIN; without one the test is skipped (exit 0 with a notice).
 set -uo pipefail
 BIN="${1:?usage: run-examples.sh path/to/lmr [example.lms ...]}"
 shift

@@ -21,19 +21,19 @@ tolerance tiers still apply.
 - **`native/cpp/`: the vendored lmcode-cpp SDK** (github.com/lmctl-ai/lmcode-cpp,
   2026-10-24): `dslvm.hpp`, the built-in std catalog `stdlib/*.hpp` that it includes, and the canonical
   `std/lmcode-std.schema.json`. Every file's sha256 and the commit are pinned in `native/sdk.lock`; refresh with
-  `native/scripts/sync-sdk.sh` (checkout from `LMCODE_CPP` or `../lmcode-cpp`). Bytecode v5.
-- **lmcode std (72 signatures) comes from the SDK, not from lmr.** Every `dslvm::Registry` installs it: `str_*`,
+  `native/scripts/sync-sdk.sh` (checkout from `LMCODE_CPP` or `../lmcode-cpp`). Bytecode v6.
+- **lmcode std (206 signatures) comes from the SDK, not from lmr.** Every `dslvm::Registry` installs it: `str_*`,
   `math_*`, `file_*`, and the types `StrList`, `IntList`, `FloatList`, `StrMap`. lmr does not register these; its own
   StrList-returning methods allocate through `str_list(reg, ...)` and read with `strs_of(v)` (host.hpp). Std
   collections live for one run, so they cannot be `keep()`-ed across chunks. The old lmr-only names are gone:
   `strs()` is `str_list()`, `split` is `str_split`, `StrList.push` is `add`, `StrList.index` is `index_of`.
-  The compiler does not inject std yet, so `--generate-schema` writes the effective schema (host plus std)
+  The compiler injects std, while this host retains an effective generated schema (host plus std). `--generate-schema` writes it
   from `reg.signatures()`; check-schema.sh checks that every canonical std signature is in it.
-- **Block spelling**: `_lmcode_ ... end _lmcode_` (the new name of `_dsl_`; same bytecode). The compiler accepts it from
-  lmscript 0.2.4xx (CI pins 0.2.419). Tool names keep `dsl`: `--dsl-schema`, `--dsl`, `savedsl`, `dsl_cli`, `.dslb`.
+- **Block spelling**: `_lmcode_ ... end _lmcode_`. Host options use the lmcode flag family with no retired aliases.
+  Internal `.dslb`, `savedsl` and `dsl_cli` names remain. Qualification uses the mono main source compiler.
 - **`native/schema/lmr.dsl.json`: GENERATED from the registry.** Never edit it by hand. Change a `bind_*.cpp`, then run
   `native/scripts/update-schema.sh`. The ctest `schema_matches_registry` diffs the file, the embedded bytes, and
-  `lmscript --dsl-signatures` against `lmr --dsl-signatures`.
+  `lmscript --lmcode-signatures` against `lmr --lmcode-signatures`.
 - **Build**: `cmake -S native -B build-native -G Ninja && cmake --build build-native`. The binary is one executable at
   `build-native/bin/lmr`: libstdc++ and libgcc are linked statically, glibc dynamically (the owner's choice,
   2026-10-20; `ldd` shows only libc, libm and the loader). It needs glibc >= the build host's: release binaries are built on
@@ -53,7 +53,7 @@ tolerance tiers still apply.
   To release: bump `project(... VERSION)` in `native/CMakeLists.txt`, commit, then tag `vX.Y.Z` and push the tag.
   v0.1.0 was published on 2026-10-20. `ci.yml` is the older R-backed lmapi tool's workflow.
 - **`cli=` / `install=`**: lmscript's `_lmcode_ cli="lmr" install="github:lmctl-ai/lmr@vX.Y.Z"` reads the schema from
-  `lmr --dsl-schema --json` (the host flag; `--schema` is an alias) and, when `lmr` is not on PATH, downloads the
+  `lmr --lmcode-schema --json` (the host flag; `--schema` is an alias) and, when `lmr` is not on PATH, downloads the
   release asset `lmr-OS-ARCH[.exe]`, so asset names must stay exactly that. `examples/dsl/install-and-run.lms` is the
   example; run-examples.sh puts the tested build first on PATH so it binds to that build. Bump its tag with each release.
 - **`examples/r-vs-dsl/`**: 44 common R recipes, each as `r/NAME.R` (writes `expected/NAME.json` with R 4.3.3) and
@@ -166,3 +166,7 @@ bindings and recipes by the lead):
 - The lmapi JSON ops (`rcli fit_lm {...}`) still run R in Docker. Re-pointing them at `rcli_num` would give a static
   `rcli` with the old interface. Everything they need exists in the core, except the expression-string evaluator.
 - The `oracle-*` recipes need `statsrust` and were not ported.
+
+## Host flag qualification
+
+CTest includes retired-option refusal before file effects, exact metadata and new loader routing in scratch HOME. The owner SDK sync includes every current catalog header; update-schema.sh regenerates the effective schema. The full native CTest gate covers units,195 host cases and67 example programs. Book examples also run with native/scripts/test-book-examples.py --candidate-only for offline candidate qualification. Default book-test mode still checks release discovery/installation; it must fail if the separately published latest host lacks the candidate protocol. Do not introduce a retired-flag fallback to bridge that release boundary.

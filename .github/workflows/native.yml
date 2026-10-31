@@ -91,7 +91,7 @@ jobs:
           npm i -g @lmctl-ai/lmctl@0.2.420
           # The DSL tests skip themselves without a compiler; CI must not.
           lmscript --version
-          lmscript --dsl-signatures native/schema/lmr.dsl.json > /dev/null
+          lmscript --lmcode-signatures native/schema/lmr.dsl.json > /dev/null
 
       - name: build
         if: env.ONLY_OK == 'true'

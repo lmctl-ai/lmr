@@ -120,6 +120,52 @@
         "set": [{"params": ["int", "float"], "returns": "FloatList"}]
       }
     },
+    "FloatMap": {
+      "methods": {
+        "clear": [{"params": [], "returns": "FloatMap"}],
+        "get": [{"params": ["string"], "returns": "float"}],
+        "get_or": [{"params": ["string", "float"], "returns": "float"}],
+        "has": [{"params": ["string"], "returns": "bool"}],
+        "key_at": [{"params": ["int"], "returns": "string"}],
+        "keys": [{"params": [], "returns": "StrList"}],
+        "len": [{"params": [], "returns": "int"}],
+        "remove": [{"params": ["string"], "returns": "bool"}],
+        "set": [{"params": ["string", "float"], "returns": "FloatMap"}],
+        "values": [{"params": [], "returns": "FloatList"}]
+      }
+    },
+    "FloatPQ": {
+      "methods": {
+        "clear": [{"params": [], "returns": "FloatPQ"}],
+        "empty": [{"params": [], "returns": "bool"}],
+        "len": [{"params": [], "returns": "int"}],
+        "peek": [{"params": [], "returns": "float"}],
+        "pop": [{"params": [], "returns": "float"}],
+        "push": [{"params": ["float", "float"], "returns": "FloatPQ"}]
+      }
+    },
+    "FloatQueue": {
+      "methods": {
+        "at": [{"params": ["int"], "returns": "float"}],
+        "clear": [{"params": [], "returns": "FloatQueue"}],
+        "empty": [{"params": [], "returns": "bool"}],
+        "len": [{"params": [], "returns": "int"}],
+        "peek": [{"params": [], "returns": "float"}],
+        "pop": [{"params": [], "returns": "float"}],
+        "push": [{"params": ["float"], "returns": "FloatQueue"}]
+      }
+    },
+    "FloatStack": {
+      "methods": {
+        "at": [{"params": ["int"], "returns": "float"}],
+        "clear": [{"params": [], "returns": "FloatStack"}],
+        "empty": [{"params": [], "returns": "bool"}],
+        "len": [{"params": [], "returns": "int"}],
+        "peek": [{"params": [], "returns": "float"}],
+        "pop": [{"params": [], "returns": "float"}],
+        "push": [{"params": ["float"], "returns": "FloatStack"}]
+      }
+    },
     "Forecast": {
       "methods": {
         "len": [{"params": [], "returns": "int"}],
@@ -245,6 +291,52 @@
         "set": [{"params": ["int", "int"], "returns": "IntList"}]
       }
     },
+    "IntMap": {
+      "methods": {
+        "clear": [{"params": [], "returns": "IntMap"}],
+        "get": [{"params": ["string"], "returns": "int"}],
+        "get_or": [{"params": ["string", "int"], "returns": "int"}],
+        "has": [{"params": ["string"], "returns": "bool"}],
+        "key_at": [{"params": ["int"], "returns": "string"}],
+        "keys": [{"params": [], "returns": "StrList"}],
+        "len": [{"params": [], "returns": "int"}],
+        "remove": [{"params": ["string"], "returns": "bool"}],
+        "set": [{"params": ["string", "int"], "returns": "IntMap"}],
+        "values": [{"params": [], "returns": "IntList"}]
+      }
+    },
+    "IntPQ": {
+      "methods": {
+        "clear": [{"params": [], "returns": "IntPQ"}],
+        "empty": [{"params": [], "returns": "bool"}],
+        "len": [{"params": [], "returns": "int"}],
+        "peek": [{"params": [], "returns": "int"}],
+        "pop": [{"params": [], "returns": "int"}],
+        "push": [{"params": ["int", "float"], "returns": "IntPQ"}]
+      }
+    },
+    "IntQueue": {
+      "methods": {
+        "at": [{"params": ["int"], "returns": "int"}],
+        "clear": [{"params": [], "returns": "IntQueue"}],
+        "empty": [{"params": [], "returns": "bool"}],
+        "len": [{"params": [], "returns": "int"}],
+        "peek": [{"params": [], "returns": "int"}],
+        "pop": [{"params": [], "returns": "int"}],
+        "push": [{"params": ["int"], "returns": "IntQueue"}]
+      }
+    },
+    "IntStack": {
+      "methods": {
+        "at": [{"params": ["int"], "returns": "int"}],
+        "clear": [{"params": [], "returns": "IntStack"}],
+        "empty": [{"params": [], "returns": "bool"}],
+        "len": [{"params": [], "returns": "int"}],
+        "peek": [{"params": [], "returns": "int"}],
+        "pop": [{"params": [], "returns": "int"}],
+        "push": [{"params": ["int"], "returns": "IntStack"}]
+      }
+    },
     "Integral": {
       "methods": {
         "abs_error": [{"params": [], "returns": "float"}],
@@ -260,6 +352,21 @@
         "tell": [{"params": ["float"], "returns": "void"}],
         "value": [{"params": [], "returns": "float"}],
         "x": [{"params": [], "returns": "float"}]
+      }
+    },
+    "Json": {
+      "methods": {
+        "as_bool": [{"params": [], "returns": "bool"}],
+        "as_float": [{"params": [], "returns": "float"}],
+        "as_int": [{"params": [], "returns": "int"}],
+        "as_string": [{"params": [], "returns": "string"}],
+        "at": [{"params": ["int"], "returns": "Json"}],
+        "get": [{"params": ["string"], "returns": "Json"}],
+        "has": [{"params": ["string"], "returns": "bool"}],
+        "keys": [{"params": [], "returns": "StrList"}],
+        "kind": [{"params": [], "returns": "string"}],
+        "len": [{"params": [], "returns": "int"}],
+        "to_json": [{"params": [], "returns": "string"}]
       }
     },
     "Kmeans": {
@@ -556,9 +663,43 @@
         "get_or": [{"params": ["string", "string"], "returns": "string"}],
         "has": [{"params": ["string"], "returns": "bool"}],
         "key_at": [{"params": ["int"], "returns": "string"}],
+        "keys": [{"params": [], "returns": "StrList"}],
         "len": [{"params": [], "returns": "int"}],
         "remove": [{"params": ["string"], "returns": "bool"}],
-        "set": [{"params": ["string", "string"], "returns": "StrMap"}]
+        "set": [{"params": ["string", "string"], "returns": "StrMap"}],
+        "values": [{"params": [], "returns": "StrList"}]
+      }
+    },
+    "StrPQ": {
+      "methods": {
+        "clear": [{"params": [], "returns": "StrPQ"}],
+        "empty": [{"params": [], "returns": "bool"}],
+        "len": [{"params": [], "returns": "int"}],
+        "peek": [{"params": [], "returns": "string"}],
+        "pop": [{"params": [], "returns": "string"}],
+        "push": [{"params": ["string", "float"], "returns": "StrPQ"}]
+      }
+    },
+    "StrQueue": {
+      "methods": {
+        "at": [{"params": ["int"], "returns": "string"}],
+        "clear": [{"params": [], "returns": "StrQueue"}],
+        "empty": [{"params": [], "returns": "bool"}],
+        "len": [{"params": [], "returns": "int"}],
+        "peek": [{"params": [], "returns": "string"}],
+        "pop": [{"params": [], "returns": "string"}],
+        "push": [{"params": ["string"], "returns": "StrQueue"}]
+      }
+    },
+    "StrStack": {
+      "methods": {
+        "at": [{"params": ["int"], "returns": "string"}],
+        "clear": [{"params": [], "returns": "StrStack"}],
+        "empty": [{"params": [], "returns": "bool"}],
+        "len": [{"params": [], "returns": "int"}],
+        "peek": [{"params": [], "returns": "string"}],
+        "pop": [{"params": [], "returns": "string"}],
+        "push": [{"params": ["string"], "returns": "StrStack"}]
       }
     },
     "Svd": {
@@ -726,6 +867,10 @@
     "file_read": [{"params": ["string"], "returns": "string"}],
     "file_write": [{"params": ["string", "string"], "returns": "void"}],
     "float_list": [{"params": [], "returns": "FloatList"}],
+    "float_map": [{"params": [], "returns": "FloatMap"}],
+    "float_pq": [{"params": [], "returns": "FloatPQ"}],
+    "float_queue": [{"params": [], "returns": "FloatQueue"}],
+    "float_stack": [{"params": [], "returns": "FloatStack"}],
     "fmt": [{"params": ["string", "float"], "returns": "string"},
      {"params": ["string", "int"], "returns": "string"},
      {"params": ["string", "string"], "returns": "string"}],
@@ -748,10 +893,15 @@
     "identity": [{"params": ["int"], "returns": "Mat"}],
     "inf": [{"params": [], "returns": "float"}],
     "int_list": [{"params": [], "returns": "IntList"}],
+    "int_map": [{"params": [], "returns": "IntMap"}],
+    "int_pq": [{"params": [], "returns": "IntPQ"}],
+    "int_queue": [{"params": [], "returns": "IntQueue"}],
+    "int_stack": [{"params": [], "returns": "IntStack"}],
     "integrate": [{"params": ["float", "float"], "returns": "Integral"}],
     "is_finite": [{"params": ["float"], "returns": "bool"}],
     "is_kept": [{"params": ["string"], "returns": "bool"}],
     "is_nan": [{"params": ["float"], "returns": "bool"}],
+    "json_parse": [{"params": ["string"], "returns": "Json"}],
     "keep": [{"params": ["string", "Frame"], "returns": "void"},
      {"params": ["string", "Vec"], "returns": "void"}],
     "kept_frame": [{"params": ["string"], "returns": "Frame"}],
@@ -766,6 +916,30 @@
     "linspace": [{"params": ["float", "float", "int"], "returns": "Vec"}],
     "lm": [{"params": ["Frame", "string"], "returns": "Lm"},
      {"params": ["Frame", "string", "Vec"], "returns": "Lm"}],
+    "lmcode_return_null": [{"params": [], "returns": "void"}],
+    "lmcode_return_put": [{"params": ["string", "FloatList"], "returns": "void"},
+     {"params": ["string", "FloatMap"], "returns": "void"},
+     {"params": ["string", "IntList"], "returns": "void"},
+     {"params": ["string", "IntMap"], "returns": "void"},
+     {"params": ["string", "Json"], "returns": "void"},
+     {"params": ["string", "StrList"], "returns": "void"},
+     {"params": ["string", "StrMap"], "returns": "void"},
+     {"params": ["string", "bool"], "returns": "void"},
+     {"params": ["string", "float"], "returns": "void"},
+     {"params": ["string", "int"], "returns": "void"},
+     {"params": ["string", "string"], "returns": "void"}],
+    "lmcode_return_put_null": [{"params": ["string"], "returns": "void"}],
+    "lmcode_return_set": [{"params": ["FloatList"], "returns": "void"},
+     {"params": ["FloatMap"], "returns": "void"},
+     {"params": ["IntList"], "returns": "void"},
+     {"params": ["IntMap"], "returns": "void"},
+     {"params": ["Json"], "returns": "void"},
+     {"params": ["StrList"], "returns": "void"},
+     {"params": ["StrMap"], "returns": "void"},
+     {"params": ["bool"], "returns": "void"},
+     {"params": ["float"], "returns": "void"},
+     {"params": ["int"], "returns": "void"},
+     {"params": ["string"], "returns": "void"}],
     "lnorm": [{"params": ["float", "float"], "returns": "Dist"}],
     "loess": [{"params": ["Vec", "Vec"], "returns": "Loess"},
      {"params": ["Vec", "Vec", "float"], "returns": "Loess"},
@@ -829,9 +1003,13 @@
      {"params": ["Vec", "int", "int", "bool"], "returns": "Stl"}],
     "stl_periodic": [{"params": ["Vec", "int"], "returns": "Stl"},
      {"params": ["Vec", "int", "bool"], "returns": "Stl"}],
+    "str_base64_decode": [{"params": ["string"], "returns": "string"}],
+    "str_base64_encode": [{"params": ["string"], "returns": "string"}],
     "str_contains": [{"params": ["string", "string"], "returns": "bool"}],
     "str_ends_with": [{"params": ["string", "string"], "returns": "bool"}],
     "str_find": [{"params": ["string", "string"], "returns": "int"}],
+    "str_hex_decode": [{"params": ["string"], "returns": "string"}],
+    "str_hex_encode": [{"params": ["string"], "returns": "string"}],
     "str_is_float": [{"params": ["string"], "returns": "bool"}],
     "str_is_int": [{"params": ["string"], "returns": "bool"}],
     "str_len": [{"params": ["string"], "returns": "int"}],
@@ -839,9 +1017,12 @@
     "str_lower": [{"params": ["string"], "returns": "string"}],
     "str_map": [{"params": [], "returns": "StrMap"}],
     "str_match": [{"params": ["string", "string"], "returns": "bool"}],
+    "str_pq": [{"params": [], "returns": "StrPQ"}],
+    "str_queue": [{"params": [], "returns": "StrQueue"}],
     "str_repeat": [{"params": ["string", "int"], "returns": "string"}],
     "str_replace": [{"params": ["string", "string", "string"], "returns": "string"}],
     "str_split": [{"params": ["string", "string"], "returns": "StrList"}],
+    "str_stack": [{"params": [], "returns": "StrStack"}],
     "str_starts_with": [{"params": ["string", "string"], "returns": "bool"}],
     "str_substr": [{"params": ["string", "int", "int"], "returns": "string"}],
     "str_to_float": [{"params": ["string"], "returns": "float"}],
@@ -852,6 +1033,7 @@
      {"params": ["float", "float"], "returns": "Dist"}],
     "tan": [{"params": ["float"], "returns": "float"}],
     "tanh": [{"params": ["float"], "returns": "float"}],
+    "template_render": [{"params": ["string", "Json"], "returns": "string"}],
     "test": [{"params": ["string"], "returns": "Test"}],
     "trigamma": [{"params": ["float"], "returns": "float"}],
     "trunc": [{"params": ["float"], "returns": "float"}],

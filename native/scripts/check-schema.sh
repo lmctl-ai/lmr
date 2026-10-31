@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The committed schema must equal what the registry generates, the embedded bytes must equal the file, and (when a
-# DSL v5 compiler is available) the compiler's canonical signatures must equal the host registry's.
+# lmcode v6 compiler is available) the compiler's canonical signatures must equal the host registry's.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN="${1:?usage: check-schema.sh path/to/lmr}"
@@ -9,15 +9,15 @@ WORK="$(mktemp -d "${TMPDIR:-/tmp}/rcli-schema-XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 "$BIN" --generate-schema > "$WORK/generated.json"
 cmp "$SCHEMA" "$WORK/generated.json" || { echo "schema/lmr.dsl.json is stale: run scripts/update-schema.sh" >&2; exit 1; }
-"$BIN" --dsl-schema --json > "$WORK/embedded.json"
+"$BIN" --lmcode-schema --json > "$WORK/embedded.json"
 cmp "$SCHEMA" "$WORK/embedded.json" || { echo "the binary embeds an older schema: rebuild" >&2; exit 1; }
 LMSCRIPT="${LMSCRIPT_BIN:-$(command -v lmscript || true)}"
 if [[ -n "$LMSCRIPT" ]]; then
-  "$LMSCRIPT" --dsl-signatures "$SCHEMA" > "$WORK/compiler.txt"
-  "$BIN" --dsl-signatures > "$WORK/host.txt"
+  "$LMSCRIPT" --lmcode-signatures "$SCHEMA" > "$WORK/compiler.txt"
+  "$BIN" --lmcode-signatures > "$WORK/host.txt"
   diff -u "$WORK/compiler.txt" "$WORK/host.txt" || { echo "compiler and host signatures differ" >&2; exit 1; }
   # Until the compiler injects lmcode std itself, the schema carries it: every canonical std signature must be there.
-  "$LMSCRIPT" --dsl-signatures "$HERE/cpp/std/lmcode-std.schema.json" > "$WORK/std.txt"
+  "$LMSCRIPT" --lmcode-signatures "$HERE/cpp/std/lmcode-std.schema.json" > "$WORK/std.txt"
   missing="$(comm -23 <(sort "$WORK/std.txt") <(sort "$WORK/host.txt"))"
   [[ -z "$missing" ]] || { echo "lmcode std signatures missing from the schema:" >&2; echo "$missing" >&2; exit 1; }
   echo "schema ok: $(wc -l < "$WORK/host.txt") signatures agree with $LMSCRIPT"

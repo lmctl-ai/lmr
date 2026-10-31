@@ -7,7 +7,7 @@ out.check (any failure gives exit 4 and names the check). Usage:
 
     python3 native/tests/host_test.py build-native/bin/lmr [-k substring]
 
-Needs a DSL v5 lmscript ($LMSCRIPT_BIN or on PATH); exits 0 with a notice when none is available.
+Needs a lmcode v6 lmscript ($LMSCRIPT_BIN or on PATH); exits 0 with a notice when none is available.
 """
 import concurrent.futures
 import json
@@ -33,7 +33,7 @@ class Case:
         self.err = err            # substrings expected on stderr
         self.files = files or {}  # files to create in the work dir before running
         self.chunks = chunks      # several chunk bodies, run in one process
-        self.args = args          # raw CLI args instead of --dsl (no compile)
+        self.args = args          # raw CLI args instead of --lmcode (no compile)
 
 
 CASES = []
@@ -875,15 +875,15 @@ out.check(t.conf_level() == 0.9 && t.alternative() == "two.sided" && t.df() == 6
 # ---------------------------------------------------------------- CLI
 case("cli: no arguments", None, args=[], code=2, err=("usage: lmr",))
 case("cli: unknown flag", None, args=["--frobnicate"], code=2, err=("usage",))
-case("cli: --dsl without files", None, args=["--dsl"], code=2, err=("usage",))
-case("cli: flag among files", None, args=["--dsl", "a.dslb", "--x"], code=2, err=("usage",))
+case("cli: --lmcode without files", None, args=["--lmcode"], code=2, err=("usage",))
+case("cli: flag among files", None, args=["--lmcode", "a.dslb", "--x"], code=2, err=("usage",))
 case("cli: version", None, args=["--version"], out=("lmr",))
-case("cli: schema summary", None, args=["--dsl-schema"], out=("context out: Out", "Vec:", "fn lm(Frame, string) -> Lm"))
+case("cli: schema summary", None, args=["--lmcode-schema"], out=("context out: Out", "Vec:", "fn lm(Frame, string) -> Lm"))
 case("cli: --schema alias", None, args=["--schema"], out=("context out: Out",))
-case("cli: dsl-schema json", None, args=["--dsl-schema", "--json"], out=('"dsl.schema": 2', '"name": "lmr"'))
-case("cli: dsl-schema bad option", None, args=["--dsl-schema", "--yaml"], code=2, err=("usage: lmr",))
-case("cli: missing bytecode", None, args=["--dsl", "nope.dslb"], code=3, out=('"phase": "load"', "nope.dslb"))
-case("cli: garbage bytecode", None, args=["--dsl", "junk.dslb"], code=3, out=('"phase": "load"',),
+case("cli: dsl-schema json", None, args=["--lmcode-schema", "--json"], out=('"dsl.schema": 2', '"name": "lmr"'))
+case("cli: dsl-schema bad option", None, args=["--lmcode-schema", "--yaml"], code=2, err=("usage: lmr",))
+case("cli: missing bytecode", None, args=["--lmcode", "nope.dslb"], code=3, out=('"phase": "load"', "nope.dslb"))
+case("cli: garbage bytecode", None, args=["--lmcode", "junk.dslb"], code=3, out=('"phase": "load"',),
      files={"junk.dslb": "not bytecode at all"})
 
 
@@ -915,7 +915,7 @@ def run_case(binary, lmscript, c, root):
                 p = os.path.join(work, "chunk%d.dslb" % i)
                 compile_chunk(lmscript, b, p)
                 paths.append(os.path.basename(p))
-            argv = [binary, "--dsl"] + paths
+            argv = [binary, "--lmcode"] + paths
         r = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=work, timeout=120)
         problems = []
         if r.returncode != c.code:

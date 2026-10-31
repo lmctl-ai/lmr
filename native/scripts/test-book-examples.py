@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run the three install-enabled public book examples from isolated working dirs."""
+import argparse
 import os
 from pathlib import Path
 import shutil
@@ -78,6 +79,11 @@ def run_examples(candidate=None):
                 print(f"PASS {name}: {result.stdout.decode().rstrip()}")
 
 
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--candidate-only', action='store_true',
+                    help='check the local candidate without fetching a separately released host')
+options = parser.parse_args()
+
 # Check the candidate before the network-dependent release installation.
 candidate = Path(os.environ.get("LMR_BIN", ROOT / "build-native" / "bin" / ("lmr.exe" if os.name == "nt" else "lmr"))).resolve()
 if not candidate.is_file():
@@ -86,5 +92,8 @@ print(f"Candidate host: {candidate}")
 run_examples(candidate)
 
 # Prove release discovery, checksums, and execution from an empty tool cache.
-print("Released @latest install:")
-run_examples()
+if options.candidate_only:
+    print("SKIP released installation: explicit candidate-only mode")
+else:
+    print("Released @latest install:")
+    run_examples()

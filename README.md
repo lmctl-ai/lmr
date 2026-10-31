@@ -68,3 +68,5 @@ Regenerate the README illustrations and gallery with `docs/readme/render.sh`. Th
 ## License and company
 
 MIT license; see [LICENSE](LICENSE). Made by **Lattice Systems LLC**.
+
+For offline candidate qualification, run `python3 native/scripts/test-book-examples.py --candidate-only` after CTest. Omit that option to additionally verify installation of the separately published latest host; during a hard protocol cutover that release can lag the candidate.

@@ -40,7 +40,7 @@ if (!file_exists("build")) { mkdir("build"); }
 if (!file_exists("build/readme")) { mkdir("build/readme"); }
 if (!file_exists("build/rendered")) { mkdir("build/rendered"); }
 savedsl(stats, "build/readme/gallery-stats.dslb");
-r = system ${dsl_cli(stats)} --dsl build/readme/gallery-stats.dslb;
+r = system ${dsl_cli(stats)} --lmcode build/readme/gallery-stats.dslb;
 if (r.code != 0) { println(str(r.stderr)); exit(r.code); }
 v = json_parse(r.stdout).result.values;
 
@@ -134,7 +134,7 @@ scene.text(498.0, 147.0, 15.0, ${minimum_ab}, "#17283b").set_attr("font-weight",
 scene.render_png("build/rendered/readme-rosenbrock.png", 860, 340, 1);
 end _lmcode_
 savedsl(draw, "build/readme/gallery-draw.dslb");
-render = system ${dsl_cli(draw)} --dsl build/readme/gallery-draw.dslb;
+render = system ${dsl_cli(draw)} --lmcode build/readme/gallery-draw.dslb;
 if (render.code != 0) { println(str(render.stderr)); exit(render.code); }
 copy_file("build/rendered/readme-normal-quantile.png", "docs/readme/normal-quantile.png");
 copy_file("build/rendered/readme-linear-fit.png", "docs/readme/linear-fit.png");
