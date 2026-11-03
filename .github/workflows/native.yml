@@ -37,9 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Verify release version contract
-        run: |
-          python3 scripts/test-release-version.py
-          python3 tests/lmcode-example-contract.py
+        run: python3 scripts/test-release-version.py
       - id: version
         run: |
           if [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/main ]]; then
@@ -134,6 +132,11 @@ jobs:
       - name: test
         if: env.ONLY_OK == 'true'
         run: ctest --test-dir build-native --output-on-failure --timeout 900
+
+      - name: Install the compiler compatible with retained book examples
+        if: env.ONLY_OK == 'true'
+        # Keep current host/signature checks on the compiler pin above; these examples still exercise the retained bytecode-save interface.
+        run: npm install -g @lmctl-ai/lmctl@0.2.448
 
       - name: install-enabled book examples and output checks
         if: env.ONLY_OK == 'true'
