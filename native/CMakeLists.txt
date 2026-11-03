@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
-project(lmr VERSION 0.5.1 LANGUAGES CXX)
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION" LMR_RELEASE_VERSION LIMIT_COUNT 1)
+project(lmr VERSION ${LMR_RELEASE_VERSION} LANGUAGES CXX)
 # The native rcli: a C++17 statistics core (standard library only) and the `_lmcode_` bytecode host lmr.
 # No R, no Python, no Docker, no third-party libraries. The build is one executable: on Linux it links libstdc++ and
 # libgcc statically and glibc (libc, libm) dynamically (-DLMR_FULL_STATIC=ON links glibc too); on Windows (MinGW)

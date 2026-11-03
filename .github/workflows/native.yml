@@ -14,7 +14,6 @@ on:
         options: [all, linux-x64, linux-arm64, macos-arm64, macos-x64, windows-x64]
   push:
     branches: [main]
-    tags: ["v*"]
     # Docs-only pushes do not need the 5-OS matrix (macOS bills 10x). Path filters are not evaluated for tag pushes,
     # so releases always build.
     paths-ignore: ["durable-memory/**", "**.md"]
@@ -26,11 +25,34 @@ permissions:
   contents: read
 
 concurrency:
-  group: native-${{ github.ref }}
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+  group: native-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
 
 jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release: ${{ steps.version.outputs.release }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Verify release version contract
+        run: python3 scripts/test-release-version.py
+      - id: version
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/main ]]; then
+            version="$(scripts/derive-release-version.sh "$GITHUB_RUN_NUMBER")"
+            release=true
+          else
+            version="$(scripts/derive-release-version.sh --diagnostic)"
+            release=false
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+          echo "lmr version $version (release=$release)"
+
   build:
+    needs: version
     strategy:
       fail-fast: false
       matrix:
@@ -54,6 +76,10 @@ jobs:
         if: env.ONLY_OK == 'true'
         with:
           persist-credentials: false # no token in .git/config for npm scripts
+
+      - name: Stamp CI release version
+        if: env.ONLY_OK == 'true'
+        run: scripts/stamp-version.sh "${{ needs.version.outputs.version }}"
 
       - name: verify the vendored sdk header (sdk.lock)
         if: env.ONLY_OK == 'true'
@@ -141,11 +167,13 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    if: needs.version.outputs.release == 'true'
+    needs: [version, build]
     runs-on: ubuntu-24.04
     permissions:
       contents: write # gh release create
+    env:
+      RELEASE_VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
@@ -161,8 +189,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Idempotent: re-running a tag's workflow overwrites the assets.
-          if gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --clobber dist/*
+          if gh release view "v$RELEASE_VERSION" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "v$RELEASE_VERSION" -R "$GITHUB_REPOSITORY" --clobber dist/*
           else
-            gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes dist/*
+            gh release create "v$RELEASE_VERSION" -R "$GITHUB_REPOSITORY" --title "lmr v$RELEASE_VERSION" --generate-notes dist/*
           fi
