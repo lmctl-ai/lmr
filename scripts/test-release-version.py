@@ -13,4 +13,5 @@ with tempfile.TemporaryDirectory() as d:
  assert (repo/'VERSION').read_text().strip()==expected
  assert subprocess.check_output([calc,'--diagnostic'],text=True).strip()==expected
  assert 'file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION" LMR_RELEASE_VERSION' in (repo/'native/CMakeLists.txt').read_text()
+ assert 'HERE.parent / "VERSION"' in (repo/'native/scripts/check-version.py').read_text()
  print('PASS lmr run-derived release version and stamp')
