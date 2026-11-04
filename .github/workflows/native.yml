@@ -139,7 +139,7 @@ jobs:
         if: env.ONLY_OK == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python3 native/scripts/test-book-examples.py --candidate-only  # restore the released-install proof after the first protocol-compatible release
+        run: python3 native/scripts/test-book-examples.py
 
       - name: linkage
         if: env.ONLY_OK == 'true'
