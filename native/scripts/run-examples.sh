@@ -5,7 +5,7 @@
 set -uo pipefail
 BIN="${1:?usage: run-examples.sh path/to/lmr [example.lms ...]}"
 shift
-LMSCRIPT="${LMSCRIPT_BIN:-$(command -v lmscript || true)}"
+LMSCRIPT="${LMSCRIPT_EXAMPLE_BIN:-${LMSCRIPT_BIN:-$(command -v lmscript || true)}}"
 if [[ -z "$LMSCRIPT" ]]; then echo "lmscript not found: DSL examples skipped"; exit 0; fi
 export LMR_BIN="$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")"
 # First on PATH too, so `_lmcode_ cli="lmr"` (install-and-run.lms) binds to this build instead of downloading a release.

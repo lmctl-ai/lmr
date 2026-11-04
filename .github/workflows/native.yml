@@ -132,7 +132,16 @@ jobs:
       - name: Install the compiler compatible with retained book examples
         if: env.ONLY_OK == 'true'
         # Keep current host/signature checks on the compiler pin above; the example suite uses the retained bytecode-save interface.
-        run: npm install -g @lmctl-ai/lmctl@0.2.448
+        run: |
+          npm install --prefix "$RUNNER_TEMP/lmr-example-compat" --ignore-scripts --no-audit --no-fund @lmctl-ai/lmctl@0.2.448
+          example_bin="$RUNNER_TEMP/lmr-example-compat/node_modules/.bin/lmscript"
+          example_js="$RUNNER_TEMP/lmr-example-compat/node_modules/@lmctl-ai/lmctl/bin/lmscript"
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            example_bin="$(cygpath -u "$example_bin")"
+            example_js="$(cygpath -u "$example_js")"
+          fi
+          echo "LMSCRIPT_EXAMPLE_BIN=$example_bin" >> "$GITHUB_ENV"
+          echo "LMSCRIPT_EXAMPLE_JS=$example_js" >> "$GITHUB_ENV"
 
       - name: test
         if: env.ONLY_OK == 'true'
@@ -142,7 +151,7 @@ jobs:
         if: env.ONLY_OK == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python3 native/scripts/test-book-examples.py
+        run: LMSCRIPT_BIN="$LMSCRIPT_EXAMPLE_BIN" LMSCRIPT_JS="$LMSCRIPT_EXAMPLE_JS" python3 native/scripts/test-book-examples.py
 
       - name: linkage
         if: env.ONLY_OK == 'true'
