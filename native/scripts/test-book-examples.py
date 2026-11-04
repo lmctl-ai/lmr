@@ -34,9 +34,6 @@ def compiler_command(script):
         return [str(entry), str(script)]
     # npm installs Windows .cmd shims, which CreateProcess cannot launch directly.
     node = shutil.which("node")
-    javascript = os.environ.get("LMSCRIPT_JS")
-    if node and javascript and Path(javascript).is_file():
-        return [node, str(Path(javascript).resolve()), str(script)]
     root = subprocess.run("npm root -g", shell=True, check=True, capture_output=True, text=True).stdout.strip()
     entry = Path(root) / "@lmctl-ai" / "lmctl" / "bin" / "lmscript"
     if not node or not entry.is_file():
