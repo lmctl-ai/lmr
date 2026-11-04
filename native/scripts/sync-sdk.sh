@@ -17,6 +17,8 @@ stdlib/encoding.hpp:cpp/stdlib/encoding.hpp
 stdlib/json.hpp:cpp/stdlib/json.hpp
 stdlib/result.hpp:cpp/stdlib/result.hpp
 stdlib/result_json.hpp:cpp/stdlib/result_json.hpp
+stdlib/invocation.hpp:cpp/stdlib/invocation.hpp
+stdlib/result_contract.hpp:cpp/stdlib/result_contract.hpp
 std/lmcode-std.schema.json:cpp/std/lmcode-std.schema.json"
 hash() { sha256sum "$1" | cut -c1-64; }
 if [ "${1:-}" = "--verify" ]; then

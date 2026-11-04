@@ -1,4 +1,4 @@
-// access: write (build/dsl/tut-integrate.dslb)
+// access: pure (nothing is written beside the host run; the _lmcode_ program file is a private temporary)
 // Topic: numerical integration against closed forms, including singular, infinite and divergent cases (after: R ?integrate,
 //   ?uniroot, ?optimize; numerical-analysis quadrature exercises)
 // What it does: one _lmcode_ chunk integrates seven functions with the native integrate (QUADPACK; the integrands are written

@@ -30,7 +30,7 @@ tolerance tiers still apply.
   The compiler injects std, while this host retains an effective generated schema (host plus std). `--generate-schema` writes it
   from `reg.signatures()`; check-schema.sh checks that every canonical std signature is in it.
 - **Block spelling**: `_lmcode_ ... end _lmcode_`. Host options use the lmcode flag family with no retired aliases.
-  Internal `.dslb`, `savedsl` and `dsl_cli` names remain. Qualification uses the mono main source compiler.
+  No `.dslb`, `savedsl` or `dsl_cli` remain in this repo; the compiler writes program files privately. Qualification uses the staging compiler (run_lmcode).
 - **`native/schema/lmr.dsl.json`: GENERATED from the registry.** Never edit it by hand. Change a `bind_*.cpp`, then run
   `native/scripts/update-schema.sh`. The ctest `schema_matches_registry` diffs the file, the embedded bytes, and
   `lmscript --lmcode-signatures` against `lmr --lmcode-signatures`.

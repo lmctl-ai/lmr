@@ -1,4 +1,4 @@
-// access: write (build/dsl/: flow-anomaly-*.dslb, flow-anomaly.csv)
+// access: write (build/dsl/flow-anomaly.csv; the _lmcode_ program file is a private temporary)
 // Topic: anomaly detection on a seasonal series, with lmscript tuning the detector by re-running a native chunk.
 // What it does:
 //   A DSL chunk simulates 10 years of monthly data (trend + fixed seasonal cycle + AR(1) noise) with three injected

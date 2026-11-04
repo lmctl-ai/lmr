@@ -1,4 +1,4 @@
-// access: write (build/dsl/tut-smoothing.dslb)
+// access: pure (nothing is written beside the host run; the _lmcode_ program file is a private temporary)
 // Topic: smoothing and interpolation measured against the true function (after: R ?smooth.spline, ?loess, ?spline, ?approx)
 // What it does: one _lmcode_ chunk samples a cubic f(x) = x^3 - 3x with noise, smooths it with smooth_spline (GCV) and
 //   loess (span 0.4, degree 2), prints the error of each smoother against f on the grid and at new points, and checks

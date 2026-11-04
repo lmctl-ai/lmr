@@ -35,7 +35,7 @@ case "${FAKE_DOCKER_CASE:-ok}" in
   block) : >"$BLOCK_FILE"; while :; do sleep 1; done;;
   crash) exit "${FAKE_DOCKER_RC:-139}";;
 esac
-""")
+""", encoding='utf-8')
     docker.chmod(0o755)
     env = os.environ.copy()
     env.update(PATH=str(fake) + os.pathsep + env["PATH"], ARGS_FILE=str(args_file),
@@ -44,9 +44,9 @@ esac
                SECRET_SHIM_TEST="must-not-pass")
     colon = root / "work:area"
     colon.mkdir()
-    p = subprocess.run([str(shim), "--schema"], cwd=colon, env=env, text=True, capture_output=True)
+    p = subprocess.run([str(shim), "--schema"], cwd=colon, env=env, text=True, capture_output=True, errors='replace', encoding='utf-8')
     assert p.returncode == 0 and json.loads(p.stdout)["success"] is True, (p.returncode, p.stdout, p.stderr)
-    argv = args_file.read_text().splitlines()
+    argv = args_file.read_text(encoding='utf-8').splitlines()
     assert argv[argv.index("--mount") + 1] == f"type=bind,src={colon},dst={colon}", argv
     assert "--network=none" in argv and "--cpus=2" in argv and "--memory=5g" in argv
     assert "--pull=never" in argv
@@ -69,7 +69,7 @@ esac
     assert blocked.returncode == 143, blocked.returncode
     assert not list(host_tmp.iterdir()), "signal trap leaked host capture files"
     assert not list(colon.glob(".rcli-tmp.*")), "signal trap leaked container temp directory"
-    assert "kill" in control_file.read_text() and "rm" in control_file.read_text(), control_file.read_text()
+    assert "kill" in control_file.read_text(encoding='utf-8') and "rm" in control_file.read_text(encoding='utf-8'), control_file.read_text(encoding='utf-8')
 
     # Four simultaneous calls each receive an isolated temporary directory and container name.
     peers = []
@@ -81,19 +81,19 @@ esac
         assert peer.returncode == 0, (peer.returncode, stdout, stderr)
     names = []
     for index in range(4):
-        peer_argv = (root / f"args-{index}").read_text().splitlines()
+        peer_argv = (root / f"args-{index}").read_text(encoding='utf-8').splitlines()
         names.append(peer_argv[peer_argv.index("--name") + 1])
     assert len(set(names)) == 4, names
     assert not list(colon.glob(".rcli-tmp.*"))
 
     env["FAKE_DOCKER_CASE"] = "missing"
-    p = subprocess.run([str(shim), "--schema"], cwd=colon, env=env, text=True, capture_output=True)
+    p = subprocess.run([str(shim), "--schema"], cwd=colon, env=env, text=True, capture_output=True, errors='replace', encoding='utf-8')
     assert p.returncode == 8 and "unavailable" in p.stdout.lower(), (p.returncode, p.stdout, p.stderr)
 
     for case, rc, code in (("crash", 1, "INTERNAL_ERROR"), ("partial", 1, "INTERNAL_ERROR"), ("daemon", 8, "SERVICE_UNAVAILABLE")):
         env["FAKE_DOCKER_CASE"] = case
         env["FAKE_DOCKER_RC"] = "139"
-        p = subprocess.run([str(shim), "--schema"], cwd=colon, env=env, text=True, capture_output=True)
+        p = subprocess.run([str(shim), "--schema"], cwd=colon, env=env, text=True, capture_output=True, errors='replace', encoding='utf-8')
         body = json.loads(p.stdout)
         assert p.returncode == rc and body["error"]["code"] == code, (case, p.returncode, p.stdout, p.stderr)
 
@@ -102,17 +102,17 @@ esac
     attack.parent.mkdir(parents=True, exist_ok=True)
     attack.mkdir()
     args_file.unlink(missing_ok=True)
-    p = subprocess.run([str(shim), "--schema"], cwd=attack, env=env, text=True, capture_output=True)
+    p = subprocess.run([str(shim), "--schema"], cwd=attack, env=env, text=True, capture_output=True, errors='replace', encoding='utf-8')
     assert p.returncode == 2 and "comma" in p.stdout.lower(), (p.returncode, p.stdout, p.stderr)
     assert not args_file.exists() and not pathlib.Path("/tmp/pwn").exists()
     for bad_name in ("comma,name", 'quote"name', "equals=name", "line\nbreak", "control\x01byte"):
         bad_dir = root / ("unsafe-" + bad_name)
         bad_dir.mkdir()
-        p = subprocess.run([str(shim), "--schema"], cwd=bad_dir, env=env, text=True, capture_output=True)
+        p = subprocess.run([str(shim), "--schema"], cwd=bad_dir, env=env, text=True, capture_output=True, errors='replace', encoding='utf-8')
         assert p.returncode == 2 and ("control" in p.stdout.lower() or "comma" in p.stdout.lower()), (bad_name, p.returncode, p.stdout)
         assert not args_file.exists()
 
     for unsafe in (pathlib.Path("/"), home, pathlib.Path(tempfile.gettempdir())):
-        p = subprocess.run([str(shim), "--schema"], cwd=unsafe, env=env, text=True, capture_output=True)
+        p = subprocess.run([str(shim), "--schema"], cwd=unsafe, env=env, text=True, capture_output=True, errors='replace', encoding='utf-8')
         assert p.returncode == 2 and json.loads(p.stdout)["error"]["code"] == "INVALID_REQUEST", (unsafe, p.returncode, p.stdout)
 print("rcli shim boundary, docker arguments, env filtering, cleanup and failure mapping passed")

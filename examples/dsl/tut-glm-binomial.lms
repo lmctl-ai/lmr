@@ -1,4 +1,4 @@
-// access: write (build/dsl/tut-glm-binomial.dslb)
+// access: pure (nothing is written beside the host run; the _lmcode_ program file is a private temporary)
 // Topic: logistic regression with odds ratios and a likelihood-ratio test (after: R ?glm, ?predict.glm)
 // What it does: one _lmcode_ chunk simulates a dose-response experiment with a known logit, fits a binomial GLM with the
 //   native glm, prints the coefficient table with odds ratios and 95% Wald intervals, tests the slope with the deviance

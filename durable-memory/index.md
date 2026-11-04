@@ -5,3 +5,5 @@
   `docs/dsl-api.md`): layout, build, decisions, clean-room rule, measured agreement with R.
 - [native-plan.md](native-plan.md): the earlier Rust `lmnum` design (op-by-op mapping, tolerance tiers, sandbox plan);
   superseded for rcli by native-dsl.md but still the reference for op risks and licensing blockers.
+- [invocation-envelope.md](invocation-envelope.md): the native host's one-envelope `--lmcode` answer, builder argv,
+  per-slot result payloads, dry mode, and the harness's compile-fixture path.

@@ -18,8 +18,7 @@ newer). No checkout, build or schema file:
 p = _lmcode_ cli="lmr" install="github:lmctl-ai/lmr@latest";
 ...
 end _lmcode_
-savedsl(p, "job.dslb");
-r = system ${dsl_cli(p)} --lmcode job.dslb;
+r = run_lmcode(p);
 ```
 
 - `cli="lmr"`: lmscript compiles against the bytes `lmr --lmcode-schema --json` prints, so the bytecode is bound to the
@@ -27,14 +26,14 @@ r = system ${dsl_cli(p)} --lmcode job.dslb;
 - `install="github:lmctl-ai/lmr@latest"`: only when `lmr` is not on PATH, lmscript downloads that release's
   `lmr-OS-ARCH[.exe]` once into its tool cache and checks it against the SHA-256 digest GitHub reports. Nothing is
   installed without this line.
-- `dsl_cli(p)`: the argv prefix of that exact binary.
+- `run_lmcode(p)`: lmscript hands the block to that exact binary in a private program file.
 
 The other recipes use `schema="../../native/schema/lmr.dsl.json"` and `lib/lmr.lms`, so they test the checkout's own
 build.
 
-`lib/lmr.lms` finds the binary: `$LMR_BIN`, then `lmr` on PATH, then `build-native/bin/lmr`. It writes
-the bytecode to `build/dsl/NAME.dslb`. You can also run a saved chunk directly with
-`build-native/bin/lmr --lmcode build/dsl/tut-lm.dslb`. Each recipe exits 0 only when every self-check holds. A failed
+`lib/lmr.lms` runs blocks through the binary (`lmr` on PATH as the host of `cli="lmr"`). It no longer
+writes any bytecode; you can still run a chunk directly with
+`build-native/bin/lmr --lmcode <private program file>` only as a low-level probe (the compiler owns the private files). Each recipe exits 0 only when every self-check holds. A failed
 `out.check` makes `lmr` exit 4, and the recipe passes that code on.
 
 ## Ports of the tutorial recipes

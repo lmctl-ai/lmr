@@ -8,9 +8,9 @@ def call(op,p,no_r=False):
   with tempfile.NamedTemporaryFile(mode='w') as f:
    f.write(payload);f.flush();args=[b,'--input-file',f.name]
    env=os.environ.copy();env['RCLI_RSCRIPT']='/rcli-test-no-rscript' if no_r else env.get('RCLI_RSCRIPT','/usr/bin/Rscript')
-   r=subprocess.run(args,capture_output=True,text=True,env=env);return r.returncode,json.loads(r.stdout)
+   r=subprocess.run(args,capture_output=True,text=True,env=env, errors='replace', encoding='utf-8');return r.returncode,json.loads(r.stdout)
  env=os.environ.copy();env['RCLI_RSCRIPT']='/rcli-test-no-rscript' if no_r else env.get('RCLI_RSCRIPT','/usr/bin/Rscript')
- r=subprocess.run(args,capture_output=True,text=True,env=env)
+ r=subprocess.run(args,capture_output=True,text=True,env=env, errors='replace', encoding='utf-8')
  return r.returncode,json.loads(r.stdout)
 # R default prop.test permits per-group probabilities to be omitted.
 rc,d=call('test_htest',{'test':'prop','x':[15,25],'trials':[40,50]})
@@ -54,9 +54,9 @@ rc,d=call('test_htest',{'test':'fisher','x':[10,20,30,40,50,60],'rows':2,'cols':
 assert rc==0 and d['p_value'] is not None,('fisher rxc',rc,d)
 # Quoted CSV header names follow CSV quoting rules.
 with tempfile.TemporaryDirectory() as temp:
- path=pathlib.Path(temp)/'quoted.csv';path.write_text('"y","x"\n1,1\n2,2\n4,3\n5,4\n')
+ path=pathlib.Path(temp)/'quoted.csv';path.write_text('"y","x"\n1,1\n2,2\n4,3\n5,4\n', encoding='utf-8')
  # Fit is constrained to cwd, so create it under the example data directory for this CLI test.
- pth=pathlib.Path('examples/data/review2-quoted.csv');pth.write_text(path.read_text())
+ pth=pathlib.Path('examples/data/review2-quoted.csv');pth.write_text(path.read_text(encoding='utf-8'), encoding='utf-8')
  try:
   rc,d=call('fit_lm',{'formula':'y ~ x','file':str(pth)})
   # lm() through LAPACK QR: the coefficient error is bounded by about cond(X) * eps with cond([1, x], x = 1..4) = 10, so 64 eps = 1.4e-14

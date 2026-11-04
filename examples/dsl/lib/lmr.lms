@@ -1,15 +1,16 @@
-// lmr: compile-and-run helpers shared by the _lmcode_ examples.
-//   lmr.binary()            -> path of lmr ($LMR_BIN, then PATH, then build-native/bin/lmr)
-//   lmr.save(dsl, name)     -> writes build/dsl/NAME.dslb and returns the path
-//   lmr.exec(paths)         -> runs the bytecode files in ONE lmr process (shared host state);
-//                              echoes the chunks' report text and returns {code, ok, values, message}
-//   lmr.run(dsl, name)      -> save + exec of one chunk
-//   lmr.check(res)          -> exits with the host's code when the run failed, else returns res.values
-// Effects: creates build/dsl/ below the working directory; spawns lmr with argv (no shell).
-// Under --dry-run nothing is written or spawned and exec returns {code: 0, ok: true, values: {}, simulated: true}.
+// lmr: run-and-check helpers shared by the _lmcode_ examples.
+//   lmr.run(dsl, name)      -> runs one _lmcode_ block through lmr (run_lmcode) and returns the
+//                              result as a map {ok, code, values, checks, message}
+//                              (name is kept for source compatibility; it no longer names a file)
+//   lmr.run_many(dsls)      -> runs several blocks in ONE lmr process via lmcode_build
+//                              (keep()/kept_*() state carries across them); returns the aggregate
+//                              (the last slot's values/checks) with the same map shape
+//   lmr.check(res)          -> exits with the host-side code class when the run failed, else returns res.values
+// Effects: lmscript hands the block(s) to lmr itself; nothing is written by this library.
+// Under --dry-run the block is checked and planned but nothing runs; the dry envelope returns empty values.
 package lmr;
 
-function binary() {
+function _argv0() {
   b = env("LMR_BIN", "");
   if (b != "") { return b; }
   w = which("lmr");
@@ -17,29 +18,32 @@ function binary() {
   return abs_path("build-native/bin/lmr");
 }
 
-function save(dsl, name) {
-  mkdir("build/dsl");
-  path = "build/dsl/" + name + ".dslb";
-  savedsl(dsl, path);
-  return path;
-}
-
-function exec(paths) {
-  argv = concat([binary(), "--lmcode"], paths);
-  r = system(argv, {timeoutMs: 600000});
-  if (r.code == null) { return {code: 0, ok: true, values: {}, simulated: true}; }
-  if (r.stderr != "") { printf("%s", r.stderr); }
-  last = "";
-  for (line in lines(r.stdout)) { if (trim(line) != "") { last = line; } }
-  if (last == "") { return {code: r.code, ok: false, values: {}, message: "lmr printed no result line (exit " + str(r.code) + ")"}; }
-  res = json_parse(last);
-  if (res.ok) { return {code: r.code, ok: true, values: res.result.values, checks: res.result.checks}; }
-  where = has_key(res, "line") ? " (dsl line " + str(res.line) + ")" : "";
-  return {code: r.code, ok: false, values: {}, message: res.phase + " " + res.code + ": " + res.message + where};
+function _map_result(r) {
+  if (r.ok) {
+    if (is_array(r.result)) {
+      last = r.result[r.result.len() - 1];
+      return {ok: true, code: 0, values: last.values, checks: last.checks, message: null, parts: r.result.len()};
+    }
+    return {ok: true, code: 0, values: r.result.values, checks: r.result.checks, message: null};
+  }
+  where = r.has("line") ? " (dsl line " + str(r.line) + ")" : "";
+  part = r.has("part") ? " (slot " + str(r.part) + ")" : "";
+  code = r.code == "APP_FAIL" ? 4 : (r.phase == "cli" ? 2 : 3);
+  return {ok: false, code: code, values: {}, message: r.phase + " " + r.code + ": " + r.message + where + part};
 }
 
 function run(dsl, name) {
-  return exec([save(dsl, name)]);
+  b = lmcode_build([_argv0()]);
+  b.add(dsl);
+  return _map_result(run_lmcode(b));
+}
+
+function run_many(dsls) {
+  b = lmcode_build([_argv0()]);
+  for (p in dsls) {
+    b.add(p);
+  }
+  return _map_result(run_lmcode(b));
 }
 
 function check(res) {
@@ -49,3 +53,4 @@ function check(res) {
   }
   return res.values;
 }
+

@@ -51,9 +51,9 @@ if __name__ == "__main__":
     import sys
     tables = {"tut-vehicles.csv": cars(), "tut-counts.csv": counts()}
     if "--check" in sys.argv:   # regenerate and fail when a committed file differs (the recipes' truth depends on these bytes)
-        drift = [name for name, text in tables.items() if not (ROOT / name).exists() or (ROOT / name).read_text() != text]
+        drift = [name for name, text in tables.items() if not (ROOT / name).exists() or (ROOT / name).read_text(encoding='utf-8') != text]
         print("DRIFT" if drift else "tutorial data reproducible from their seeds", drift)
         sys.exit(1 if drift else 0)
     for name, text in tables.items():
-        (ROOT / name).write_text(text)
+        (ROOT / name).write_text(text, encoding='utf-8')
     print("wrote", ROOT / "tut-vehicles.csv", "and", ROOT / "tut-counts.csv")

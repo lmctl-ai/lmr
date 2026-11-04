@@ -1,4 +1,4 @@
-// access: write (build/dsl/: flow-cluster-*.dslb, flow-points.csv, flow-labels.csv)
+// access: write (build/dsl/flow-points.csv, build/dsl/flow-labels.csv; the _lmcode_ program file is a private temporary)
 // Topic: choosing the number of clusters, then validating the partition with a second method.
 // What it does:
 //   Step 1 (DSL "scan"): simulates 4 seeded Gaussian clusters in 2-D (writes them to CSV) and runs k-means with

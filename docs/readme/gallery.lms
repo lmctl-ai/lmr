@@ -1,5 +1,5 @@
 // Compute example values with lmr, then draw a compact README gallery with lmdraw.
-stats = _lmcode_ cli="lmr" install="github:lmctl-ai/lmr@latest";
+stats = _lmcode_ schema="../../native/schema/lmr.dsl.json";
 let q = norm().q(0.975);
 let xs = vec();
 for (i in range(0, 101)) { xs.push(-3.5 + float(i) * 7.0 / 100.0); }
@@ -39,10 +39,9 @@ end _lmcode_
 if (!file_exists("build")) { mkdir("build"); }
 if (!file_exists("build/readme")) { mkdir("build/readme"); }
 if (!file_exists("build/rendered")) { mkdir("build/rendered"); }
-savedsl(stats, "build/readme/gallery-stats.dslb");
-r = system ${dsl_cli(stats)} --lmcode build/readme/gallery-stats.dslb;
-if (r.code != 0) { println(str(r.stderr)); exit(r.code); }
-v = json_parse(r.stdout).result.values;
+r = run_lmcode(stats);
+require(r.ok, "run failed: " + r.get("message", "unknown"));
+v = r.result.values;
 
 normal_path = "";
 normal_area = "M 54.0 278.0 ";
@@ -133,9 +132,8 @@ scene.rect(480.0, 119.0, 302.0, 44.0, "#ffffff").set_attr("rx", "10");
 scene.text(498.0, 147.0, 15.0, ${minimum_ab}, "#17283b").set_attr("font-weight", "700");
 scene.render_png("build/rendered/readme-rosenbrock.png", 860, 340, 1);
 end _lmcode_
-savedsl(draw, "build/readme/gallery-draw.dslb");
-render = system ${dsl_cli(draw)} --lmcode build/readme/gallery-draw.dslb;
-if (render.code != 0) { println(str(render.stderr)); exit(render.code); }
+render = run_lmcode(draw);
+require(render.ok, "run failed: " + render.get("message", "unknown"));
 copy_file("build/rendered/readme-normal-quantile.png", "docs/readme/normal-quantile.png");
 copy_file("build/rendered/readme-linear-fit.png", "docs/readme/linear-fit.png");
 copy_file("build/rendered/readme-rosenbrock.png", "docs/readme/rosenbrock-minimum.png");

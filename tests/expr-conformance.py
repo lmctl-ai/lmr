@@ -1,20 +1,20 @@
 import hashlib,json,os,pathlib,subprocess,sys,tempfile
 binary,worker,spec_path=sys.argv[1:]
 worker=pathlib.Path(worker); spec_path=pathlib.Path(spec_path); root=pathlib.Path(__file__).resolve().parents[1]
-corpus=json.loads((root/'tests/expr-corpus.json').read_text())
+corpus=json.loads((root/'tests/expr-corpus.json').read_text(encoding='utf-8'))
 def cpp_check(case):
-    p=subprocess.run([binary,'--expr-check'],input=json.dumps(case,ensure_ascii=False),text=True,capture_output=True,check=True)
+    p=subprocess.run([binary,'--expr-check'],input=json.dumps(case,ensure_ascii=False),text=True,capture_output=True,check=True, errors='replace', encoding='utf-8')
     return json.loads(p.stdout)
 def r_batch(cases):
     with tempfile.TemporaryDirectory() as td:
         inp=pathlib.Path(td)/'in.json';out=pathlib.Path(td)/'out.json'
-        inp.write_text(json.dumps({'cases':cases}))
-        p=subprocess.run(['Rscript','--vanilla','--default-packages=NULL',str(worker),'--','expr_builder_batch',str(inp),str(out)],capture_output=True,text=True)
+        inp.write_text(json.dumps({'cases':cases}), encoding='utf-8')
+        p=subprocess.run(['Rscript','--vanilla','--default-packages=NULL',str(worker),'--','expr_builder_batch',str(inp),str(out)],capture_output=True,text=True, errors='replace', encoding='utf-8')
         assert p.returncode==0,(p.stdout,p.stderr)
-        return json.loads(out.read_text())['decisions']
+        return json.loads(out.read_text(encoding='utf-8'))['decisions']
 sha=hashlib.sha256(spec_path.read_bytes()).hexdigest()
-assert subprocess.check_output([binary,'--expr-spec-hash'],text=True).strip()==sha
-assert subprocess.check_output(['Rscript','--vanilla','--default-packages=NULL',str(worker),'--expr-spec-hash'],text=True).strip()==sha
+assert subprocess.check_output([binary,'--expr-spec-hash'],text=True, errors='replace', encoding='utf-8').strip()==sha
+assert subprocess.check_output(['Rscript','--vanilla','--default-packages=NULL',str(worker),'--expr-spec-hash'],text=True, errors='replace', encoding='utf-8').strip()==sha
 accepted=0;accepted_asts=[]
 for case in corpus['accept']:
     got=cpp_check(case);assert got['accepted'],(case,got);assert got['sha256']==sha
@@ -33,14 +33,14 @@ for case in corpus['reject']:
     with tempfile.NamedTemporaryFile('w',delete=False) as f:json.dump(request,f,ensure_ascii=False);path=f.name
     env=os.environ.copy();env['RCLI_RSCRIPT']='/rcli-stage1b-must-not-start-r'
     try:
-        p=subprocess.run([binary,'--input-file',path],env=env,capture_output=True,text=True);out=json.loads(p.stdout)
+        p=subprocess.run([binary,'--input-file',path],env=env,capture_output=True,text=True, errors='replace', encoding='utf-8');out=json.loads(p.stdout)
         assert p.returncode==2 and out.get('error',{}).get('data',{}).get('tool_code')!='R_NOT_FOUND',(case,p.returncode,out,p.stderr)
     finally:pathlib.Path(path).unlink(missing_ok=True)
 def reject_before_r(req,code=None):
     env=os.environ.copy();env['RCLI_RSCRIPT']='/rcli-stage1b-must-not-start-r'
     with tempfile.NamedTemporaryFile('w',delete=False) as f:json.dump(req,f);path=f.name
     try:
-        p=subprocess.run([binary,'--input-file',path],env=env,capture_output=True,text=True);out=json.loads(p.stdout)
+        p=subprocess.run([binary,'--input-file',path],env=env,capture_output=True,text=True, errors='replace', encoding='utf-8');out=json.loads(p.stdout)
         got=out.get('error',{}).get('data',{}).get('tool_code')
         assert p.returncode==2 and got!='R_NOT_FOUND' and (code is None or got==code),(req,p.returncode,out,p.stderr)
     finally:pathlib.Path(path).unlink(missing_ok=True)

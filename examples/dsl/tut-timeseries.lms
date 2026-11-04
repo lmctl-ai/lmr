@@ -1,4 +1,4 @@
-// access: write (build/dsl/tut-timeseries.dslb)
+// access: pure (nothing is written beside the host run; the _lmcode_ program file is a private temporary)
 // Topic: seasonal decomposition, AR(1) fitting and forecasting with intervals (after: R ?stl, ?arima, ?predict.Arima, ?acf)
 // What it does: one _lmcode_ chunk builds a seasonal series from a simulated AR(1) (arima_sim) plus a fixed 12-period cycle,
 //   shows the seasonality in the ACF (lag 12 above lag 6), decomposes it with stl_periodic and checks the recovered

@@ -1,4 +1,4 @@
-// access: write (build/dsl/tut-nls.dslb)
+// access: pure (nothing is written beside the host run; the _lmcode_ program file is a private temporary)
 // Topic: nonlinear least squares with confidence intervals (after: R ?nls, ?confint.nls, the Michaelis-Menten example)
 // What it does: one _lmcode_ chunk simulates enzyme-kinetics data y = Vmax x / (Km + x) + noise, fits the curve with the
 //   native nls (default Gauss-Newton and the bounded port algorithm; the model is written in the chunk and evaluated by

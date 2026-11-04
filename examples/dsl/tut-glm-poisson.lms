@@ -1,4 +1,4 @@
-// access: write (build/dsl/tut-glm-poisson.dslb)
+// access: pure (nothing is written beside the host run; the _lmcode_ program file is a private temporary)
 // Topic: Poisson count regression with rate ratios and a dispersion check (after: R ?glm, Dobson's count examples)
 // What it does: one _lmcode_ chunk fits count ~ dose with a log link (native glm) from examples/data/tut-counts.csv, prints the
 //   coefficient table with rate ratios and 95% Wald intervals, checks the generating rates against the intervals, tests the

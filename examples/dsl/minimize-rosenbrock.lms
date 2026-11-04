@@ -1,4 +1,4 @@
-// access: write (build/dsl/minimize-rosenbrock.dslb)
+// access: pure (nothing is written beside the host run; the _lmcode_ program file is a private temporary)
 // Topic: unconstrained minimisation of Rosenbrock's banana function with BFGS (after: R ?optim)
 // What it does: one _lmcode_ chunk minimises 100 (b - a^2)^2 + (1 - a)^2 from (-1.2, 1) with the native BFGS (maxit 1000,
 //   reltol 1e-8); the objective is ordinary DSL code fed to the optimiser by reverse communication. It checks the known

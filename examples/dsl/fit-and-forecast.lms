@@ -1,4 +1,4 @@
-// access: write (build/dsl/fit-and-forecast.dslb)
+// access: pure (nothing is written beside the host run; the _lmcode_ program file is a private temporary)
 // Topic: R parity of the native ARIMA fit and forecast (after: R ?arima, ?predict.Arima)
 // What it does: one _lmcode_ chunk fits ARIMA(1,0,0) by CSS-ML to a fixed 80-value series and checks the five forecasts
 //   against the R 4.3.3 fixture of examples/fit-and-forecast.lms (want, the forecasts of predict(n.ahead = 5)). It also

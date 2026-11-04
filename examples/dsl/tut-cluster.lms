@@ -1,4 +1,4 @@
-// access: write (build/dsl/tut-cluster.dslb)
+// access: pure (nothing is written beside the host run; the _lmcode_ program file is a private temporary)
 // Topic: k-means and hierarchical clustering with recovery scoring (after: R ?kmeans, ?hclust, ?cutree; scikit-learn
 //   clustering guide)
 // What it does: one _lmcode_ chunk draws three Gaussian clusters with known centres, runs kmeans (Hartigan-Wong, 10

@@ -16,9 +16,9 @@ def run(op, params, key="value", expected=None):
                 argv.append(("--" if item else "--no-") + name)
             else:
                 argv.extend(["--" + name, str(item)])
-    got = json.loads(subprocess.run(argv, check=True, text=True, capture_output=True).stdout)[key]
+    got = json.loads(subprocess.run(argv, check=True, text=True, capture_output=True, errors='replace', encoding='utf-8').stdout)[key]
     if expected is not None:
-        want = [float(x) for x in (expected_dir / (expected + ".txt")).read_text().splitlines()]
+        want = [float(x) for x in (expected_dir / (expected + ".txt")).read_text(encoding='utf-8').splitlines()]
         actual = [float(x) for x in got]
         assert actual == want, (op, params, actual, want)
     return got
@@ -29,7 +29,7 @@ def rejects(op, params, code):
         values = value if isinstance(value, list) else [value]
         for item in values:
             argv.extend(["--" + name, str(item)])
-    proc = subprocess.run(argv, text=True, capture_output=True)
+    proc = subprocess.run(argv, text=True, capture_output=True, errors='replace', encoding='utf-8')
     assert proc.returncode == 2, (argv, proc.returncode, proc.stdout, proc.stderr)
     assert json.loads(proc.stdout)["error"]["data"]["tool_code"] == code
 
@@ -70,8 +70,8 @@ for inverse, prefix in [(False, "fft"), (True, "ifft")]:
     argv = [binary, "num_fft", "--x", "1", "--x", "2", "--x", "3", "--x", "4"]
     if inverse:
         argv.append("--inverse")
-    got = json.loads(subprocess.run(argv, check=True, text=True, capture_output=True).stdout)
-    want = [float(x) for x in (expected_dir / (prefix + "-im.txt")).read_text().splitlines()]
+    got = json.loads(subprocess.run(argv, check=True, text=True, capture_output=True, errors='replace', encoding='utf-8').stdout)
+    want = [float(x) for x in (expected_dir / (prefix + "-im.txt")).read_text(encoding='utf-8').splitlines()]
     assert [float(x) for x in got["im"]] == want, (prefix, got["im"], want)
     assert len(out) == 4
 

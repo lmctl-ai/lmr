@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 HERE = Path(__file__).resolve().parents[1]
-VERSION = (HERE.parent / "VERSION").read_text().strip()
+VERSION = (HERE.parent / "VERSION").read_text(encoding='utf-8').strip()
 binary = Path(sys.argv[1]) if len(sys.argv) > 1 else HERE.parent / "build-native" / "bin" / ("lmr.exe" if os.name == "nt" else "lmr")
 if os.name == "nt" and binary.suffix.lower() != ".exe":
     binary = binary.with_suffix(".exe")

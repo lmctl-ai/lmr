@@ -13,7 +13,7 @@ def call(name, params):
         for item in (value if isinstance(value,list) else [value]):
             if isinstance(item,bool): argv.append(("--" if item else "--no-")+key)
             else: argv.extend(["--"+key,str(item)])
-    return json.loads(subprocess.run(argv,check=True,text=True,capture_output=True).stdout)
+    return json.loads(subprocess.run(argv,check=True,text=True,capture_output=True, errors='replace', encoding='utf-8').stdout)
 
 cases={
  "t":{"test":"t","x":[1,2,3,4]},
@@ -32,7 +32,7 @@ cases={
 for name,params in cases.items():
     actual=call(name,params)
     assert "statistic_name" in actual and "estimate_names" in actual and "null_value" in actual
-    expected=(expected_dir/(name+".txt")).read_text().splitlines()
+    expected=(expected_dir/(name+".txt")).read_text(encoding='utf-8').splitlines()
     stat,parameter,pvalue,conf,estimate,method,alternative,null_value=expected
     assert (None if stat=="" else float(actual["statistic"]))==(None if stat=="" else float(stat)),(name,"statistic",actual,expected)
     want_param=None if parameter=="" else [float(x) for x in parameter.split(",")]
@@ -66,7 +66,7 @@ for params,code in [
     argv=[binary,"test_htest"]
     for key,value in params.items():
         for item in (value if isinstance(value,list) else [value]): argv.extend(["--"+key,str(item)])
-    proc=subprocess.run(argv,text=True,capture_output=True)
+    proc=subprocess.run(argv,text=True,capture_output=True, errors='replace', encoding='utf-8')
     doc=json.loads(proc.stdout)
     actual_code=doc.get("error",{}).get("data",{}).get("tool_code")
     assert proc.returncode==2 and actual_code==code,(params,proc.returncode,proc.stdout)

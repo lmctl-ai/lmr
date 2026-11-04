@@ -1,4 +1,4 @@
-// access: write (build/dsl/flow-ab-*.dslb)
+// access: pure (nothing is written beside the host run; the _lmcode_ program file is a private temporary)
 // Topic: an A/B comparison where the choice of test depends on diagnostics, then a bootstrap confirms the answer.
 // What it does:
 //   Step 1 (DSL "diagnose"): simulates control and treatment revenues (seeded log-normal: skewed, unequal spread),

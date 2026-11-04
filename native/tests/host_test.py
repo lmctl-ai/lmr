@@ -251,16 +251,16 @@ out.check(true, "fine");
 out.check(1 == 2, "first broken");
 out.check(false, "second broken");
 out.print("still running");
-""", code=4, out=('"code": "APP_FAIL"', "2 of 3 checks failed; first: first broken"),
+""", code=4, out=('"code":"APP_FAIL"', "2 of 3 checks failed; first: first broken"),
      err=("CHECK FAILED: first broken", "still running"))
 case("check_close reports actual and expected", 'out.check_close(1.0, 2.0, 0.5, "near");', code=4,
      err=("CHECK FAILED: near: actual 1, expected 2, tolerance 0.5",))
 case("check_close rejects NaN", 'out.check_close(nan(), 1.0, 1.0, "nan actual");', code=4, err=("nan actual",))
 case("out.fail stops with exit 4", 'out.fail("stop here"); out.print("not reached");', code=4,
-     out=('"phase": "run"', '"code": "APP_FAIL"', "stop here"))
+     out=('"phase":"app"', '"code":"APP_FAIL"', "stop here"))
 # The wrapper's `p = _lmcode_` line is line 1 of the compiled file, so the body's second line is source line 3.
 case("host errors carry the dsl line", 'let v = vec();\nout.print(str(v.at(3)));', code=3,
-     out=('"code": "RUN_HOST"', '"line": 3', '"column": 17', "dsl line 3:17: Vec.at"))
+     out=('"code":"RUN_HOST"', '"line":3', '"column":17', "dsl line 3:17: Vec.at"))
 case("failures() counts", 'out.check(false, "x"); out.set("n", out.failures());', code=4)
 
 # ---------------------------------------------------------------- keep / kept across chunks
@@ -801,7 +801,7 @@ let o = minimize(parse_vec("1"), "BFGS");
 while (o.next()) {
   o.tell(nan());
 }
-""", code=3, out=('"phase": "run"',))
+""", code=3, out=('"phase":"run"',))
 case("Nelder-Mead tolerates a NaN objective", r"""
 let o = minimize(parse_vec("1 1"), "Nelder-Mead").maxit(200);
 while (o.next()) {
@@ -882,8 +882,8 @@ case("cli: schema summary", None, args=["--lmcode-schema"], out=("context out: O
 case("cli: --schema alias", None, args=["--schema"], out=("context out: Out",))
 case("cli: dsl-schema json", None, args=["--lmcode-schema", "--json"], out=('"dsl.schema": 2', '"name": "lmr"'))
 case("cli: dsl-schema bad option", None, args=["--lmcode-schema", "--yaml"], code=2, err=("usage: lmr",))
-case("cli: missing bytecode", None, args=["--lmcode", "nope.dslb"], code=3, out=('"phase": "load"', "nope.dslb"))
-case("cli: garbage bytecode", None, args=["--lmcode", "junk.dslb"], code=3, out=('"phase": "load"',),
+case("cli: missing bytecode", None, args=["--lmcode", "nope.dslb"], code=3, out=('"phase":"load"', "nope.dslb"))
+case("cli: garbage bytecode", None, args=["--lmcode", "junk.dslb"], code=3, out=('"phase":"load"',),
      files={"junk.dslb": "not bytecode at all"})
 
 
@@ -892,8 +892,12 @@ def compile_chunk(lmscript, body, path):
     src = path + ".lms"
     with open(src, "w", encoding="utf-8") as f:
         # Forward slashes: a Windows path's backslashes would be escapes inside the lmscript string literals.
-        f.write('p = _lmcode_ schema="%s";\n%s\nend _lmcode_\nsavedsl(p, "%s");\n' % (SCHEMA.replace("\\", "/"), body, path.replace("\\", "/")))
-    r = subprocess.run([lmscript, src], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
+        f.write('p = _lmcode_ schema="%s";\n%s\nend _lmcode_\n' % (SCHEMA.replace("\\", "/"), body))
+    # The fixture compiler evaluates the block through the compiler library and writes the private
+    # program bytes directly; the compiler CLI no longer exports bytecode.
+    fixture = Path(HERE).parent / "scripts" / "compile-fixture.mjs"
+    env = dict(os.environ, LMR_SCHEMA=SCHEMA, LMSCRIPT_BIN=lmscript)
+    r = subprocess.run(["node", str(fixture), src, path], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120, env=env)
     if r.returncode != 0:
         raise RuntimeError("compile failed:\n" + r.stdout + r.stderr)
 
@@ -927,16 +931,24 @@ def run_case(binary, lmscript, c, root):
             if s not in r.stderr:
                 problems.append("stderr lacks %r" % s)
         if c.args is None:
-            lines = [ln for ln in r.stdout.splitlines() if ln.strip()]
+            lines = [ln for ln in r.stdout.splitlines()
+                     if ln.strip() and ln.strip() not in ("LMCODE_RETURN_BEGIN", "LMCODE_RETURN_END")]
             if len(lines) != 1:
-                problems.append("expected exactly one stdout line, got %d" % len(lines))
+                problems.append("expected exactly one result line between the frame markers, got %d" % len(lines))
             elif c.values:
                 try:
-                    got = json.loads(lines[0])["result"]["values"]
+                    frame = json.loads(lines[0])
+                    result = frame["result"]
+                    # Builder (multi-file) invocations carry one result per part; values aggregate
+                    # in order, so the last completed part holds them all. Single stays a map.
+                    if isinstance(result, list):
+                        got = result[-1]["values"]
+                    else:
+                        got = result["values"]
                     for k, v in c.values.items():
                         if got.get(k) != v:
                             problems.append("value %s = %r, expected %r" % (k, got.get(k), v))
-                except (KeyError, TypeError, ValueError) as e:
+                except (KeyError, TypeError, ValueError, IndexError) as e:
                     problems.append("bad result line: %s" % e)
         if problems:
             return c.name, problems + ["stdout: " + r.stdout.strip()[:600], "stderr: " + r.stderr.strip()[:600]]
@@ -958,7 +970,10 @@ def main():
         print("lmscript not found: host tests skipped")
         return 0
     cmake = Path(HERE).parent / "CMakeLists.txt"
-    project_version = re.search(r"^project\(lmr VERSION ([^ )]+)", cmake.read_text(), re.M).group(1)
+    project_version = re.search(r"^project\(lmr VERSION ([^ )]+)", cmake.read_text(encoding="utf-8"), re.M).group(1)
+    if project_version.startswith("${"):
+        # The project version comes from ../VERSION (file(STRINGS ...)); resolve it like CMake does.
+        project_version = (Path(HERE).parent.parent / "VERSION").read_text(encoding="utf-8").strip()
     version_result = subprocess.run([binary, "--version"], capture_output=True)
     if version_result.returncode or version_result.stdout != f"lmr {project_version}\n".encode() or version_result.stderr:
         print("FAIL cli: version bytes", repr(version_result.stdout), repr(version_result.stderr), version_result.returncode)

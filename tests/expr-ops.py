@@ -1,19 +1,19 @@
 import json,math,pathlib,subprocess,sys,tempfile
 binary=sys.argv[1];root=pathlib.Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory() as td:
- oracle=pathlib.Path(td)/'oracle.txt';subprocess.run(['Rscript','--vanilla','--default-packages=NULL',str(root/'tests/expr-oracle.R'),str(oracle)],check=True,capture_output=True,text=True)
+ oracle=pathlib.Path(td)/'oracle.txt';subprocess.run(['Rscript','--vanilla','--default-packages=NULL',str(root/'tests/expr-oracle.R'),str(oracle)],check=True,capture_output=True,text=True, errors='replace', encoding='utf-8')
  expected={}
- for line in oracle.read_text().splitlines():
+ for line in oracle.read_text(encoding='utf-8').splitlines():
   parts=line.split();expected[parts[0]]=[math.nan if x=='NA' else float(x) for x in parts[1:]]
 def call(op,params,ok=True):
  payload=json.dumps({'op':op,'params':params},separators=(',',':'))
  if len(payload)<100000:
   args=[binary,'--input-json',payload]
-  p=subprocess.run(args,capture_output=True,text=True)
+  p=subprocess.run(args,capture_output=True,text=True, errors='replace', encoding='utf-8')
  else:
   with tempfile.NamedTemporaryFile(mode='w',suffix='.json') as request:
    request.write(payload);request.flush()
-   p=subprocess.run([binary,'--input-file',request.name],capture_output=True,text=True)
+   p=subprocess.run([binary,'--input-file',request.name],capture_output=True,text=True, errors='replace', encoding='utf-8')
  doc=json.loads(p.stdout)
  if ok: assert p.returncode==0,(op,params,p.returncode,doc,p.stderr)
  return doc,p.returncode
@@ -76,7 +76,7 @@ def run_rejected(op,params,tool_code):
  payload=json.dumps({'op':op,'params':params},separators=(',',':'))
  with tempfile.NamedTemporaryFile(mode='w',suffix='.json') as request:
   request.write(payload);request.flush()
-  p=subprocess.run([binary,'--input-file',request.name],env={**__import__('os').environ,'RCLI_RSCRIPT':'/rcli-stage7-must-not-start-r'},capture_output=True,text=True)
+  p=subprocess.run([binary,'--input-file',request.name],env={**__import__('os').environ,'RCLI_RSCRIPT':'/rcli-stage7-must-not-start-r'},capture_output=True,text=True, errors='replace', encoding='utf-8')
  d=json.loads(p.stdout);assert p.returncode==2 and d['error']['data']['tool_code']==tool_code,(p.returncode,d,p.stderr)
 run_rejected('fit_nls',{'response':'y','rhs':'a*x','data':{'x':[1,2],'y':[2,4]},'start':{'a':10},'algorithm':'port','lower':{'a':0},'upper':{'a':3}},'EXPR_SYNTAX')
 # A one-iteration fit returns R's non-convergence message and no fake estimates.

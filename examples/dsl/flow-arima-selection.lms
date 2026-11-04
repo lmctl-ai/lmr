@@ -1,4 +1,4 @@
-// access: write (build/dsl/: flow-arima-*.dslb, flow-series.csv, flow-forecast.csv)
+// access: write (build/dsl/flow-series.csv, build/dsl/flow-forecast.csv; the _lmcode_ program file is a private temporary)
 // Topic: a two-stage forecasting task where lmscript makes the modelling decision between two native chunks.
 // What it does:
 //   Step 1 (DSL chunk "explore"): simulates a seeded AR(2) series, writes it to CSV, computes the PACF and the AIC of

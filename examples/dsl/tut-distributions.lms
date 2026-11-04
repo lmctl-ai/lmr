@@ -1,4 +1,4 @@
-// access: write (build/dsl/tut-distributions.dslb)
+// access: pure (nothing is written beside the host run; the _lmcode_ program file is a private temporary)
 // Topic: distribution functions, quantile tables and seeded simulation (after: R ?Distributions, ?qnorm, ?quantile, ?set.seed;
 //   scipy-lectures statistics chapter)
 // What it does: one _lmcode_ chunk prints a quantile table for the normal, t, chi-square and binomial laws against textbook

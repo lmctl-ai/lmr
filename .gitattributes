@@ -1,4 +1,3 @@
 # Windows checkouts must not convert to CRLF: the schema is embedded byte for byte (bytecode binds to its SHA-256),
 # sdk.lock pins the vendored header by sha256, and the scripts run under bash.
 * text=auto eol=lf
-*.dslb binary

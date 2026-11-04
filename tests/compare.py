@@ -1,5 +1,5 @@
 import json, sys
-info=json.load(open(sys.argv[1])); q=json.load(open(sys.argv[2])); rng=json.load(open(sys.argv[3])); fit=json.load(open(sys.argv[4])); expected=open(sys.argv[5]).read().splitlines(); vals=list(map(float,expected[2:]))
+info=json.load(open(sys.argv[1], encoding='utf-8')); q=json.load(open(sys.argv[2], encoding='utf-8')); rng=json.load(open(sys.argv[3], encoding='utf-8')); fit=json.load(open(sys.argv[4], encoding='utf-8')); expected=open(sys.argv[5], encoding='utf-8').read().splitlines(); vals=list(map(float,expected[2:]))
 assert info['r_version'] == expected[0]
 assert info['rng_kind'] == expected[1].split('|')
 i=0

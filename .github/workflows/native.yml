@@ -111,10 +111,10 @@ jobs:
         with:
           node-version: 24
 
-      - name: lmscript compiler (npm @lmctl-ai/lmctl, DSL v5)
+      - name: lmscript compiler (npm @lmctl-ai/lmctl, current lmcode protocol)
         if: env.ONLY_OK == 'true'
         run: |
-          npm i -g @lmctl-ai/lmctl@0.2.458
+          npm i -g @lmctl-ai/lmctl@staging
           # The DSL tests skip themselves without a compiler; CI must not.
           lmscript --version
           lmscript --lmcode-signatures native/schema/lmr.dsl.json > /dev/null

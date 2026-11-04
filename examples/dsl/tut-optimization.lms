@@ -1,4 +1,4 @@
-// access: write (build/dsl/tut-optimization.dslb)
+// access: pure (nothing is written beside the host run; the _lmcode_ program file is a private temporary)
 // Topic: optimisation, root finding and quadrature with analytic cross-checks (after: R ?optim, ?optimize, ?uniroot,
 //   ?integrate; scipy-lectures optimisation chapter)
 // What it does: one _lmcode_ chunk minimises Rosenbrock's function with four methods (minimize: Nelder-Mead, BFGS, CG,

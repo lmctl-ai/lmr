@@ -1,4 +1,4 @@
-// access: write (build/dsl/tut-arima-roundtrip.dslb)
+// access: pure (nothing is written beside the host run; the _lmcode_ program file is a private temporary)
 // Topic: ARMA simulation and estimation round trip with residual diagnostics (after: R ?arima.sim, ?arima, ?tsdiag)
 // What it does: one _lmcode_ chunk simulates an ARMA(1,1) with arima_sim, fits ARIMA(1,0,1) by exact ML and prints the
 //   coefficient table against the generating values, then checks the estimates within 2.5 SE, the innovation variance,

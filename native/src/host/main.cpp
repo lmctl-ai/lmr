@@ -5,13 +5,14 @@
 //                              (or save them for `_lmcode_ schema="..."`); --schema is an older alias
 //   lmr --lmcode-signatures       canonical registry signatures (diffed against `lmscript --lmcode-signatures`)
 //   lmr --generate-schema      the schema JSON derived from the registry (maintenance: scripts/update-schema.sh)
-//   lmr --lmcode A.dslb [B.dslb]  load and verify every file, then run them in order with shared host state
+//   lmr --lmcode A.dslb [--lmcode B.dslb ...]  load and verify every file, then run them in slot order with shared host state
 //   lmr --version
 //
 // Exit codes: 0 ok, 2 usage, 3 load/run error, 4 application failure (out.fail or failed out.check calls).
 // stdout carries exactly one JSON result line; out.print text goes to stderr.
 #include <iostream>
 #include <map>
+#include <optional>
 #include <set>
 
 #ifdef _WIN32
@@ -23,7 +24,7 @@
 #include "schema_embedded.hpp"
 
 #ifndef LMR_VERSION
-#define LMR_VERSION "0.5.1"
+#define LMR_VERSION "0.5.2"
 #endif
 
 namespace {
@@ -183,41 +184,100 @@ int main(int argc, char** argv) {
     std::cout << generate_schema(reg, ops);
     return 0;
   }
-  if (args.size() < 2 || args[0] != "--lmcode") {
-    std::cerr << usage;
-    return 2;
+  // Both argv shapes are legal: --lmcode FILE [--lmcode FILE ...] (builder slot fragments) and
+  // --lmcode FILE [FILE ...] (plain multi-file runs). Slot order comes from the invocation metadata.
+  std::vector<std::string> files;
+  bool seen_flag = false;
+  for (size_t i = 0; i < args.size(); ++i) {
+    if (args[i] == "--lmcode") {
+      seen_flag = true;
+      continue;
+    }
+    if (args[i].empty() || args[i].rfind("--", 0) == 0) {
+      std::cerr << usage;
+      return dslvm::failure_frame("cli", dslvm::Error("CLI_USAGE", "invalid program file argument"));
+    }
+    if (!seen_flag) {
+      std::cerr << usage;
+      return dslvm::failure_frame("cli", dslvm::Error("CLI_USAGE", "expected --lmcode FILE [FILE ...]"));
+    }
+    files.push_back(args[i]);
   }
-  for (size_t i = 1; i < args.size(); ++i)
-    if (args[i].empty() || args[i].rfind("--", 0) == 0) { std::cerr << usage; return 2; }
+  if (files.empty()) {
+    std::cerr << usage;
+    return dslvm::failure_frame("cli", dslvm::Error("CLI_USAGE", "expected at least one program file"));
+  }
 
   const std::string schema(reinterpret_cast<const char*>(rcli::embedded_schema), rcli::embedded_schema_size);
-  // Load and verify every chunk before anything runs.
-  std::vector<dslvm::Program> programs;
-  for (size_t i = 1; i < args.size(); ++i) {
+  // One invocation envelope (lmcode-cpp InvocationResults). Exit codes stay 0 ok, 2 cli (usage),
+  // 3 load/run error, 4 application failure (failed out.check calls).
+  std::optional<dslvm::InvocationResults> holder;
+  try {
+    holder.emplace(dslvm::InvocationResults::from_command(files));
+  } catch (const dslvm::Error& e) {
+    std::cerr << usage;
+    return dslvm::failure_frame("cli", e);
+  }
+  auto& results = *holder;
+  dslvm::ResultContract contract;
+  try { contract = dslvm::ResultContract::from_schema(schema); }
+  catch (const dslvm::Error& e) { results.fail(std::nullopt, "load", e); return results.write_frame(std::cout); }
+  // Load and verify every chunk before anything runs: a broken later chunk must not
+  // leave any earlier chunk's output behind.
+  struct Part { size_t index; std::string file; dslvm::Program program; };
+  std::vector<Part> programs;
+  for (const auto& part : results.registrations()) {
     try {
-      programs.push_back(dslvm::Program::load(dslvm::read_file(args[i]), schema, reg));
+      programs.push_back(Part{part.index, part.file, dslvm::Program::load(dslvm::read_file(part.file), schema, reg)});
     } catch (const dslvm::Error& e) {
-      dslvm::Error located("LOAD_BAD_BYTECODE", args[i] + ": " + e.what());
+      dslvm::Error located("LOAD_BAD_BYTECODE", part.file + ": " + e.what());
       located.code = e.code;
-      return dslvm::report_error("load", located);
+      std::cerr << located.message << "\n";
+      results.fail(part.index, "load", located);
+      return results.write_frame(std::cout);
     }
   }
   dslvm::Context context;
   context.set("out", &host.out);
-  for (size_t i = 0; i < programs.size(); ++i) {
+  size_t failures_before = 0;
+  for (auto& part : programs) {
+    const size_t index = part.index;
     try {
-      programs[i].run(context, reg);
+      auto& sink = results.select(index, reg, contract);
+      // A dry invocation validates and loads every chunk but runs none (stats runs write files).
+      if (!results.dry()) part.program.run(context, reg);
+      // Publish the run summary (values in first-set order, checks and failures) into the frame
+      // result, with the same shape as the old one-line protocol's payload.
+      std::string summary = result_json(host.out);
+      dslvm::stdlib::json_detail::Parser parsed(summary);
+      dslvm::stdlib::JsonNode node = parsed.val();
+      parsed.ws();
+      if (parsed.p != summary.size()) throw dslvm::Error("RUN_HOST", "result summary did not parse");
+      sink.set(dslvm::Value::object("Json", &node));
+      if (host.out.failures > failures_before) {
+        // Application failure (failed out.check calls): the message text is unchanged from the
+        // pre-envelope one-line protocol; counts are host-wide.
+        dslvm::Error app("APP_FAIL", std::to_string(host.out.failures) + " of " + std::to_string(host.out.checks) +
+                                     " checks failed; first: " + host.out.first_failure);
+        std::cerr << app.message << "\n";
+        results.fail(index, "app", app);
+        return results.write_frame(std::cout);
+      }
+      results.complete(index);
     } catch (const dslvm::Error& e) {
+      const char* phase = e.code == "APP_FAIL" ? "app" : "run";
       if (programs.size() > 1) {
         dslvm::Error located = e;
-        located.message = args[i + 1] + ": " + e.message;
-        return dslvm::report_error("run", located);
+        located.message = part.file + ": " + e.message;
+        std::cerr << located.message << "\n";
+        results.fail(index, phase, located);
+      } else {
+        std::cerr << e.what() << "\n";
+        results.fail(index, phase, e);
       }
-      return dslvm::report_error("run", e);
+      return results.write_frame(std::cout);
     }
+    failures_before = host.out.failures;
   }
-  if (host.out.failures > 0)
-    return dslvm::report_app_failure(std::to_string(host.out.failures) + " of " + std::to_string(host.out.checks) +
-                                     " checks failed; first: " + host.out.first_failure);
-  return dslvm::report_ok(result_json(host.out));
+  return results.write_frame(std::cout);
 }

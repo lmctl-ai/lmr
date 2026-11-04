@@ -1,4 +1,4 @@
-// access: write (build/dsl/fit-curve.dslb)
+// access: pure (nothing is written beside the host run; the _lmcode_ program file is a private temporary)
 // Topic: recovering a known curve from noisy data with nonlinear least squares (after: R ?nls)
 // What it does: one _lmcode_ chunk generates noisy Michaelis-Menten data y = 4 x / (2 + x) + noise and fits a x / (b + x)
 //   with the native nls (the model is written in the chunk and evaluated by reverse communication). Same check as

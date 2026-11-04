@@ -1,4 +1,4 @@
-// access: write (build/dsl/tut-lm.dslb)
+// access: pure (nothing is written beside the host run; the _lmcode_ program file is a private temporary)
 // Topic: multiple regression with a coefficient table and residual diagnostics (after: R ?lm, ?summary.lm, ?confint)
 // What it does: one _lmcode_ chunk fits mpg ~ weight + power from examples/data/tut-vehicles.csv with the native lm, prints
 //   the coefficient table with t intervals, checks that the generating parameters lie inside the intervals, that the

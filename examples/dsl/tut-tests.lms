@@ -1,4 +1,4 @@
-// access: write (build/dsl/tut-tests.dslb)
+// access: pure (nothing is written beside the host run; the _lmcode_ program file is a private temporary)
 // Topic: classical hypothesis tests on data built to have known outcomes (after: R ?t.test, ?wilcox.test, ?chisq.test,
 //   ?fisher.test, ?binom.test, ?shapiro.test, ?cor.test, ?var.test)
 // What it does: one _lmcode_ chunk runs ten native tests covering eight test types and checks each against what the

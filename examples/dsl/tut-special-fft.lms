@@ -1,4 +1,4 @@
-// access: write (build/dsl/tut-special-fft.dslb)
+// access: pure (nothing is written beside the host run; the _lmcode_ program file is a private temporary)
 // Topic: special functions and the discrete Fourier transform checked against identities (after: R ?Special, ?besselJ, ?fft)
 // What it does: one _lmcode_ chunk evaluates gamma, lgamma, beta, choose, digamma and Bessel functions and checks the
 //   classical identities (n! recursion, lgamma against log n!, beta = gamma ratio, Pascal's rule with C(11,4) computed by

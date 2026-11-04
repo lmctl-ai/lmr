@@ -1,4 +1,4 @@
-// access: write (build/dsl/tut-pacf-order.dslb)
+// access: pure (nothing is written beside the host run; the _lmcode_ program file is a private temporary)
 // Topic: identifying the AR order from the PACF and from AIC (after: R ?pacf, ?ar, the Box-Jenkins identification step)
 // What it does: one _lmcode_ chunk simulates an AR(2) process with arima_sim, prints the ACF and PACF with the
 //   1.96/sqrt(n) band, fits AR(1), AR(2) and AR(3) by maximum likelihood and prints their AIC, then checks that the PACF

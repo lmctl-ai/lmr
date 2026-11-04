@@ -25,7 +25,7 @@ for i in range(2000):
     expressions.append(expr)
 
 reqs=[{"expression":expr,"names":variables} for expr in expressions]
-p=subprocess.run([binary,"--expr-check-batch"],input=json.dumps({"cases":reqs}),text=True,capture_output=True,check=True)
+p=subprocess.run([binary,"--expr-check-batch"],input=json.dumps({"cases":reqs}),text=True,capture_output=True,check=True, errors='replace', encoding='utf-8')
 decisions=json.loads(p.stdout)["results"]
 assert len(decisions)==len(expressions)
 cases=[]
@@ -57,7 +57,7 @@ with tempfile.TemporaryDirectory() as td:
       "for(i in seq_along(cases)){ z<-cases[[i]]; a<-eval_ast(z$ast,env); b<-eval(parse(text=z$expression)[[1]],env); if(!identical(as.vector(a),as.vector(b))) stop(sprintf('case %d differs: %s',i,z$expression)) }",
       "cat(sprintf('differential expressions: %d accepted and bit-identical to R parse/eval\\n',length(cases)))"
     ]
-    rfile.write_text("\n".join(lines))
-    p=subprocess.run(["Rscript","--vanilla","--default-packages=NULL",str(rfile)],capture_output=True,text=True)
+    rfile.write_text("\n".join(lines), encoding='utf-8')
+    p=subprocess.run(["Rscript","--vanilla","--default-packages=NULL",str(rfile)],capture_output=True,text=True, errors='replace', encoding='utf-8')
     assert p.returncode==0,(p.stdout,p.stderr)
     print(p.stdout.strip())

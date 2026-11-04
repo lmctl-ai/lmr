@@ -15,10 +15,10 @@ def call(op,params,expected):
             if isinstance(item,bool): argv.append(("--" if item else "--no-")+key)
             elif isinstance(item,(dict,list)): argv.extend(["--"+key,json.dumps(item,separators=(",",":"))])
             else: argv.extend(["--"+key,str(item)])
-    result=json.loads(subprocess.run(argv,check=True,text=True,capture_output=True).stdout)
+    result=json.loads(subprocess.run(argv,check=True,text=True,capture_output=True, errors='replace', encoding='utf-8').stdout)
     for key,name in expected.items():
         want_file=oracle/(name+".txt")
-        raw=want_file.read_text().splitlines()
+        raw=want_file.read_text(encoding='utf-8').splitlines()
         if key in ("coefficients","converged"):
             want=raw if key=="coefficients" else raw[0]=="TRUE"
             assert result[key]==want,(op,key,result[key],want)
@@ -73,11 +73,11 @@ for op,params,code in [
     for key,value in params.items():
         vals=value if isinstance(value,list) else [value]
         for item in vals: argv.extend(["--"+key,json.dumps(item,separators=(",",":")) if isinstance(item,(dict,list)) else str(item)])
-    proc=subprocess.run(argv,text=True,capture_output=True)
+    proc=subprocess.run(argv,text=True,capture_output=True, errors='replace', encoding='utf-8')
     doc=json.loads(proc.stdout)
     assert proc.returncode==2 and doc.get("error",{}).get("data",{}).get("tool_code")==code,(op,params,proc.stdout)
 
 # A deliberately short IRLS cap must yield a successful domain result instead of R_ERROR.
 nonconv=data.copy();nonconv["y_sep"]=[0,0,0,0,1,1,1,1]
 result=call("fit_glm",{"response":"y_sep","predictors":["x"],"data":nonconv,"family":"binomial","maxit":1},{"converged":"glm-nonconv"})
-assert result["domain_status"]==(oracle/"glm-nonconv-status.txt").read_text().strip()
+assert result["domain_status"]==(oracle/"glm-nonconv-status.txt").read_text(encoding='utf-8').strip()
