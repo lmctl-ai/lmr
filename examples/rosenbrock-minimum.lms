@@ -17,4 +17,6 @@ r = run_lmcode(p);
 require(r.ok, "run failed: " + r.get("message", "unknown"));
 result = r.result;
 println(sprintf("BFGS minimum: a %.6f, b %.6f, value %.8f", result.values.a, result.values.b, result.values.value));
+if (!file_exists("build")) { mkdir("build"); }
+if (!file_exists("build/rendered")) { mkdir("build/rendered"); }
 write_file("build/rendered/rosenbrock-minimum.txt", sprintf("BFGS minimum: a %.6f, b %.6f, value %.8f\n", result.values.a, result.values.b, result.values.value));

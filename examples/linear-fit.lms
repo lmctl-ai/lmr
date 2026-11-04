@@ -11,4 +11,6 @@ r = run_lmcode(p);
 require(r.ok, "run failed: " + r.get("message", "unknown"));
 result = r.result;
 println(sprintf("Line fit: intercept %.1f, slope %.1f", result.values.intercept, result.values.slope));
+if (!file_exists("build")) { mkdir("build"); }
+if (!file_exists("build/rendered")) { mkdir("build/rendered"); }
 write_file("build/rendered/linear-fit.txt", sprintf("Line fit: intercept %.1f, slope %.1f\n", result.values.intercept, result.values.slope));

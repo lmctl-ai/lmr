@@ -8,4 +8,6 @@ r = run_lmcode(p);
 require(r.ok, "run failed: " + r.get("message", "unknown"));
 result = r.result;
 println(sprintf("Normal 97.5%% quantile: %.10f", result.values.z));
+if (!file_exists("build")) { mkdir("build"); }
+if (!file_exists("build/rendered")) { mkdir("build/rendered"); }
 write_file("build/rendered/normal-quantile.txt", sprintf("Normal 97.5%% quantile: %.10f\n", result.values.z));
