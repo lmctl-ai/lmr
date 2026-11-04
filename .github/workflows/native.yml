@@ -118,6 +118,8 @@ jobs:
           # The DSL tests skip themselves without a compiler; CI must not.
           lmscript --version
           lmscript --lmcode-signatures native/schema/lmr.dsl.json > /dev/null
+          # The fixture compiler loads the package's compiler module; on Windows `lmscript` is an npm shim, so name the module.
+          echo "LMCODE_COMPILER_MODULE=$(npm root -g)/@lmctl-ai/lmctl/dist/dsl.js" >> "$GITHUB_ENV"
 
       - name: build
         if: env.ONLY_OK == 'true'
@@ -137,7 +139,7 @@ jobs:
         if: env.ONLY_OK == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: LMSCRIPT_BIN="$LMSCRIPT_EXAMPLE_BIN" LMSCRIPT_JS="$LMSCRIPT_EXAMPLE_JS" python3 native/scripts/test-book-examples.py --candidate-only  # restore the released-install proof after the first protocol-compatible release
+        run: python3 native/scripts/test-book-examples.py --candidate-only  # restore the released-install proof after the first protocol-compatible release
 
       - name: linkage
         if: env.ONLY_OK == 'true'
