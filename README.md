@@ -11,6 +11,8 @@
 [![Latest release](https://img.shields.io/github/v/release/lmctl-ai/lmr?label=release)](https://github.com/lmctl-ai/lmr/releases)
 [![Native CI](https://github.com/lmctl-ai/lmr/actions/workflows/native.yml/badge.svg)](https://github.com/lmctl-ai/lmr/actions/workflows/native.yml)
 
+**Documentation:** [lmctl.com/tools/lmr](https://www.lmctl.com/tools/lmr/) · [skill](https://www.lmctl.com/tools/lmr/skill.html) · [guide](https://www.lmctl.com/tools/lmr/guide.html) · [reference](https://www.lmctl.com/tools/lmr/reference.html)
+
 ## Examples
 
 ### Normal quantile
